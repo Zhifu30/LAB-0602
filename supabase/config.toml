@@ -1,0 +1,29 @@
+project_id = "uvylubaxpkmzymdggoyf"
+
+[functions.send-equipment-notification]
+verify_jwt = false
+
+[functions.send-project-notification]
+verify_jwt = false
+
+[functions.admin-create-user]
+verify_jwt = true
+
+[functions.admin-update-user-email]
+verify_jwt = true
+
+
+[functions.send-maintenance-reminders]
+verify_jwt = false
+
+[functions.admin-update-user-role]
+verify_jwt = true
+
+[functions.save-email-config]
+verify_jwt = true
+
+[functions.test-email-config]
+verify_jwt = true
+
+[functions.maintenance-complete]
+verify_jwt = false

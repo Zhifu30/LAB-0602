@@ -1,0 +1,214 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.625rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 217 91% 60%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 217 91% 60%;
+    --sidebar-active-bg: 217 91% 97%;
+
+    /* Modern icon background colors */
+    --icon-blue: 217 91% 60%;
+    --icon-blue-bg: 217 91% 95%;
+    --icon-orange: 25 95% 53%;
+    --icon-orange-bg: 25 95% 95%;
+    --icon-red: 0 84% 60%;
+    --icon-red-bg: 0 84% 95%;
+    --icon-teal: 168 76% 42%;
+    --icon-teal-bg: 168 76% 95%;
+    --icon-green: 142 71% 45%;
+    --icon-green-bg: 142 71% 95%;
+    --icon-purple: 271 91% 65%;
+    --icon-purple-bg: 271 91% 95%;
+    --icon-amber: 45 93% 47%;
+    --icon-amber-bg: 45 93% 95%;
+
+    /* Equipment type color variants */
+    --equipment-microscope: 210 100% 50%;
+    --equipment-centrifuge: 280 100% 55%;
+    --equipment-pcr: 140 85% 45%;
+    --equipment-spectrophotometer: 25 95% 53%;
+    --equipment-incubator: 350 85% 55%;
+    --equipment-autoclave: 200 90% 50%;
+    --equipment-balance: 45 100% 50%;
+    --equipment-hplc: 30 85% 40%;
+    --equipment-freezer: 190 100% 45%;
+    --equipment-other: 220 15% 50%;
+    --equipment-default: 220 15% 50%;
+
+    --chart-1: 217 91% 60%;
+    --chart-2: 168 76% 42%;
+    --chart-3: 25 95% 53%;
+    --chart-4: 142 71% 45%;
+    --chart-5: 271 91% 65%;
+    --sidebar: 0 0% 100%;
+
+    --font-sans: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    --font-serif: 'Plus Jakarta Sans', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+    --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.03);
+    --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.04);
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05), 0 1px 3px 0 hsl(0 0% 0% / 0.05);
+    --shadow: 0 1px 3px 0 hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.07), 0 2px 4px -1px hsl(0 0% 0% / 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.08), 0 4px 6px -2px hsl(0 0% 0% / 0.04);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.1), 0 10px 10px -5px hsl(0 0% 0% / 0.04);
+    --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.2);
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 15%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 15%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 217 33% 25%;
+    --input: 217 33% 25%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 222 47% 13%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 217 91% 60%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 217 33% 25%;
+    --sidebar-ring: 217 91% 60%;
+    --sidebar-active-bg: 217 91% 20%;
+
+    /* Modern icon background colors for dark mode */
+    --icon-blue: 217 91% 65%;
+    --icon-blue-bg: 217 91% 20%;
+    --icon-orange: 25 95% 60%;
+    --icon-orange-bg: 25 95% 20%;
+    --icon-red: 0 84% 65%;
+    --icon-red-bg: 0 84% 20%;
+    --icon-teal: 168 76% 50%;
+    --icon-teal-bg: 168 76% 20%;
+    --icon-green: 142 71% 50%;
+    --icon-green-bg: 142 71% 20%;
+    --icon-purple: 271 91% 70%;
+    --icon-purple-bg: 271 91% 20%;
+    --icon-amber: 45 93% 55%;
+    --icon-amber-bg: 45 93% 20%;
+
+    /* Equipment type color variants for dark mode */
+    --equipment-microscope: 210 80% 60%;
+    --equipment-centrifuge: 280 75% 65%;
+    --equipment-pcr: 140 70% 55%;
+    --equipment-spectrophotometer: 25 80% 63%;
+    --equipment-incubator: 350 70% 65%;
+    --equipment-autoclave: 200 75% 60%;
+    --equipment-balance: 45 85% 60%;
+    --equipment-hplc: 30 70% 50%;
+    --equipment-freezer: 190 80% 55%;
+    --equipment-other: 220 25% 60%;
+    --equipment-default: 220 25% 60%;
+
+    --chart-1: 217 91% 65%;
+    --chart-2: 168 76% 50%;
+    --chart-3: 25 95% 60%;
+    --chart-4: 142 71% 50%;
+    --chart-5: 271 91% 70%;
+    --sidebar: 222 47% 13%;
+
+    --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.1);
+    --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.15);
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.2), 0 1px 3px 0 hsl(0 0% 0% / 0.15);
+    --shadow: 0 1px 3px 0 hsl(0 0% 0% / 0.3), 0 1px 2px -1px hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.25), 0 2px 4px -1px hsl(0 0% 0% / 0.2);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.3), 0 4px 6px -2px hsl(0 0% 0% / 0.2);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.4), 0 10px 10px -5px hsl(0 0% 0% / 0.2);
+    --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.5);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-image:
+      radial-gradient(ellipse at 20% 50%, hsl(217 91% 60% / 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, hsl(168 76% 42% / 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 80%, hsl(271 91% 65% / 0.04) 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+/* Add support for line-clamp utilities */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
