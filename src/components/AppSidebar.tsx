@@ -198,7 +198,7 @@ export function AppSidebar() {
             <>
               <div className="flex items-center gap-2 mb-2">
                 <IconContainer variant="muted" size="sm">
-                  <User />
+                  <UserCircle className="h-4 w-4" />
                 </IconContainer>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium truncate">{profile?.username}</p>
