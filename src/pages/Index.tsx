@@ -15,7 +15,7 @@ import EquipmentDetailModal from '@/components/EquipmentDetailModal';
 import TableImportModal from '@/components/TableImportModal';
 import QRScannerModal from '@/components/QRScannerModal';
 import TableConfigModal from '@/components/TableConfigModal';
-import ImageOCRModal from '@/components/ImageOCRModal';
+import SmartOCRModal from '@/components/SmartOCRModal';
 import QRCodeModal from '@/components/QRCodeModal';
 import StatusSelectModal from '@/components/StatusSelectModal';
 import ScrapEquipmentModal from '@/components/ScrapEquipmentModal';
@@ -149,6 +149,18 @@ const Index = () => {
     console.log('OCR提取的文字:', text);
     toast.success('文字识别完成，已提取图片中的文字信息');
   }, []);
+
+  // SmartOCR 回调
+  const handleSmartOCRUpdate = useCallback(async (id: string, updates: Partial<Equipment>) => {
+    await updateEquipment(id, updates);
+    toast.success(`设备已更新，修改了 ${Object.keys(updates).length} 个字段`);
+  }, [updateEquipment]);
+
+  const handleSmartOCRCreate = useCallback(async (data: Partial<Equipment>) => {
+    const id = `OCR${String(Date.now()).slice(-8)}`;
+    await addEquipment({ ...data, id } as Equipment);
+    toast.success(`新设备 "${data.name || id}" 已创建`);
+  }, [addEquipment]);
 
   const filteredEquipment = (equipment || []).filter((eq) => {
     if (!eq) return false;
@@ -538,10 +550,12 @@ const Index = () => {
           onUpdateColumnLabels={setColumnLabels}
         />
 
-        <ImageOCRModal
-          isOpen={isOCRModalOpen}
+        <SmartOCRModal
+          open={isOCRModalOpen}
           onClose={() => setIsOCRModalOpen(false)}
-          onTextExtracted={handleOCRTextExtracted}
+          equipment={equipment || []}
+          onUpdateEquipment={handleSmartOCRUpdate}
+          onCreateEquipment={handleSmartOCRCreate}
         />
 
         {selectedEquipment && isDetailModalOpen && (

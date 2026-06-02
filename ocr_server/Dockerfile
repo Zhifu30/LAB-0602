@@ -1,18 +1,20 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
+# PaddleOCR 需要的系统库
 RUN apt-get update && apt-get install -y \
     libgomp1 \
     libglib2.0-0 \
+    libgl1 \
     libsm6 \
     libxext6 \
     libxrender-dev \
-    libgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# paddlepaddle ~500MB, 需要较长下载超时
+RUN pip install --no-cache-dir --default-timeout=300 -r requirements.txt
 
 COPY app.py .
 

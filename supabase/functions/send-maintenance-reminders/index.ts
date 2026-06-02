@@ -346,6 +346,66 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Maintenance reminder check completed. Emails sent: ${remindersSent.length}, Errors: ${errors.length}, Auto-reset: ${autoResetCount}`);
 
+    // ──── 发送汇总报告给 15888（管理员） ────
+    let summarySent = false;
+    try {
+      // 查找 15888 的邮箱
+      const { data: adminProfile } = await supabase
+        .from("profiles")
+        .select("email, username")
+        .eq("username", "15888")
+        .maybeSingle();
+
+      const adminEmail = adminProfile?.email || "zhifu.feng@brightfuture.com.hk";
+
+      if (adminEmail) {
+        const todayStr = today.toISOString().split("T")[0];
+        const summaryHtml = `
+          <h2>📊 维护提醒发送汇总报告</h2>
+          <p><strong>日期：</strong>${todayStr}</p>
+          <p><strong>周一补发：</strong>${extraDays > 0 ? `是 (+${extraDays}天)` : "否"}</p>
+          <hr/>
+          <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;width:100%">
+            <tr><td>📋 检查总数</td><td>${schedules?.length || 0}</td></tr>
+            <tr><td>⏰ 到期需提醒</td><td>${dueSchedules.length}</td></tr>
+            <tr><td>✅ 发送成功</td><td style="color:green">${remindersSent.length}</td></tr>
+            <tr><td>❌ 发送失败</td><td style="color:red">${errors.length}</td></tr>
+            <tr><td>🔄 自动重置</td><td>${autoResetCount}</td></tr>
+            <tr><td>📧 收件人数</td><td>${new Set(dueSchedules.flatMap(s => [s.assigned_email, s.equipment?.responsible_email].filter(Boolean))).size}</td></tr>
+          </table>
+          ${errors.length > 0 ? `<h3>❌ 失败详情：</h3><ul>${errors.map(e => `<li>${e}</li>`).join("")}</ul>` : ""}
+          ${remindersSent.length > 0 ? `<h3>✅ 成功发送：</h3><ul>${remindersSent.map(r => `<li>${r}</li>`).join("")}</ul>` : ""}
+          <hr/>
+          <p style="color:#666;font-size:12px">此报告由系统自动生成，每天 ${today.getHours()}:${today.getMinutes().toString().padStart(2,"0")} 发送。</p>
+        `;
+
+        const summaryResponse = await fetch(`${supabaseUrl}/functions/v1/send-equipment-notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({
+            status: "admin-summary",
+            adminEmail: adminEmail,
+            subject: `📊 维护提醒汇总 ${todayStr}`,
+            htmlContent: summaryHtml,
+            reporterName: "系统自动汇总",
+          }),
+        });
+
+        if (summaryResponse.ok) {
+          console.log(`Summary report sent to ${adminEmail} (15888)`);
+          summarySent = true;
+        } else {
+          const errText = await summaryResponse.text();
+          console.error("Failed to send summary:", errText);
+        }
+      }
+    } catch (summaryErr: any) {
+      console.error("Error sending summary:", summaryErr);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

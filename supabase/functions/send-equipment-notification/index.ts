@@ -316,6 +316,42 @@ const handler = async (req: Request): Promise<Response> => {
       htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8">${responsiveStyle}</head><body><h1>Equipment Maintenance Summary</h1><p>Dear Responsible Person,</p><p>The following equipment under your responsibility requires maintenance:</p><div class="desktop-table"><table style="border-collapse:collapse;width:100%;margin:20px 0;"><thead><tr style="background-color:#f2f2f2;"><th style="border:1px solid #ddd;padding:12px;text-align:left;width:100px;">Equipment Type</th><th style="border:1px solid #ddd;padding:12px;text-align:left;">Equipment ID</th><th style="border:1px solid #ddd;padding:12px;text-align:left;">Equipment Name</th><th style="border:1px solid #ddd;padding:12px;text-align:left;">Maintenance Item</th><th style="border:1px solid #ddd;padding:12px;text-align:left;">Maintenance Content</th><th style="border:1px solid #ddd;padding:12px;text-align:left;">Due Date</th><th style="border:1px solid #ddd;padding:12px;text-align:left;">Frequency</th><th style="border:1px solid #ddd;padding:12px;text-align:center;">Action</th></tr></thead><tbody>${tableRows}</tbody></table></div><div class="mobile-cards">${mobileCards}</div><p><strong>Total ${batchList?.length || 0} maintenance plans require attention.</strong></p><p>Click the Done button to mark maintenance as complete. The system will automatically update the next due date.</p><p>This email is sent automatically. Please do not reply.</p></body></html>`;
     }
 
+    // Admin summary: pre-built HTML content with custom subject
+    if (status === "admin-summary") {
+      if (htmlContent) {
+        // Use the pre-built content directly
+      } else {
+        htmlContent = `<h2>📊 维护提醒汇总</h2><p>发送完成。</p>`;
+      }
+    }
+
+    // Project notification (合并自 send-project-notification)
+    if (status === "project-notification") {
+      const { to, projectName, teamName, ownerName, stage, projectId, approvedName } = body;
+      const baseUrl = Deno.env.get("SITE_URL") || "https://uvylubaxpkmzymdggoyf.supabase.co";
+
+      switch (stage) {
+        case 'scientist_review':
+          subject = `项目审核通知 - ${projectName}`;
+          htmlContent = `<h2>项目审核通知</h2><p>您好，</p><p>团队 <strong>${teamName}</strong> 的项目需要您的审核：</p><ul><li>项目名称：${projectName}</li><li>负责人：${ownerName}</li><li>团队：${teamName}</li></ul><p>请点击以下链接进行审核：</p><a href="${baseUrl}/empower?review=${projectId}" style="background:#3b82f6;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin:16px 0;">立即审核</a><p>谢谢！</p>`;
+          break;
+        case 'manager_approval':
+          subject = `项目审批通知 - ${approvedName || projectName}`;
+          htmlContent = `<h2>项目审批通知</h2><p>您好，</p><p>以下项目已通过科学家审核，需要您的审批：</p><ul><li>原项目名称：${projectName}</li><li>审核后名称：${approvedName}</li><li>负责人：${ownerName}</li><li>团队：${teamName}</li></ul><p>请点击以下链接进行审批：</p><a href="${baseUrl}/empower?approve=${projectId}" style="background:#10b981;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin:16px 0;">立即审批</a><p>谢谢！</p>`;
+          break;
+        case 'admin_final':
+          subject = `项目最终确认 - ${approvedName || projectName}`;
+          htmlContent = `<h2>项目最终确认</h2><p>您好，</p><p>以下项目已通过经理审批，请最终确认：</p><ul><li>项目名称：${approvedName || projectName}</li><li>负责人：${ownerName}</li><li>团队：${teamName}</li></ul><p>请点击以下链接进行最终确认：</p><a href="${baseUrl}/empower?finalize=${projectId}" style="background:#6366f1;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin:16px 0;">最终确认</a><p>谢谢！</p>`;
+          break;
+        case 'completion':
+          subject = `项目审批完成 - ${approvedName || projectName}`;
+          htmlContent = `<h2>项目审批完成</h2><p>您好 ${ownerName}，</p><p>您的项目已经完成所有审批流程：</p><ul><li>项目名称：${approvedName || projectName}</li><li>团队：${teamName}</li></ul><p>项目现在可以正式开始了！</p><p>谢谢！</p>`;
+          break;
+      }
+      // 覆盖 adminEmail 为 to 参数
+      adminEmail = to;
+    }
+
     // Preview mode: return exactly what would be sent (same subject + html)
     if (previewOnly) {
       return new Response(

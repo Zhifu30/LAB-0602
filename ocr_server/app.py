@@ -15,7 +15,7 @@ app = FastAPI()
 # 允许跨域（网页端调用）
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# 延迟加载 PaddleOCR（首次请求时加载，节省冷启动内存）
+# 延迟加载 PaddleOCR（首次请求时加载）
 ocr = None
 
 def get_ocr():
@@ -63,15 +63,30 @@ def ocr_endpoint(req: ImageRequest):
         if not results or not results[0]:
             return {"text": "", "details": [], "message": "未检测到文字"}
 
-        # 提取所有文字
+        # 提取所有文字 + 位置坐标
         lines = []
         details = []
         for line in results[0]:
             if line and len(line) >= 2:
-                text = line[1][0]   # 识别文字
-                confidence = line[1][1]  # 置信度
+                bbox = line[0]   # [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
+                text = line[1][0]
+                confidence = line[1][1]
                 lines.append(text)
-                details.append({"text": text, "confidence": round(float(confidence), 4)})
+
+                # 计算包围盒：x, y, width, height
+                xs = [p[0] for p in bbox]
+                ys = [p[1] for p in bbox]
+                box = {
+                    "x": round(min(xs), 1),
+                    "y": round(min(ys), 1),
+                    "w": round(max(xs) - min(xs), 1),
+                    "h": round(max(ys) - min(ys), 1),
+                }
+                details.append({
+                    "text": text,
+                    "confidence": round(float(confidence), 4),
+                    "box": box,
+                })
 
         full_text = '\n'.join(lines)
         return {"text": full_text, "details": details}

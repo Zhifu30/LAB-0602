@@ -8,46 +8,116 @@ interface ImageOCRModalProps {
   onTextExtracted: (text: string) => void;
 }
 
-// === 图片预处理：提高对比度和清晰度 ===
+// === 高级图片预处理：自适应阈值 + 反光抑制 ===
 function preprocessImage(imageDataUrl: string): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
+      const maxW = 1920;
+      const scale = img.width > maxW ? maxW / img.width : 1;
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
       const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      // 绘制原图
-      ctx.drawImage(img, 0, 0);
+      const src = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const w = canvas.width, h = canvas.height;
+      const pixels = src.data;
 
-      // 获取像素数据
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-
-      // 灰度化 + 对比度增强
-      for (let i = 0; i < data.length; i += 4) {
-        // 灰度 = 0.299*R + 0.587*G + 0.114*B
-        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-
-        // 对比度增强：以128为中心拉伸
-        const contrast = 1.5;
-        const enhanced = ((gray - 128) * contrast) + 128;
-
-        // 二值化阈值：浅色背景 → 深色文字
-        const threshold = enhanced > 160 ? 255 : 0;
-
-        data[i] = threshold;     // R
-        data[i + 1] = threshold; // G
-        data[i + 2] = threshold; // B
+      // Step 1: 灰度化
+      const gray = new Float32Array(w * h);
+      for (let i = 0; i < pixels.length; i += 4) {
+        const idx = i / 4;
+        gray[idx] = 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2];
       }
 
-      ctx.putImageData(imageData, 0, 0);
+      // Step 2: 反光压制（过曝区域用局部中值替换）
+      const repaired = new Float32Array(gray);
+      const halfW = 2;
+      for (let y = halfW; y < h - halfW; y++) {
+        for (let x = halfW; x < w - halfW; x++) {
+          const idx = y * w + x;
+          if (gray[idx] > 240) {
+            const vals: number[] = [];
+            for (let dy = -halfW; dy <= halfW; dy++)
+              for (let dx = -halfW; dx <= halfW; dx++) {
+                const nIdx = (y + dy) * w + (x + dx);
+                if (gray[nIdx] <= 240) vals.push(gray[nIdx]);
+              }
+            if (vals.length > 0) {
+              vals.sort((a, b) => a - b);
+              repaired[idx] = vals[Math.floor(vals.length / 2)];
+            } else {
+              repaired[idx] = 128;
+            }
+          }
+        }
+      }
 
-      // 锐化
-      ctx.filter = 'contrast(1.3) brightness(1.05)';
-      ctx.drawImage(canvas, 0, 0);
-      ctx.filter = 'none';
+      // Step 3: 自适应阈值 (Sauvola 简化版)
+      const WINDOW = 15, halfWin = 7, K = 0.2, R = 128;
+      const integral = new Float64Array((w + 1) * (h + 1));
+      const integralSq = new Float64Array((w + 1) * (h + 1));
+      for (let y = 0; y < h; y++) {
+        let sum = 0, sumSq = 0;
+        for (let x = 0; x < w; x++) {
+          const idx = y * w + x;
+          const v = repaired[idx];
+          sum += v;
+          sumSq += v * v;
+          const iIdx = (y + 1) * (w + 1) + (x + 1);
+          integral[iIdx] = integral[y * (w + 1) + (x + 1)] + sum;
+          integralSq[iIdx] = integralSq[y * (w + 1) + (x + 1)] + sumSq;
+        }
+      }
+      const getSum = (arr: Float64Array, y1: number, x1: number, y2: number, x2: number) =>
+        arr[y2 * (w + 1) + x2] - arr[y1 * (w + 1) + x2] - arr[y2 * (w + 1) + x1] + arr[y1 * (w + 1) + x1];
+
+      const result = ctx.createImageData(w, h);
+      const out = result.data;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const y1 = y - halfWin, x1 = x - halfWin;
+          const y2 = y + halfWin + 1, x2 = x + halfWin + 1;
+          const count = (y2 - y1) * (x2 - x1);
+          const sum = getSum(integral, y1, x1, y2, x2);
+          const sumSq = getSum(integralSq, y1, x1, y2, x2);
+          const mean = sum / count;
+          const variance = (sumSq / count) - (mean * mean);
+          const stddev = Math.sqrt(Math.max(0, variance));
+          const threshold = mean * (1 + K * ((stddev / R) - 1));
+
+          const isText = repaired[y * w + x] < threshold;
+          const outIdx = (y * w + x) * 4;
+          out[outIdx] = isText ? 0 : 255;
+          out[outIdx + 1] = isText ? 0 : 255;
+          out[outIdx + 2] = isText ? 0 : 255;
+          out[outIdx + 3] = 255;
+        }
+      }
+      ctx.putImageData(result, 0, 0);
+
+      // Step 4: 去噪
+      const denoised = ctx.getImageData(0, 0, w, h);
+      const din = denoised.data;
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const idx = (y * w + x) * 4;
+          let blackNeighbors = 0;
+          for (let dy = -1; dy <= 1; dy++)
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dy === 0 && dx === 0) continue;
+              if (din[((y + dy) * w + (x + dx)) * 4] === 0) blackNeighbors++;
+            }
+          if (din[idx] === 0 && blackNeighbors < 3) {
+            din[idx] = 255; din[idx + 1] = 255; din[idx + 2] = 255;
+          } else if (din[idx] !== 0 && blackNeighbors > 5) {
+            din[idx] = 0; din[idx + 1] = 0; din[idx + 2] = 0;
+          }
+        }
+      }
+      ctx.putImageData(denoised, 0, 0);
 
       resolve(canvas.toDataURL('image/png'));
     };
@@ -185,43 +255,72 @@ const ImageOCRModal: React.FC<ImageOCRModalProps> = ({
     setProgress(10);
 
     try {
-      // === 方案1：OCR.space 云服务（免费，无需注册）===
+      // === 方案1：EasyOCR 云服务（HuggingFace，中文识别精准）===
       setProgress(20);
       const base64 = imageData.replace(/^data:image\/\w+;base64,/, '');
 
-      const formData = new FormData();
-      formData.append('base64Image', 'data:image/png;base64,' + base64);
-      formData.append('language', 'chs');  // 简体中文
-      formData.append('isOverlayRequired', 'false');
-      formData.append('detectOrientation', 'true');
-      formData.append('scale', 'true');
-      formData.append('OCREngine', '2');  // 更准确的引擎
+      let cloudDone = false;
+      try {
+        const hfResponse = await fetch('https://zhifu1-paddle-ocr.hf.space/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64 }),
+        });
 
-      setProgress(40);
-
-      const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
-        method: 'POST',
-        body: formData,
-        headers: { 'apikey': 'helloworld' }, // 免费 key
-      });
-
-      const result = await ocrResponse.json();
-      setProgress(80);
-
-      if (result?.ParsedResults?.length > 0) {
-        const cloudText = result.ParsedResults
-          .map((r: any) => r.ParsedText)
-          .join('\n')
-          .trim();
-
-        if (cloudText.length > 3) {
-          setExtractedText(cloudText);
-          setProgress(100);
-          return;
+        if (hfResponse.ok) {
+          const hfResult = await hfResponse.json();
+          setProgress(80);
+          if (hfResult.text && hfResult.text.trim().length > 0) {
+            setExtractedText(hfResult.text.trim());
+            setProgress(100);
+            cloudDone = true;
+          }
         }
+      } catch (hfErr) {
+        console.log('EasyOCR 云服务不可用，尝试备选...');
       }
 
-      // === 方案2：Tesseract 本地回退 ===
+      if (cloudDone) return;
+
+      // === 方案2：OCR.space 云服务（免费备选）===
+      setProgress(30);
+      try {
+        const formData = new FormData();
+        formData.append('base64Image', 'data:image/png;base64,' + base64);
+        formData.append('language', 'chs');
+        formData.append('isOverlayRequired', 'false');
+        formData.append('detectOrientation', 'true');
+        formData.append('scale', 'true');
+        formData.append('OCREngine', '2');
+
+        const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
+          method: 'POST',
+          body: formData,
+          headers: { 'apikey': 'helloworld' },
+        });
+
+        const result = await ocrResponse.json();
+        setProgress(80);
+
+        if (result?.ParsedResults?.length > 0) {
+          const cloudText = result.ParsedResults
+            .map((r: any) => r.ParsedText)
+            .join('\n')
+            .trim();
+
+          if (cloudText.length > 3) {
+            setExtractedText(cloudText);
+            setProgress(100);
+            cloudDone = true;
+          }
+        }
+      } catch (ocrErr) {
+        console.log('OCR.space 不可用，使用本地 Tesseract...');
+      }
+
+      if (cloudDone) return;
+
+      // === 方案3：Tesseract 本地回退（离线可用）===
       setProgress(50);
       const Tesseract = (await import('tesseract.js')).default;
       const worker = await Tesseract.createWorker('chi_sim+eng', 1, {

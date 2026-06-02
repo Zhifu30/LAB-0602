@@ -101,9 +101,11 @@ const AddEmpowerModal: React.FC<AddEmpowerModalProps> = ({ isOpen, onClose, onAd
 
       if (!scientist) return;
 
-      await supabase.functions.invoke('send-project-notification', {
+      await supabase.functions.invoke('send-equipment-notification', {
         body: {
-          to: scientist.username, // Assuming username is email
+          status: 'project-notification',
+          adminEmail: scientist.username,
+          to: scientist.username,
           projectName: project.project_name,
           teamName: project.team,
           ownerName: project.owner_name,

@@ -1,6 +1,7 @@
 fastapi
 uvicorn
-paddleocr
 paddlepaddle
+paddleocr
 pillow
 pydantic
+numpy<2
