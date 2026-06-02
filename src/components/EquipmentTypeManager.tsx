@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Trash2, Edit2, Save, X, Tags, ChevronRight, Wrench, Check, Link2, Unlink, User, Search, ChevronDown, ChevronUp, Calendar, Bell, Clock, FileText, Copy } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Tags, ChevronRight, Wrench, Check, Link2, Unlink, User, Search, ChevronDown, ChevronUp, Calendar, Bell, Clock, FileText, Copy, Scale, Microscope, FlaskConical, Thermometer, Gauge, Activity, Beaker, Pipette, CircleDot, TestTube, Ruler, Scan, Radio, Zap, Droplets, Orbit, Atom, Cog, Cpu, Palette, Timer, Waves, Sun, Snowflake, Syringe, Pill, Dna, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';

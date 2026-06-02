@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Monitor, Package, Briefcase, Shield, LogOut, User, Settings, Wrench, Mail, ChevronDown, Tags } from 'lucide-react';
+import {
+  Microscope, LayoutDashboard, Layers, ClipboardCheck, Boxes, FolderKanban,
+  ShieldAlert, LogOut, UserCircle, Settings2, MailPlus, ChevronDown, Tags, Wrench,
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Sidebar,
@@ -23,13 +26,13 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { IconContainer } from '@/components/ui/icon-container';
 
 const navItems = [
-  { title: '设备维护仪表盘', url: '/maintenance', icon: Wrench },
-  { title: '配件管理', url: '/parts', icon: Package },
-  { title: 'Empower管理', url: '/empower', icon: Briefcase },
+  { title: '维护仪表盘', url: '/maintenance', icon: ClipboardCheck, variant: 'teal' as const },
+  { title: '配件管理', url: '/parts', icon: Boxes, variant: 'amber' as const },
+  { title: 'Empower管理', url: '/empower', icon: FolderKanban, variant: 'purple' as const },
 ];
 
 const adminItems = [
-  { title: '权限管理', url: '/permissions', icon: Shield },
+  { title: '权限管理', url: '/permissions', icon: ShieldAlert, variant: 'danger' as const },
 ];
 
 export function AppSidebar() {
@@ -50,12 +53,12 @@ export function AppSidebar() {
       <Sidebar className="border-r">
         <SidebarHeader className="border-b px-4 py-3">
           <div className="flex items-center gap-2.5">
-            <IconContainer variant="primary" size="md">
-              <Monitor />
+            <IconContainer variant="blue" size="md">
+              <Microscope />
             </IconContainer>
             <div>
-              <h2 className="font-semibold text-sm">实验室设备管理</h2>
-              <p className="text-[10px] text-muted-foreground">Lab Equipment System</p>
+              <h2 className="font-semibold text-sm">LabManager</h2>
+              <p className="text-[10px] text-muted-foreground">实验室设备管理系统</p>
             </div>
           </div>
         </SidebarHeader>
@@ -81,7 +84,9 @@ export function AppSidebar() {
                         }}
                       >
                         <div className="flex items-center gap-2">
-                          <Monitor className="h-4 w-4" />
+                          <IconContainer variant="teal" size="sm">
+                            <LayoutDashboard className="h-4 w-4" />
+                          </IconContainer>
                           <span>设备管理</span>
                         </div>
                         <ChevronDown className={`h-4 w-4 transition-transform expand-icon ${equipmentMenuOpen ? 'rotate-180' : ''}`} />
@@ -96,7 +101,9 @@ export function AppSidebar() {
                         onClick={() => setTypeManagerOpen(true)}
                         className="cursor-pointer"
                       >
-                        <Tags className="h-4 w-4" />
+                        <IconContainer variant="blue" size="sm">
+                        <Layers className="h-4 w-4" />
+                      </IconContainer>
                         <span>设备类型管理</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -112,7 +119,9 @@ export function AppSidebar() {
                       isActive={isActive(item.url)}
                       className="cursor-pointer"
                     >
-                      <item.icon className="h-4 w-4" />
+                      <IconContainer variant={item.variant} size="sm">
+                        <item.icon className="h-4 w-4" />
+                      </IconContainer>
                       <span>{item.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -131,9 +140,11 @@ export function AppSidebar() {
                       <SidebarMenuButton
                         onClick={() => navigate(item.url)}
                         isActive={isActive(item.url)}
-                        className="cursor-pointer text-destructive hover:text-destructive"
+                        className="cursor-pointer"
                       >
-                        <item.icon className="h-4 w-4" />
+                        <IconContainer variant={item.variant} size="sm">
+                          <item.icon className="h-4 w-4" />
+                        </IconContainer>
                         <span>{item.title}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -152,7 +163,9 @@ export function AppSidebar() {
                     <CollapsibleTrigger asChild>
                       <SidebarMenuButton className="cursor-pointer w-full justify-between">
                         <div className="flex items-center gap-2">
-                          <Settings className="h-4 w-4" />
+                          <IconContainer variant="muted" size="sm">
+                            <Settings2 className="h-4 w-4" />
+                          </IconContainer>
                           <span>设置</span>
                         </div>
                         <ChevronDown className={`h-4 w-4 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
@@ -167,7 +180,9 @@ export function AppSidebar() {
                         onClick={() => setEmailSettingsOpen(true)}
                         className="cursor-pointer"
                       >
-                        <Mail className="h-4 w-4" />
+                        <IconContainer variant="blue" size="sm">
+                          <MailPlus className="h-4 w-4" />
+                        </IconContainer>
                         <span>邮件与系统设置</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
