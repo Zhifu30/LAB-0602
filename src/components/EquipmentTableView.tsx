@@ -62,9 +62,9 @@ const EquipmentTableView: React.FC<EquipmentTableViewProps> = ({
     const value = equipment[field];
     if (field === 'status') return statusLabels[value as Equipment['status']];
     if (field === 'type') {
-      const customTypes = JSON.parse(localStorage.getItem('equipment-custom-types') || '[]');
-      const customType = customTypes.find((ct: any) => ct.customType === value);
-      if (customType) return customType.customType;
+      const types = JSON.parse(localStorage.getItem('equipment-type-configs-v2') || '[]');
+      const found = types.find((t: any) => t.name === value);
+      if (found) return found.name;
       return equipmentTypeLabels[value as EquipmentType] || value?.toString() || '-';
     }
     return value?.toString() || '-';

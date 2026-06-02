@@ -190,7 +190,7 @@ export default function AddEquipmentToGroupModal({
         }
         
         // 同步更新 localStorage 中的类型配置
-        const saved = localStorage.getItem('equipment-type-configs');
+        const saved = localStorage.getItem('equipment-type-configs-v2');
         if (saved) {
           const types = JSON.parse(saved);
           const updatedTypes = types.map((t: any) => {
@@ -199,7 +199,7 @@ export default function AddEquipmentToGroupModal({
             }
             return t;
           });
-          localStorage.setItem('equipment-type-configs', JSON.stringify(updatedTypes));
+          localStorage.setItem('equipment-type-configs-v2', JSON.stringify(updatedTypes));
         }
         
         // 如果需要创建维护计划

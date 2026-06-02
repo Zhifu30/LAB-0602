@@ -131,42 +131,7 @@ export const defaultColumnConfigs: ColumnConfig[] = [
   { key: 'notes', label: '备注', type: 'text', required: false, editable: true },
 ];
 
-// 默认列标签 — 仅数据库实际字段
-export const defaultColumnLabels: Record<keyof Equipment, string> = {
-  id: '仪器编号',
-  name: '仪器名称',
-  type: '设备类型',
-  model: '型号',
-  serialNumber: '序列号',
-  manufacturer: '厂商',
-  status: '状态',
-  location: '位置',
-  maintenanceDate: '维护日期',
-  description: '描述',
-  responsible: '负责人',
-  responsible_email: '负责人邮箱',
-  imageUrl: '设备图片',
-  sopFileUrl: 'SOP文件',
-  sopFileName: 'SOP文件名',
-  assetNumber: '资产编号',
-  purchasePrice: '采购价格',
-  depreciationRate: '折旧率',
-  currentValue: '当前价值',
-  supplier: '供应商',
-  warrantyExpiry: '保修到期',
-  specifications: '技术规格',
-  operatingRange: '工作范围',
-  accuracy: '精度',
-  calibrationCycle: '校正周期',
-  lastCalibrationDate: '上次校正',
-  nextCalibrationDate: '下次校正',
-  usageHours: '使用时长',
-  maintenanceHistory: '维护历史',
-  repairHistory: '维修历史',
-  notes: '备注',
-  calibrationDate: '校正日期',
-  sopFiles: 'SOP文件'
-};
+// dynamic column labels now come from DB schema (DB_COLUMN_LABELS) or useEquipmentTypes()
 
 // ====== 动态列同步工具 ======
 
@@ -232,30 +197,4 @@ export const getColumnConfigs = (customConfigs?: ColumnConfig[]): ColumnConfig[]
   return customConfigs || defaultColumnConfigs;
 };
 
-// 默认导出配置 — 仅包含数据库实际字段
-export const defaultExportConfigs: TableExportConfig[] = [
-  {
-    id: 'basic-info',
-    name: '基本信息表',
-    columns: ['id', 'name', 'type', 'model', 'manufacturer', 'status', 'location', 'responsible', 'responsible_email'],
-    description: '设备基本信息'
-  },
-  {
-    id: 'equipment-management',
-    name: '仪器管理表',
-    columns: ['id', 'name', 'type', 'model', 'status', 'location', 'responsible', 'lastCalibrationDate', 'nextCalibrationDate', 'maintenanceDate'],
-    description: '用于实验室日常仪器管理'
-  },
-  {
-    id: 'calibration-schedule',
-    name: '校正计划表',
-    columns: ['id', 'name', 'type', 'model', 'lastCalibrationDate', 'nextCalibrationDate', 'responsible'],
-    description: '用于制定和跟踪校正计划'
-  },
-  {
-    id: 'complete-info',
-    name: '完整信息表',
-    columns: getAllColumns(),
-    description: '包含所有字段的完整信息'
-  }
-];
+// export configs dynamically managed via TableConfigModal
