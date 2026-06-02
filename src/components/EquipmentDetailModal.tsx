@@ -18,6 +18,7 @@ import MaintenanceScheduleManager from '@/components/MaintenanceScheduleManager'
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 
 interface EquipmentTypeOption { id: string; name: string; }
 interface TypeResourceInfo { sharedImageUrl: string | null; sharedSopFiles: { url: string; name: string; }[] | null; }
@@ -52,18 +53,8 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   const [showFaultModal, setShowFaultModal] = useState(false);
   const [showScrapModal, setShowScrapModal] = useState(false);
   const [maintenanceSchedulesKey, setMaintenanceSchedulesKey] = useState(0);
-  const [equipmentTypes, setEquipmentTypes] = useState<EquipmentTypeOption[]>([]);
   const [typeResource, setTypeResource] = useState<TypeResourceInfo | null>(null);
-
-  const fetchEquipmentTypes = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('equipment_templates').select('id, equipment_type')
-        .eq('model', TYPE_SENTINEL).eq('manufacturer', TYPE_SENTINEL).order('created_at', { ascending: true });
-      if (error) throw error;
-      setEquipmentTypes((data || []).map((row: any) => ({ id: row.id, name: row.equipment_type })));
-    } catch (error) { console.error('Error fetching equipment types:', error); }
-  }, []);
+  const { types: equipmentTypes } = useEquipmentTypes(); // ← 统一数据源
 
   const fetchTypeResource = useCallback(async () => {
     if (!equipment.type) { setTypeResource(null); return; }
@@ -75,7 +66,7 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
     } catch (error) { console.error('Error fetching type resource:', error); }
   }, [equipment.type]);
 
-  useEffect(() => { fetchEquipmentTypes(); fetchTypeResource(); }, [fetchEquipmentTypes, fetchTypeResource, maintenanceSchedulesKey]);
+  useEffect(() => { fetchTypeResource(); }, [fetchTypeResource, maintenanceSchedulesKey]);
 
   const handleSave = () => { onUpdate(editedEquipment); setIsEditing(false); };
   const handleCancel = () => { setEditedEquipment(equipment); setIsEditing(false); };

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Equipment, EquipmentStatus, EquipmentType, statusLabels, equipmentTypeLabels } from '@/types/equipment';
-import { Separator } from '@/components/ui/separator';
+import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 
 interface InlineEditCellProps {
   value: string;
@@ -14,20 +14,7 @@ interface InlineEditCellProps {
   onCancelEdit: () => void;
 }
 
-// 获取所有类型（从新的配置系统）
-const getAllEquipmentTypes = () => {
-  const saved = localStorage.getItem('equipment-type-configs');
-  if (saved) {
-    const configs = JSON.parse(saved);
-    return configs.map((c: any) => ({ id: c.id, name: c.name }));
-  }
-  // 兼容旧格式
-  const oldSaved = localStorage.getItem('equipment-custom-types');
-  if (oldSaved) {
-    return JSON.parse(oldSaved);
-  }
-  return [];
-};
+// 不再从 localStorage 读取，由外部传入或组件内通过 hook 获取
 
 const InlineEditCell: React.FC<InlineEditCellProps> = ({
   value,
@@ -141,33 +128,25 @@ const InlineEditCell: React.FC<InlineEditCellProps> = ({
     );
   }
 
+  // 设备类型选项 — 从 Supabase 直接读取（唯一数据源）
+  const { types: dbTypes } = useEquipmentTypes();
+  const allTypeOptions = [
+    ...dbTypes,
+    ...Object.entries(equipmentTypeLabels)
+      .filter(([key]) => !dbTypes.some(t => t.name === key))
+      .map(([key, label]) => ({ id: key, name: label })),
+  ];
+
+  const getDisplayTypeValue = (val: string) => {
+    const found = allTypeOptions.find(t => t.name === val);
+    return found ? found.name : (val || '-');
+  };
+
   // 设备类型使用 Select
   if (field === 'type') {
-    // 获取所有类型
-    const allTypes = getAllEquipmentTypes();
-    
-    // 获取显示值
-    const getDisplayValue = (val: string) => {
-      // 先检查自定义类型
-      const customType = allTypes.find((ct: any) => ct.name === val);
-      if (customType) {
-        return customType.name;
-      }
-      // 再检查标准类型
-      if (equipmentTypeLabels[val as EquipmentType]) {
-        return equipmentTypeLabels[val as EquipmentType];
-      }
-      return val || '-';
-    };
-
     if (!isEditing) {
-      return (
-        <span onDoubleClick={onStartEdit}>
-          {getDisplayValue(value)}
-        </span>
-      );
+      return <span onDoubleClick={onStartEdit}>{getDisplayTypeValue(value)}</span>;
     }
-    
     return (
       <Select
         value={editValue || ''}
@@ -177,23 +156,10 @@ const InlineEditCell: React.FC<InlineEditCellProps> = ({
           onCancelEdit();
         }}
       >
-        <SelectTrigger className="h-8 w-36">
-          <SelectValue placeholder="选择类型" />
-        </SelectTrigger>
+        <SelectTrigger className="h-8 w-36"><SelectValue placeholder="选择类型" /></SelectTrigger>
         <SelectContent className="bg-background z-50">
-          {/* 用户自定义类型优先显示 */}
-          {allTypes.map((ct: any) => (
-            <SelectItem key={ct.id} value={ct.name}>
-              {ct.name}
-            </SelectItem>
-          ))}
-          {/* 如果有自定义类型，添加分隔线 */}
-          {allTypes.length > 0 && <Separator className="my-1" />}
-          {/* 标准类型 */}
-          {Object.entries(equipmentTypeLabels).map(([key, label]) => (
-            <SelectItem key={key} value={key}>
-              {label}
-            </SelectItem>
+          {allTypeOptions.map((t) => (
+            <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
           ))}
         </SelectContent>
       </Select>
