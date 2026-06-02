@@ -83,7 +83,7 @@ const frequencyLabels: Record<string, string> = {
 // localStorage key for equipment types - 持久化存储
 const STORAGE_KEY = 'equipment-type-configs-v2';
 
-// Use an existing DB table (equipment_templates) to persist type definitions.
+// Use an existing DB table (equipment_types) to persist type definitions.
 // Rows with model/manufacturer = '__TYPE__' are reserved for type definitions.
 const TYPE_SENTINEL = '__TYPE__';
 
@@ -172,7 +172,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
   const fetchTypesFromDb = useCallback(async (): Promise<EquipmentTypeConfig[]> => {
     const { data, error } = await supabase
-      .from('equipment_templates')
+      .from('equipment_types')
       .select('id, equipment_type, created_at')
       .eq('model', TYPE_SENTINEL)
       .eq('manufacturer', TYPE_SENTINEL)
@@ -219,7 +219,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     }));
 
     const { error } = await supabase
-      .from('equipment_templates')
+      .from('equipment_types')
       .upsert(rows as any, {
         onConflict: 'equipment_type,model,manufacturer',
         ignoreDuplicates: true
@@ -417,7 +417,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
     try {
       const { data, error } = await supabase
-        .from('equipment_templates')
+        .from('equipment_types')
         .insert({
           equipment_type: typeName,
           model: TYPE_SENTINEL,
@@ -462,7 +462,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       // 从数据库删除类型定义
       try {
         await supabase
-          .from('equipment_templates')
+          .from('equipment_types')
           .delete()
           .eq('id', id);
       } catch (e) {
@@ -500,7 +500,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     try {
       if (editingTypeId) {
         const { error } = await supabase
-          .from('equipment_templates')
+          .from('equipment_types')
           .update({ equipment_type: nextName } as any)
           .eq('id', editingTypeId)
           .eq('model', TYPE_SENTINEL)

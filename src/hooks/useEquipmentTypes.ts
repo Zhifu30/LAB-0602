@@ -1,6 +1,6 @@
 /**
  * useEquipmentTypes — 唯一数据源的设备类型列表
- * 直接从 equipment 表读取 DISTINCT type，不再依赖 localStorage 或 equipment_templates
+ * 直接从 equipment 表读取 DISTINCT type，不再依赖 localStorage 或 equipment_types
  */
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,7 +59,7 @@ export async function fetchTypeResource(typeName: string): Promise<{
   sharedSopFiles: { url: string; name: string }[] | null;
 }> {
   const { data } = await supabase
-    .from('equipment_templates')
+    .from('equipment_types')
     .select('shared_image_url, shared_sop_files')
     .eq('equipment_type', typeName)
     .eq('model', '__TYPE__')

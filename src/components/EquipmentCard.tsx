@@ -66,7 +66,7 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onClick, onSta
     const fetchTypeResource = async () => {
       if (!equipment.type) { setTypeResource(null); return; }
       const { data } = await supabase
-        .from('equipment_templates')
+        .from('equipment_types')
         .select('shared_image_url')
         .eq('equipment_type', equipment.type)
         .eq('model', TYPE_SENTINEL)
