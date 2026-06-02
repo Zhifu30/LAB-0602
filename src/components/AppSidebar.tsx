@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Microscope, LayoutDashboard, Layers, ClipboardCheck, Boxes, FolderKanban,
-  ShieldAlert, LogOut, UserCircle, Settings2, MailPlus, ChevronDown, Tags, Wrench,
+  ShieldAlert, LogOut, UserCircle, Settings2, MailPlus, ChevronDown, Tags, Wrench, Activity,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -27,8 +27,9 @@ import { IconContainer } from '@/components/ui/icon-container';
 
 const navItems = [
   { title: '维护仪表盘', url: '/maintenance', icon: ClipboardCheck, variant: 'teal' as const },
-  { title: '配件管理', url: '/parts', icon: Boxes, variant: 'amber' as const },
-  { title: 'Empower管理', url: '/empower', icon: FolderKanban, variant: 'purple' as const },
+  { title: '校正管理', url: '/calibration', icon: Activity, variant: 'amber' as const },
+  { title: '配件管理', url: '/parts', icon: Boxes, variant: 'purple' as const },
+  { title: 'Empower管理', url: '/empower', icon: FolderKanban, variant: 'orange' as const },
 ];
 
 const adminItems = [

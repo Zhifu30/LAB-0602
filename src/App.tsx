@@ -12,6 +12,7 @@ import PartsManagement from "./pages/PartsManagement";
 import EmpowerManagement from "./pages/EmpowerManagement";
 import PermissionManagement from "./pages/PermissionManagement";
 import MaintenanceDashboard from "./pages/MaintenanceDashboard";
+import CalibrationDashboard from "./pages/CalibrationDashboard";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -38,6 +39,13 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <MaintenanceDashboard />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/calibration" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <CalibrationDashboard />
                   </AppLayout>
                 </ProtectedRoute>
               } />
