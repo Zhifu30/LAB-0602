@@ -14,6 +14,7 @@ import MaintenanceScheduleCard from './MaintenanceScheduleCard';
 import EquipmentDetailModal from './EquipmentDetailModal';
 import { Equipment } from '@/types/equipment';
 import { cn } from '@/lib/utils';
+import { useProfiles } from '@/hooks/useProfiles';
 
 interface MaintenanceSchedule {
   id: string;
@@ -61,7 +62,8 @@ export default function MaintenanceDashboard() {
   const [testingReminder, setTestingReminder] = useState(false);
   const [sendingGroupEmail, setSendingGroupEmail] = useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [profileEmails, setProfileEmails] = useState<Record<string, string>>({});
+  const { getEmailMap } = useProfiles();
+  const profileEmails = getEmailMap();
   const [groupByTab, setGroupByTab] = useState<'responsible' | 'type'>('responsible');
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addModalGroupType, setAddModalGroupType] = useState<'responsible' | 'type'>('responsible');
@@ -157,18 +159,6 @@ export default function MaintenanceDashboard() {
   const fetchSchedules = async () => {
     setLoading(true);
     try {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('username, email');
-
-      const emailMap: Record<string, string> = {};
-      (profiles || []).forEach(p => {
-        if (p.username && p.email) {
-          emailMap[p.username] = p.email;
-        }
-      });
-      setProfileEmails(emailMap);
-
       const { data, error } = await supabase
         .from('maintenance_schedules')
         .select('*, equipment:equipment_id(id, name, responsible, responsible_email, type)')

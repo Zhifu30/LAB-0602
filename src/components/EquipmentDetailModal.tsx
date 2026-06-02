@@ -19,6 +19,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
+import { useProfiles } from '@/hooks/useProfiles';
 
 interface EquipmentTypeOption { id: string; name: string; }
 interface TypeResourceInfo { sharedImageUrl: string | null; sharedSopFiles: { url: string; name: string; }[] | null; }
@@ -237,20 +238,7 @@ const ViewForm: React.FC<{
 const EditForm: React.FC<{
   equipment: Equipment; onChange: (field: keyof Equipment, value: string) => void; onSave: () => void; onCancel: () => void; equipmentTypes: EquipmentTypeOption[];
 }> = ({ equipment, onChange, onSave, onCancel, equipmentTypes }) => {
-  const [users, setUsers] = useState<Array<{user_id: string; username: string; email?: string}>>([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-
-  React.useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const { data, error } = await supabase.from('profiles').select('user_id, username, email').order('username');
-        if (error) throw error;
-        setUsers(data || []);
-      } catch (error) { console.error('Error fetching users:', error); toast.error('获取用户列表失败'); }
-      finally { setLoadingUsers(false); }
-    };
-    fetchUsers();
-  }, []);
+  const { profiles: users, loading: loadingUsers } = useProfiles();
 
   const handleResponsibleChange = (username: string) => {
     const selectedUser = users.find(u => u.username === username);

@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Equipment, EquipmentStatus, EquipmentType, statusLabels, equipmentTypeLabels } from '@/types/equipment';
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
+import { useProfiles } from '@/hooks/useProfiles';
 
 interface InlineEditCellProps {
   value: string;
@@ -83,20 +84,10 @@ const InlineEditCell: React.FC<InlineEditCellProps> = ({
     );
   }
 
-  // 负责人使用 Select（从 profiles 表获取）
+  // 负责人使用 Select（从 useProfiles 统一数据源）
+  const { profiles: users } = useProfiles();
+
   if (field === 'responsible') {
-    const [users, setUsers] = React.useState<Array<{username: string; email?: string}>>([]);
-
-    React.useEffect(() => {
-      if (isEditing) {
-        import('@/integrations/supabase/client').then(({ supabase }) => {
-          supabase.from('profiles').select('username, email').order('username').then(({ data }) => {
-            setUsers(data || []);
-          });
-        });
-      }
-    }, [isEditing]);
-
     if (!isEditing) {
       return (
         <span onDoubleClick={onStartEdit} className="cursor-text hover:bg-muted/50 px-1 py-0.5 rounded transition-colors">
