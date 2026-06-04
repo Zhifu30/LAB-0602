@@ -1287,8 +1287,13 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col" style={{
+            backgroundImage: selectedType?.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.image_url ? `url(${linkedEquipments[0].image_url})` : undefined,
+            backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
+          }}>
+            {/* 半透明遮罩 */}
+            <div className="absolute inset-0 bg-white/85 pointer-events-none" />
+          <DialogHeader className="relative">
             <DialogTitle className="flex items-center gap-2">
               <Tags className="h-5 w-5" />
               设备类型管理
