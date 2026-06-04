@@ -393,11 +393,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     try {
       const { data, error } = await supabase
         .from('equipment_types')
-        .insert({
-          equipment_type: typeName,
-          model: TYPE_SENTINEL,
-          manufacturer: TYPE_SENTINEL
-        } as any)
+        .insert({ equipment_type: typeName } as any)
         .select('id')
         .single();
 
