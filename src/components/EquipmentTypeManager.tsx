@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Plus, Trash2, Edit2, Save, X, Tags, ChevronRight, Wrench, Check, Link2, Unlink, User, Search, ChevronDown, ChevronUp, Calendar, Bell, Clock, FileText, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,6 +98,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const { user, loading: authLoading } = useAuth();
   const [types, setTypes] = useState<EquipmentTypeConfig[]>([]);
   const [newTypeName, setNewTypeName] = useState('');
+  const newTypeInputRef = useRef<HTMLInputElement>(null);
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -366,32 +367,18 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   }, [unlinkedEquipments, searchQuery]);
 
   const handleAddType = async () => {
-    if (!newTypeName.trim()) {
-      toast({
-        title: '错误',
-        description: '请输入类型名称',
-        variant: 'destructive'
-      });
+    const name = newTypeInputRef.current?.value?.trim() || '';
+    if (!name) return;
+
+    if (types.some(t => t.name === name)) {
+      toast({ title: '错误', description: '该类型已存在', variant: 'destructive' });
       return;
     }
-
-    // 检查是否已存在
-    const exists = types.some(t => t.name === newTypeName.trim());
-    if (exists) {
-      toast({
-        title: '错误',
-        description: '该类型已存在',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    const typeName = newTypeName.trim();
 
     try {
       const { data, error } = await supabase
         .from('equipment_types')
-        .insert({ equipment_type: typeName } as any)
+        .insert({ equipment_type: name } as any)
         .select('id')
         .single();
 
@@ -400,22 +387,13 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       const dbTypes = await fetchTypesFromDb();
       saveTypes(dbTypes);
 
-      setNewTypeName('');
+      if (newTypeInputRef.current) newTypeInputRef.current.value = '';
       setSelectedTypeId(data?.id ?? null);
       setIsLinkingMode(false);
-      setSelectedEquipmentId(null);
 
-      toast({
-        title: '成功',
-        description: `已添加类型 "${typeName}"`,
-      });
+      toast({ title: '成功', description: `已添加类型 "${name}"` });
     } catch (error: any) {
-      console.error('添加类型失败:', error);
-      toast({
-        title: '添加失败',
-        description: error?.message || '无法写入数据库',
-        variant: 'destructive'
-      });
+      toast({ title: '添加失败', description: error?.message || '无法写入数据库', variant: 'destructive' });
     }
   };
 
@@ -1341,11 +1319,10 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
               {/* 添加新类型 */}
               <div className="flex gap-2">
                 <Input
+                  ref={newTypeInputRef}
                   placeholder="新类型名称"
-                  value={newTypeName}
-                  onChange={(e) => setNewTypeName(e.target.value)}
-                  onKeyDown={handleKeyDown}
                   className="flex-1 h-8 text-sm"
+                  onKeyDown={handleKeyDown}
                 />
                 <Button onClick={handleAddType} size="sm" className="h-8 px-2">
                   <Plus className="h-4 w-4" />
