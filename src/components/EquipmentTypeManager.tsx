@@ -1358,10 +1358,10 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                               }}
                               autoFocus
                             />
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleSaveEdit}>
+                            <Button size="icon" className="h-6 w-6 bg-green-500 hover:bg-green-600 text-white rounded" onClick={handleSaveEdit}>
                               <Save className="h-3 w-3" />
                             </Button>
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleCancelEdit}>
+                            <Button size="icon" className="h-6 w-6 bg-green-500 hover:bg-green-600 text-white rounded" onClick={handleCancelEdit} className="h-6 w-6 bg-amber-500 hover:bg-amber-600 text-white rounded">
                               <X className="h-3 w-3" />
                             </Button>
                           </div>
@@ -1377,22 +1377,14 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                               </Badge>
                             </div>
                             <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6"
-                                onClick={() => handleStartEdit(type)}
-                              >
-                                <Edit2 className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6 text-destructive hover:text-destructive"
-                                onClick={() => handleDeleteType(type.id)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
+                              <div className="h-6 w-6 rounded bg-blue-500 flex items-center justify-center cursor-pointer hover:bg-blue-600"
+                                onClick={() => handleStartEdit(type)}>
+                                <Edit2 className="h-3 w-3 text-white" />
+                              </div>
+                              <div className="h-6 w-6 rounded bg-red-500 flex items-center justify-center cursor-pointer hover:bg-red-600"
+                                onClick={() => handleDeleteType(type.id)}>
+                                <Trash2 className="h-3 w-3 text-white" />
+                              </div>
                             </div>
                           </>
                         )}
