@@ -1292,7 +1292,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col" style={{
-            backgroundImage: selectedType?.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.image_url ? `url(${linkedEquipments[0].image_url})` : undefined,
+            backgroundImage: selectedType?.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.imageUrl ? `url(${linkedEquipments[0].imageUrl})` : undefined,
             backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
           }}>
             {/* 暗色玻璃遮罩 */}
