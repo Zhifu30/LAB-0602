@@ -1293,20 +1293,20 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col relative">
           {/* 玻璃背景：使用选中类型的共享图片 */}
           {selectedType?.sharedImageUrl && (
-            <div className="absolute inset-0 -z-10 bg-cover bg-center opacity-20"
-              style={{ backgroundImage: `url(${selectedType.sharedImageUrl})`, filter: 'blur(8px) saturate(0.5)' }} />
+            <div className="absolute inset-0 bg-cover bg-center opacity-15 pointer-events-none"
+              style={{ backgroundImage: `url(${selectedType.sharedImageUrl})`, filter: 'blur(4px) saturate(0.3)' }} />
           )}
-          <DialogHeader className="relative z-10">
-            <DialogTitle className="flex items-center gap-2 text-white drop-shadow-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
               <Tags className="h-5 w-5" />
               设备类型管理
             </DialogTitle>
-            <DialogDescription className="text-white/80 drop-shadow">
+            <DialogDescription>
               {selectedType ? `当前类型：${selectedType.name}（${linkedEquipments.length} 台设备）` : '三列布局：设备类型 → 关联设备 → 维护计划模板与管理'}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 grid grid-cols-[240px_1fr_1fr] gap-4 overflow-hidden relative z-10">
+          <div className="flex-1 grid grid-cols-[240px_1fr_1fr] gap-4 overflow-hidden">
             {/* 第一列：类型列表 */}
             <div className="flex flex-col space-y-3 overflow-hidden border rounded-lg bg-white/70 backdrop-blur-md p-3">
               <h3 className="font-semibold text-sm flex items-center gap-2">
