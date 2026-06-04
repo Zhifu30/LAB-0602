@@ -195,9 +195,6 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   }, [equipments]);
 
   const migrateLocalTypesToDbIfNeeded = useCallback(async () => {
-    const authedUser = await getAuthedUser();
-    if (!authedUser) return;
-
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return;
 
@@ -237,18 +234,6 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         try {
           // 未登录时：数据库写入/读取都会被策略阻止（42501），直接提示用户先登录
           if (authLoading) return;
-          const authedUser = await getAuthedUser();
-          if (!authedUser) {
-            if (cancelled) return;
-            setTypes([]);
-            toast({
-              title: '需要登录',
-              description: '请先登录后再添加/编辑设备类型（类型将保存在数据库中）',
-              variant: 'destructive'
-            });
-            return;
-          }
-
           // If DB has no types yet, migrate from localStorage (legacy) once.
           const initialDbTypes = await fetchTypesFromDb();
           if (initialDbTypes.length === 0) {
@@ -383,16 +368,6 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   }, [unlinkedEquipments, searchQuery]);
 
   const handleAddType = async () => {
-    const authedUser = await getAuthedUser();
-    if (!authedUser) {
-      toast({
-        title: '添加失败',
-        description: '未登录无法写入数据库，请先登录',
-        variant: 'destructive'
-      });
-      return;
-    }
-
     if (!newTypeName.trim()) {
       toast({
         title: '错误',
