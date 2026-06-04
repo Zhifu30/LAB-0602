@@ -722,12 +722,10 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
   // ========== 维护模板管理功能 ==========
   const resetTemplateForm = () => {
-    setTemplateFormData({
-      title: '',
-      description: '',
-      frequency: 'monthly',
-      reminder_days_before: 7
-    });
+    setTemplateFormData({ title: '', description: '', frequency: 'monthly', reminder_days_before: 7 });
+    clearTemplateForm();
+    tplFreqRef.current = 'monthly';
+    tplRemindRef.current = 7;
   };
 
   const handleAddTemplate = () => {
@@ -758,12 +756,13 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
   const handleEditTemplate = (template: MaintenanceTemplate) => {
     setEditingTemplate(template);
-    setTemplateFormData({
-      title: template.title,
-      description: template.description,
-      frequency: template.frequency,
-      reminder_days_before: template.reminder_days_before
-    });
+    // 通过 DOM 设置非受控输入的值
+    setTimeout(() => {
+      if (tplTitleRef.current) tplTitleRef.current.value = template.title;
+      if (tplDescRef.current) tplDescRef.current.value = template.description || '';
+    }, 50);
+    tplFreqRef.current = template.frequency;
+    tplRemindRef.current = template.reminder_days_before;
     setShowEditTemplateModal(true);
   };
 
