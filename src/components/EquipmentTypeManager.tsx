@@ -1163,7 +1163,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         </div>
       </div>
       <DialogFooter>
-        <Button variant="outline" onClick={() => {
+        <Button className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => {
           setShowAddTemplateModal(false);
           setShowEditTemplateModal(false);
           setEditingTemplate(null);
@@ -1217,7 +1217,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           <Label>下次维护日期 *</Label>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-start text-left font-normal">
+              <Button className="bg-white/10 border-white/20 text-white hover:bg-white/20" className="w-full justify-start text-left font-normal">
                 <Calendar className="mr-2 h-4 w-4" />
                 {scheduleFormData.next_due_date || '选择日期'}
               </Button>
@@ -1275,7 +1275,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         </div>
       </div>
       <DialogFooter>
-        <Button variant="outline" onClick={() => {
+        <Button className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => {
           setShowAddScheduleModal(false);
           setShowEditScheduleModal(false);
           setEditingSchedule(null);
@@ -1581,7 +1581,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                                   <Label className="text-xs">首次维护日期</Label>
                                                   <Popover>
                                                     <PopoverTrigger asChild>
-                                                      <Button variant="outline" className="w-full h-8 text-xs justify-start">
+                                                      <Button className="bg-white/10 border-white/20 text-white hover:bg-white/20" className="w-full h-8 text-xs justify-start">
                                                         <Calendar className="mr-2 h-3.5 w-3.5" />
                                                         {maintenanceDate ? format(maintenanceDate, 'yyyy-MM-dd') : '选择日期'}
                                                       </Button>
@@ -1624,7 +1624,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                           {/* 固定底部：取消 + 确定关联 */}
                                           <div className="flex gap-2 pt-3 mt-2 border-t shrink-0">
                                             <Button
-                                              variant="outline"
+                                              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                                               size="sm"
                                               className="flex-1"
                                               onClick={() => setShowBatchSettings(false)}
@@ -1695,7 +1695,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                           <div className="text-center py-8">
                             <Link2 className="h-8 w-8 mx-auto mb-2 text-white/60/30" />
                             <p className="text-sm text-white/60 mb-2">暂无关联设备</p>
-                            <Button variant="outline" size="sm" onClick={() => setIsLinkingMode(true)}>
+                            <Button className="bg-white/10 border-white/20 text-white hover:bg-white/20" size="sm" onClick={() => setIsLinkingMode(true)}>
                               <div className="h-6 w-6 rounded bg-blue-500 flex items-center justify-center mr-1.5"><Link2 className="h-3.5 w-3.5 text-white" /></div>
                               去关联设备
                             </Button>
@@ -1795,7 +1795,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                 <div className="flex items-center gap-1">
                                   <Button
                                     size="sm"
-                                    variant="outline"
+                                    className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                                     className="h-7 text-xs flex-1"
                                     onClick={() => {
                                       setApplyingTemplate(template);
@@ -1835,7 +1835,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                           <p className="text-sm text-white/60 mb-2">暂无维护模板</p>
                           <p className="text-xs text-white/60 mb-3">创建模板后可批量应用到关联设备</p>
                           <Button 
-                            variant="outline" 
+                            className="bg-white/10 border-white/20 text-white hover:bg-white/20" 
                             size="sm"
                             onClick={() => {
                               resetTemplateForm();
@@ -1860,7 +1860,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                               </div>
                               <Button
                                 size="sm"
-                                variant="outline"
+                                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                                 className="h-7 text-xs"
                                 onClick={() => {
                                   resetScheduleForm();
@@ -1926,7 +1926,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                         <div className="flex items-center gap-1">
                                           <Button
                                             size="sm"
-                                            variant="outline"
+                                            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                                             className="h-6 text-xs flex-1"
                                             onClick={() => handleCompleteSchedule(schedule)}
                                           >
@@ -2014,7 +2014,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
               <Label>首次维护日期</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  <Button className="bg-white/10 border-white/20 text-white hover:bg-white/20" className="w-full justify-start text-left font-normal">
                     <Calendar className="mr-2 h-4 w-4" />
                     {applyTemplateDate ? format(applyTemplateDate, 'yyyy-MM-dd') : '选择日期'}
                   </Button>
@@ -2113,7 +2113,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             )}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => {
+              <Button className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => {
                 setShowApplyTemplateModal(false);
                 setApplyingTemplate(null);
                 setTemplateSelectedIds(new Set());
