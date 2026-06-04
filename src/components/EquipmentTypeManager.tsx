@@ -27,8 +27,10 @@ const getEndOfCurrentMonth = () => endOfMonth(new Date());
 export interface EquipmentTypeConfig {
   id: string;
   name: string;
-  maintenanceContent: string; // 维护内容（保留用于描述）
-  equipmentIds: string[]; // 关联的设备ID列表
+  maintenanceContent: string;
+  equipmentIds: string[];
+  sharedImageUrl?: string | null;
+  sharedSopFiles?: { url: string; name: string }[] | null;
 }
 
 // 维护计划模板接口
@@ -174,7 +176,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const fetchTypesFromDb = useCallback(async (): Promise<EquipmentTypeConfig[]> => {
     const { data, error } = await supabase
       .from('equipment_types')
-      .select('id, equipment_type, created_at')
+      .select('id, equipment_type, created_at, shared_image_url, shared_sop_files')
       .order('created_at', { ascending: true });
 
     if (error) throw error;
@@ -183,7 +185,9 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       id: row.id,
       name: row.equipment_type,
       maintenanceContent: '',
-      equipmentIds: []
+      equipmentIds: [],
+      sharedImageUrl: row.shared_image_url || null,
+      sharedSopFiles: row.shared_sop_files || null,
     }));
 
     // Sync associations from DB equipment.type field
