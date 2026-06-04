@@ -1291,26 +1291,24 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col" style={{
+        <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col border-0" style={{
             backgroundImage: selectedType?.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.imageUrl ? `url(${linkedEquipments[0].imageUrl})` : undefined,
             backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
           }}>
-            {/* 暗色玻璃遮罩 */}
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-none" />
-          <DialogHeader className="relative z-10">
-            <DialogTitle className="flex items-center gap-2 text-white">
+          <DialogHeader className="relative">
+            <DialogTitle className="flex items-center gap-2 text-white drop-shadow-lg">
               <Tags className="h-5 w-5" />
               设备类型管理
             </DialogTitle>
-            <DialogDescription className="text-white/70">
+            <DialogDescription className="text-white/80 drop-shadow">
               三列布局：设备类型 → 关联设备 → 维护计划模板与管理
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 grid grid-cols-[240px_1fr_1fr] gap-4 overflow-hidden relative z-10">
+          <div className="flex-1 grid grid-cols-[240px_1fr_1fr] gap-3 overflow-hidden">
             {/* 第一列：类型列表 */}
-            <div className="flex flex-col space-y-3 overflow-hidden border border-white/20 rounded-lg bg-black/20 backdrop-blur-md p-3 relative z-10">
-              <h3 className="font-semibold text-sm flex items-center gap-2">
+            <div className="flex flex-col space-y-3 overflow-hidden rounded-xl bg-white/10 backdrop-blur-lg border border-white/20 p-3 shadow-2xl">
+              <h3 className="font-semibold text-sm flex items-center gap-2 text-white drop-shadow">
                 <Tags className="h-4 w-4" />
                 设备类型
               </h3>
@@ -1341,8 +1339,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                         key={type.id}
                         className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
                           selectedTypeId === type.id 
-                            ? 'bg-primary/10 border border-primary/30' 
-                            : 'bg-background border hover:bg-muted/50'
+                            ? 'bg-white/20 border border-white/40 text-white' 
+                            : 'bg-white/5 border border-white/10 hover:bg-white/15 text-white'
                         }`}
                         onClick={() => handleSelectType(type)}
                       >
@@ -1401,7 +1399,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             </div>
 
             {/* 第二列：关联设备列表 */}
-            <div className="flex flex-col overflow-hidden border border-white/20 rounded-lg bg-black/20 backdrop-blur-md relative z-10">
+            <div className="flex flex-col overflow-hidden rounded-xl bg-white/10 backdrop-blur-lg border border-white/20 shadow-2xl">
               {selectedType ? (
                 <>
                   <div className="p-3 border-b bg-background">
@@ -1713,8 +1711,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                               key={eq.id}
                               className={`flex items-center gap-2 p-2.5 rounded-md cursor-pointer transition-colors ${
                                 selectedEquipmentId === eq.id 
-                                  ? 'bg-primary/10 border border-primary/30' 
-                                  : 'bg-background border hover:bg-muted/50'
+                                  ? 'bg-white/20 border border-white/40 text-white' 
+                                  : 'bg-white/5 border border-white/10 hover:bg-white/15 text-white'
                               }`}
                               onClick={() => handleSelectLinkedEquipment(eq.id)}
                             >
@@ -1747,7 +1745,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             </div>
 
             {/* 第三列：维护计划模板与设备维护管理 */}
-            <div className="flex flex-col overflow-hidden border border-white/20 rounded-lg bg-black/20 backdrop-blur-md relative z-10">
+            <div className="flex flex-col overflow-hidden rounded-xl bg-white/10 backdrop-blur-lg border border-white/20 shadow-2xl">
               {selectedType ? (
                 <>
                   <div className="p-3 border-b bg-background">
