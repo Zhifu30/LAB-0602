@@ -1293,7 +1293,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col border-0 rounded-xl" style={{
             backgroundImage: selectedType?.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.imageUrl ? `url(${linkedEquipments[0].imageUrl})` : undefined,
-            backgroundSize: 'cover', backgroundPosition: 'center',
+            backgroundSize: 'cover', backgroundPosition: 'center', imageRendering: 'auto',
           }}>
             {/* 暗色渐变遮罩 — 与 EquipmentDetailModal 一致 */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black/80 pointer-events-none" />
@@ -1332,7 +1332,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
               <ScrollArea className="flex-1">
                 <div className="space-y-1 pr-2">
                   {types.length === 0 ? (
-                    <p className="text-xs text-muted-foreground py-4 text-center">
+                    <p className="text-xs text-white/60 py-4 text-center">
                       暂无类型，请添加
                     </p>
                   ) : (
@@ -1404,7 +1404,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             <div className="flex flex-col overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
               {selectedType ? (
                 <>
-                  <div className="p-3 border-b bg-background">
+                  <div className="p-3 border-b bg-white/10">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold text-sm">{selectedType.name} - 关联设备</h3>
                       <Button
@@ -1425,7 +1425,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                       <div className="space-y-3">
                         {/* 搜索框 */}
                         <div className="relative">
-                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/60" />
                           <Input
                             placeholder="搜索设备..."
                             value={searchQuery}
@@ -1441,7 +1441,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             已关联 ({linkedEquipments.length})
                           </h4>
                           {linkedEquipments.length === 0 ? (
-                            <p className="text-xs text-muted-foreground py-2">暂无关联设备</p>
+                            <p className="text-xs text-white/60 py-2">暂无关联设备</p>
                           ) : (
                             <div className="space-y-1">
                               {linkedEquipments.map(eq => (
@@ -1451,7 +1451,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                 >
                                   <div className="flex-1 min-w-0">
                                     <span className="font-medium text-xs">{eq.name}</span>
-                                    <span className="text-xs text-muted-foreground ml-2">{eq.id}</span>
+                                    <span className="text-xs text-white/60 ml-2">{eq.id}</span>
                                   </div>
                                   <Button
                                     size="sm"
@@ -1473,9 +1473,9 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                         {/* 可关联设备 */}
                         <Collapsible open={!unlinkedCollapsed} onOpenChange={(open) => setUnlinkedCollapsed(!open)}>
                           <CollapsibleTrigger asChild>
-                            <div className="flex items-center justify-between cursor-pointer py-1 hover:bg-muted/50 rounded px-1">
+                            <div className="flex items-center justify-between cursor-pointer py-1 hover:bg-white/10 rounded px-1">
                               <h4 className="font-medium text-xs flex items-center gap-1.5">
-                                <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                <Link2 className="h-3.5 w-3.5 text-white/60" />
                                 可关联 ({filteredUnlinkedEquipments.length})
                               </h4>
                               <div className="flex items-center gap-2">
@@ -1652,16 +1652,16 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                   </>
                                 )}
                                 {unlinkedCollapsed ? (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                  <ChevronDown className="h-4 w-4 text-white/60" />
                                 ) : (
-                                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                  <ChevronUp className="h-4 w-4 text-white/60" />
                                 )}
                               </div>
                             </div>
                           </CollapsibleTrigger>
                           <CollapsibleContent>
                             {filteredUnlinkedEquipments.length === 0 ? (
-                              <p className="text-xs text-muted-foreground py-2 mt-2">
+                              <p className="text-xs text-white/60 py-2 mt-2">
                                 {searchQuery ? '无匹配设备' : '所有设备已关联'}
                               </p>
                             ) : (
@@ -1672,7 +1672,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                     className={`flex items-center gap-2 p-2 border rounded-md cursor-pointer transition-colors ${
                                       batchSelectedIds.has(eq.id) 
                                         ? 'bg-primary/10 border-primary/30' 
-                                        : 'bg-background hover:bg-muted/50'
+                                        : 'bg-white/10 hover:bg-white/10'
                                     }`}
                                     onClick={() => handleToggleBatchSelect(eq.id)}
                                   >
@@ -1683,7 +1683,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                     />
                                     <div className="flex-1 min-w-0">
                                       <span className="font-medium text-xs">{eq.name}</span>
-                                      <span className="text-xs text-muted-foreground ml-2">{eq.id}</span>
+                                      <span className="text-xs text-white/60 ml-2">{eq.id}</span>
                                       {eq.responsible && (
                                         <span className="text-xs text-primary ml-2">· {eq.responsible}</span>
                                       )}
@@ -1700,8 +1700,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                       <div className="space-y-1">
                         {linkedEquipments.length === 0 ? (
                           <div className="text-center py-8">
-                            <Link2 className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-                            <p className="text-sm text-muted-foreground mb-2">暂无关联设备</p>
+                            <Link2 className="h-8 w-8 mx-auto mb-2 text-white/60/30" />
+                            <p className="text-sm text-white/60 mb-2">暂无关联设备</p>
                             <Button variant="outline" size="sm" onClick={() => setIsLinkingMode(true)}>
                               <Link2 className="h-4 w-4 mr-1.5" />
                               去关联设备
@@ -1721,11 +1721,11 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                               <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium text-sm truncate">{eq.name}</div>
-                                <div className="text-xs text-muted-foreground">
+                                <div className="text-xs text-white/60">
                                   {eq.id} {eq.responsible && `· ${eq.responsible}`}
                                 </div>
                               </div>
-                              <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${
+                              <ChevronRight className={`h-4 w-4 text-white/60 transition-transform ${
                                 selectedEquipmentId === eq.id ? 'rotate-90' : ''
                               }`} />
                             </div>
@@ -1736,7 +1736,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                   </ScrollArea>
                 </>
               ) : (
-                <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                <div className="flex-1 flex items-center justify-center text-white/60">
                   <div className="text-center">
                     <Tags className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">选择左侧类型</p>
@@ -1750,14 +1750,14 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             <div className="flex flex-col overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
               {selectedType ? (
                 <>
-                  <div className="p-3 border-b bg-background">
+                  <div className="p-3 border-b bg-white/10">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-semibold text-sm flex items-center gap-1.5">
                           <FileText className="h-4 w-4" />
                           维护计划模板
                         </h3>
-                        <p className="text-xs text-muted-foreground">为 {selectedType.name} 创建模板，批量应用到设备</p>
+                        <p className="text-xs text-white/60">为 {selectedType.name} 创建模板，批量应用到设备</p>
                       </div>
                       <Button
                         size="sm"
@@ -1779,7 +1779,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                       {maintenanceTemplates.length > 0 && (
                         <div className="space-y-2">
                           {maintenanceTemplates.map(template => (
-                            <Card key={template.id} className="bg-background">
+                            <Card key={template.id} className="bg-white/5 border-white/10">
                               <CardHeader className="p-3 pb-2">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1 min-w-0">
@@ -1788,7 +1788,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                       {template.title}
                                     </CardTitle>
                                     {template.description && (
-                                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                      <p className="text-xs text-white/60 mt-0.5 line-clamp-1">
                                         {template.description}
                                       </p>
                                     )}
@@ -1840,9 +1840,9 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
                       {maintenanceTemplates.length === 0 && !selectedEquipmentId && (
                         <div className="text-center py-6">
-                          <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-                          <p className="text-sm text-muted-foreground mb-2">暂无维护模板</p>
-                          <p className="text-xs text-muted-foreground mb-3">创建模板后可批量应用到关联设备</p>
+                          <FileText className="h-8 w-8 mx-auto mb-2 text-white/60/30" />
+                          <p className="text-sm text-white/60 mb-2">暂无维护模板</p>
+                          <p className="text-xs text-white/60 mb-3">创建模板后可批量应用到关联设备</p>
                           <Button 
                             variant="outline" 
                             size="sm"
@@ -1865,7 +1865,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             <div className="flex items-center justify-between">
                               <div>
                                 <h4 className="font-medium text-sm">{selectedEquipment.name} 的维护计划</h4>
-                                <p className="text-xs text-muted-foreground">{selectedEquipment.id}</p>
+                                <p className="text-xs text-white/60">{selectedEquipment.id}</p>
                               </div>
                               <Button
                                 size="sm"
@@ -1883,8 +1883,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
                             {equipmentSchedules.length === 0 ? (
                               <div className="text-center py-4">
-                                <Calendar className="h-6 w-6 mx-auto mb-2 text-muted-foreground/30" />
-                                <p className="text-xs text-muted-foreground">暂无维护计划</p>
+                                <Calendar className="h-6 w-6 mx-auto mb-2 text-white/60/30" />
+                                <p className="text-xs text-white/60">暂无维护计划</p>
                               </div>
                             ) : (
                               <div className="space-y-2">
@@ -1895,7 +1895,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                   const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                                   
                                   return (
-                                    <Card key={schedule.id} className={isOverdue ? 'border-destructive/50 bg-destructive/5' : 'bg-background'}>
+                                    <Card key={schedule.id} className={isOverdue ? 'border-destructive/50 bg-destructive/5' : 'bg-white/10'}>
                                       <CardHeader className="p-2.5 pb-1.5">
                                         <div className="flex items-start justify-between">
                                           <div className="flex-1 min-w-0">
@@ -1903,7 +1903,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                               {schedule.title}
                                             </CardTitle>
                                             {schedule.description && (
-                                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                              <p className="text-xs text-white/60 mt-0.5 line-clamp-1">
                                                 {schedule.description}
                                               </p>
                                             )}
@@ -1916,7 +1916,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                       <CardContent className="p-2.5 pt-0 space-y-1.5">
                                         <div className="flex items-center gap-3 text-xs">
                                           <div className="flex items-center gap-1">
-                                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                                            <Calendar className="h-3 w-3 text-white/60" />
                                             <span className={isOverdue ? 'text-destructive font-medium' : ''}>
                                               {schedule.next_due_date}
                                             </span>
@@ -1927,7 +1927,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                           </div>
                                           {schedule.assigned_name && (
                                             <div className="flex items-center gap-1">
-                                              <User className="h-3 w-3 text-muted-foreground" />
+                                              <User className="h-3 w-3 text-white/60" />
                                               <span>{schedule.assigned_name}</span>
                                             </div>
                                           )}
@@ -1972,7 +1972,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                   </ScrollArea>
                 </>
               ) : (
-                <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                <div className="flex-1 flex items-center justify-center text-white/60">
                   <div className="text-center">
                     <Wrench className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">选择设备类型</p>
@@ -2094,7 +2094,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                 <ScrollArea className="h-40 border rounded-md p-2">
                   <div className="space-y-1">
                     {linkedEquipments.map(eq => (
-                      <div key={eq.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                      <div key={eq.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
                         <Checkbox
                           id={`template-eq-${eq.id}`}
                           checked={templateSelectedIds.has(eq.id)}
@@ -2110,14 +2110,14 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                         />
                         <Label htmlFor={`template-eq-${eq.id}`} className="text-sm font-normal flex-1 cursor-pointer">
                           <span className="font-medium">{eq.name}</span>
-                          <span className="text-muted-foreground ml-2 text-xs">{eq.id}</span>
+                          <span className="text-white/60 ml-2 text-xs">{eq.id}</span>
                         </Label>
                       </div>
                     ))}
                   </div>
                 </ScrollArea>
                 {applyMode === 'selected' && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-white/60">
                     已选择 {templateSelectedIds.size} 台设备
                   </p>
                 )}
