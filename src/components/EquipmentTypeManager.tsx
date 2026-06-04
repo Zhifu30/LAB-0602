@@ -231,18 +231,15 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
       const load = async () => {
         try {
-          // 未登录时：数据库写入/读取都会被策略阻止（42501），直接提示用户先登录
-          if (authLoading) return;
-          // If DB has no types yet, migrate from localStorage (legacy) once.
-          const initialDbTypes = await fetchTypesFromDb();
-          if (initialDbTypes.length === 0) {
-            await migrateLocalTypesToDbIfNeeded();
-          }
-
           const dbTypes = await fetchTypesFromDb();
           if (cancelled) return;
-          saveTypes(dbTypes);
-          console.log('Loaded equipment types (DB):', dbTypes.map(t => t.name));
+          if (dbTypes.length === 0) {
+            await migrateLocalTypesToDbIfNeeded();
+            const retry = await fetchTypesFromDb();
+            if (!cancelled) saveTypes(retry);
+          } else {
+            saveTypes(dbTypes);
+          }
         } catch (e) {
           console.error('Failed to load equipment types from DB:', e);
           if (!cancelled) setTypes([]);
@@ -260,7 +257,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         cancelled = true;
       };
     }
-  }, [isOpen, authLoading, getAuthedUser, fetchTypesFromDb, migrateLocalTypesToDbIfNeeded, saveTypes, toast]);
+  }, [isOpen, fetchTypesFromDb, migrateLocalTypesToDbIfNeeded, saveTypes, toast]);
 
   // 当选中类型变化时，加载该类型的模板
   useEffect(() => {
