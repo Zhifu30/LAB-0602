@@ -620,14 +620,12 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             } else {
               console.log(`成功创建维护计划: ${scheduleTitle} for ${eq.id}`);
             }
-          } else if (existingWithTitle[0] && (!existingWithTitle[0].description || existingWithTitle[0].description.trim() === '')) {
-            // 如果已有计划但没有描述，更新描述
+          } else if (existingWithTitle[0]) {
+            // 已有同标题计划：更新描述（保留旧计划，用新描述覆盖）
             await supabase
               .from('maintenance_schedules')
               .update({ description: equipmentDescription })
               .eq('id', existingWithTitle[0].id);
-          } else {
-            console.log(`设备 ${eq.id} 已有维护计划: ${scheduleTitle}，跳过创建`);
           }
         }
       }
