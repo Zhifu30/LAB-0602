@@ -740,17 +740,18 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       return;
     }
 
+    const form = readTemplateForm();
+    if (!form.title) { toast({ title: '错误', description: '请填写模板标题', variant: 'destructive' }); return; }
+
     const newTemplate: MaintenanceTemplate = {
       id: `template-${Date.now()}`,
-      title: templateFormData.title,
-      description: templateFormData.description,
-      frequency: templateFormData.frequency,
-      reminder_days_before: templateFormData.reminder_days_before
+      ...form,
     };
 
     saveTemplates([...maintenanceTemplates, newTemplate]);
     setShowAddTemplateModal(false);
     resetTemplateForm();
+    clearTemplateForm();
     
     toast({ title: '成功', description: '维护模板已添加' });
   };
@@ -767,24 +768,17 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   };
 
   const handleUpdateTemplate = () => {
-    if (!editingTemplate || !templateFormData.title) {
-      toast({
-        title: '错误',
-        description: '请填写模板标题',
-        variant: 'destructive'
-      });
+    const form = readTemplateForm();
+    if (!editingTemplate || !form.title) {
+      toast({ title: '错误', description: '请填写模板标题', variant: 'destructive' });
       return;
     }
 
     const updatedTemplates = maintenanceTemplates.map(t =>
-      t.id === editingTemplate.id
-        ? { ...t, ...templateFormData }
-        : t
+      t.id === editingTemplate.id ? { ...t, ...form } : t
     );
     saveTemplates(updatedTemplates);
-    setShowEditTemplateModal(false);
-    setEditingTemplate(null);
-    resetTemplateForm();
+    setShowEditTemplateModal(false); setEditingTemplate(null); resetTemplateForm(); clearTemplateForm();
     
     toast({ title: '成功', description: '维护模板已更新' });
   };
@@ -1116,32 +1110,37 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   };
 
   // 模板表单组件
+  const tplTitleRef = useRef<HTMLInputElement>(null);
+  const tplDescRef = useRef<HTMLTextAreaElement>(null);
+  const tplFreqRef = useRef('monthly');
+  const tplRemindRef = useRef(7);
+
+  const readTemplateForm = () => ({
+    title: tplTitleRef.current?.value || '',
+    description: tplDescRef.current?.value || '',
+    frequency: tplFreqRef.current,
+    reminder_days_before: tplRemindRef.current,
+  });
+
+  const clearTemplateForm = () => {
+    if (tplTitleRef.current) tplTitleRef.current.value = '';
+    if (tplDescRef.current) tplDescRef.current.value = '';
+  };
+
   const TemplateFormContent = ({ onSubmit, submitLabel }: { onSubmit: () => void; submitLabel: string }) => (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>模板标题 *</Label>
-        <Input
-          value={templateFormData.title}
-          onChange={(e) => setTemplateFormData(prev => ({ ...prev, title: e.target.value }))}
-          placeholder="输入维护模板标题"
-        />
+        <Input ref={tplTitleRef} placeholder="输入维护模板标题" />
       </div>
       <div className="space-y-2">
         <Label>描述</Label>
-        <Textarea
-          value={templateFormData.description}
-          onChange={(e) => setTemplateFormData(prev => ({ ...prev, description: e.target.value }))}
-          placeholder="输入维护描述"
-          rows={2}
-        />
+        <Textarea ref={tplDescRef as any} placeholder="输入维护描述" rows={2} />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>维护周期</Label>
-          <Select
-            value={templateFormData.frequency}
-            onValueChange={(value) => setTemplateFormData(prev => ({ ...prev, frequency: value as typeof prev.frequency }))}
-          >
+          <Select defaultValue="monthly" onValueChange={(v: any) => { tplFreqRef.current = v; }}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -1159,10 +1158,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             min={1}
             max={30}
             value={templateFormData.reminder_days_before}
-            onChange={(e) => setTemplateFormData(prev => ({ 
-              ...prev, 
-              reminder_days_before: parseInt(e.target.value) || 7 
-            }))}
+            onBlur={(e) => { tplRemindRef.current = parseInt(e.target.value) || 7; }}
           />
         </div>
       </div>
