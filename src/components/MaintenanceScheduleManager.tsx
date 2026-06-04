@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Calendar, Bell, Check, Trash2, Edit, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,6 +71,31 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
     assigned_user_id: ''
   });
 
+  const schedTitleRef = useRef<HTMLInputElement>(null);
+  const schedDescRef = useRef<HTMLTextAreaElement>(null);
+  const schedFreqRef = useRef('monthly');
+  const schedDateRef = useRef<HTMLInputElement>(null);
+  const schedRemindRef = useRef<HTMLInputElement>(null);
+  const schedUserRef = useRef('');
+
+  const readSchedForm = () => ({
+    title: schedTitleRef.current?.value || '',
+    description: schedDescRef.current?.value || '',
+    frequency: schedFreqRef.current,
+    next_due_date: schedDateRef.current?.value || '',
+    reminder_days_before: parseInt(schedRemindRef.current?.value || '7') || 7,
+    assigned_user_id: schedUserRef.current,
+  });
+
+  const clearSchedForm = () => {
+    if (schedTitleRef.current) schedTitleRef.current.value = '';
+    if (schedDescRef.current) schedDescRef.current.value = '';
+    if (schedDateRef.current) schedDateRef.current.value = '';
+    if (schedRemindRef.current) schedRemindRef.current.value = '7';
+    schedFreqRef.current = 'monthly';
+    schedUserRef.current = '';
+  };
+
   useEffect(() => {
     fetchSchedules();
     fetchUsers();
@@ -110,25 +135,23 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
   };
 
   const handleAddSchedule = async () => {
-    if (!formData.title || !formData.next_due_date) {
-      toast.error('请填写标题和下次维护日期');
-      return;
-    }
+    const form = readSchedForm();
+    if (!form.title || !form.next_due_date) { toast.error('请填写标题和下次维护日期'); return; }
 
     try {
-      const selectedUser = users.find(u => u.user_id === formData.assigned_user_id);
-      const scheduleDescription = formData.description?.trim() || `${formData.title} - ${equipmentName}`;
+      const selectedUser = users.find(u => u.user_id === form.assigned_user_id);
+      const scheduleDescription = form.description?.trim() || `${form.title} - ${equipmentName}`;
 
       const { error } = await supabase
         .from('maintenance_schedules')
         .insert({
           equipment_id: equipmentId,
-          title: formData.title,
+          title: form.title,
           description: scheduleDescription,
-          frequency: formData.frequency,
-          next_due_date: formData.next_due_date,
-          reminder_days_before: formData.reminder_days_before,
-          assigned_user_id: formData.assigned_user_id || null,
+          frequency: form.frequency as any,
+          next_due_date: form.next_due_date,
+          reminder_days_before: form.reminder_days_before,
+          assigned_user_id: form.assigned_user_id || null,
           assigned_name: selectedUser?.username || null,
           assigned_email: selectedUser?.email || null,
           created_by: profile?.user_id
@@ -148,21 +171,19 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
   };
 
   const handleUpdateSchedule = async () => {
-    if (!editingSchedule || !formData.title || !formData.next_due_date) {
-      toast.error('请填写标题和下次维护日期');
-      return;
-    }
+    const form = readSchedForm();
+    if (!editingSchedule || !form.title || !form.next_due_date) { toast.error('请填写标题和下次维护日期'); return; }
 
     try {
-      const selectedUser = users.find(u => u.user_id === formData.assigned_user_id);
-      const scheduleDescription = formData.description?.trim() || `${formData.title} - ${equipmentName}`;
+      const selectedUser = users.find(u => u.user_id === form.assigned_user_id);
+      const scheduleDescription = form.description?.trim() || `${form.title} - ${equipmentName}`;
 
       const { error } = await supabase
         .from('maintenance_schedules')
         .update({
-          title: formData.title,
+          title: form.title,
           description: scheduleDescription,
-          frequency: formData.frequency,
+          frequency: form.frequency as any,
           next_due_date: formData.next_due_date,
           reminder_days_before: formData.reminder_days_before,
           assigned_user_id: formData.assigned_user_id || null,
@@ -326,27 +347,18 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      frequency: 'monthly',
-      next_due_date: '',
-      reminder_days_before: 7,
-      assigned_user_id: ''
-    });
-  };
+  const resetForm = () => { clearSchedForm(); };
 
   const openEditModal = (schedule: MaintenanceSchedule) => {
     setEditingSchedule(schedule);
-    setFormData({
-      title: schedule.title,
-      description: schedule.description || '',
-      frequency: schedule.frequency,
-      next_due_date: schedule.next_due_date,
-      reminder_days_before: schedule.reminder_days_before,
-      assigned_user_id: schedule.assigned_user_id || ''
-    });
+    setTimeout(() => {
+      if (schedTitleRef.current) schedTitleRef.current.value = schedule.title;
+      if (schedDescRef.current) schedDescRef.current.value = schedule.description || '';
+      if (schedDateRef.current) schedDateRef.current.value = schedule.next_due_date;
+      if (schedRemindRef.current) schedRemindRef.current.value = String(schedule.reminder_days_before);
+    }, 50);
+    schedFreqRef.current = schedule.frequency;
+    schedUserRef.current = schedule.assigned_user_id || '';
     setShowEditModal(true);
   };
 
@@ -495,16 +507,14 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
             <div>
               <Label>维护标题 *</Label>
               <Input
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                ref={schedTitleRef}
                 placeholder="例如: 月度保养、年度校正"
               />
             </div>
             <div>
               <Label>维护内容</Label>
               <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                ref={schedDescRef as any}
                 placeholder="详细描述维护内容..."
                 rows={3}
               />
@@ -513,10 +523,8 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
               <div>
                 <Label>维护周期 *</Label>
                 <Select
-                  value={formData.frequency}
-                  onValueChange={(value: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly') =>
-                    setFormData({ ...formData, frequency: value })
-                  }
+                  defaultValue="monthly"
+                  onValueChange={(v: any) => { schedFreqRef.current = v; }}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -534,8 +542,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
                 <Label>下次维护日期 *</Label>
                 <Input
                   type="date"
-                  value={formData.next_due_date}
-                  onChange={(e) => setFormData({ ...formData, next_due_date: e.target.value })}
+                  ref={schedDateRef}
                 />
               </div>
             </div>
@@ -544,8 +551,8 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
                 <Label>提前提醒天数</Label>
                 <Input
                   type="number"
-                  value={formData.reminder_days_before}
-                  onChange={(e) => setFormData({ ...formData, reminder_days_before: parseInt(e.target.value) || 7 })}
+                  ref={schedRemindRef}
+                  defaultValue={7}
                   min={1}
                   max={90}
                 />
@@ -553,8 +560,8 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
               <div>
                 <Label>指定维护人</Label>
                 <Select
-                  value={formData.assigned_user_id}
-                  onValueChange={(value) => setFormData({ ...formData, assigned_user_id: value })}
+                  defaultValue=""
+                  onValueChange={(v) => { schedUserRef.current = v; }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="选择维护人" />
@@ -589,16 +596,14 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
             <div>
               <Label>维护标题 *</Label>
               <Input
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                ref={schedTitleRef}
                 placeholder="例如: 月度保养、年度校正"
               />
             </div>
             <div>
               <Label>维护内容</Label>
               <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                ref={schedDescRef as any}
                 placeholder="详细描述维护内容..."
                 rows={3}
               />
@@ -607,10 +612,8 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
               <div>
                 <Label>维护周期 *</Label>
                 <Select
-                  value={formData.frequency}
-                  onValueChange={(value: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly') =>
-                    setFormData({ ...formData, frequency: value })
-                  }
+                  defaultValue="monthly"
+                  onValueChange={(v: any) => { schedFreqRef.current = v; }}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -628,8 +631,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
                 <Label>下次维护日期 *</Label>
                 <Input
                   type="date"
-                  value={formData.next_due_date}
-                  onChange={(e) => setFormData({ ...formData, next_due_date: e.target.value })}
+                  ref={schedDateRef}
                 />
               </div>
             </div>
@@ -638,8 +640,8 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
                 <Label>提前提醒天数</Label>
                 <Input
                   type="number"
-                  value={formData.reminder_days_before}
-                  onChange={(e) => setFormData({ ...formData, reminder_days_before: parseInt(e.target.value) || 7 })}
+                  ref={schedRemindRef}
+                  defaultValue={7}
                   min={1}
                   max={90}
                 />
@@ -647,8 +649,8 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
               <div>
                 <Label>指定维护人</Label>
                 <Select
-                  value={formData.assigned_user_id}
-                  onValueChange={(value) => setFormData({ ...formData, assigned_user_id: value })}
+                  defaultValue=""
+                  onValueChange={(v) => { schedUserRef.current = v; }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="选择维护人" />
