@@ -1358,32 +1358,33 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                               }}
                               autoFocus
                             />
-                            <Button size="icon" className="h-6 w-6 bg-green-500 hover:bg-green-600 text-white rounded" onClick={handleSaveEdit}>
-                              <Save className="h-3 w-3" />
-                            </Button>
-                            <Button size="icon" className="h-6 w-6 bg-green-500 hover:bg-green-600 text-white rounded" onClick={handleCancelEdit} className="h-6 w-6 bg-amber-500 hover:bg-amber-600 text-white rounded">
-                              <X className="h-3 w-3" />
-                            </Button>
+                            <div className="p-1.5 rounded-full shadow-lg border border-white/20 hover:scale-110 transition-all duration-200 backdrop-blur-md cursor-pointer"
+                              style={{ backgroundColor: '#22c55ecc' }} onClick={handleSaveEdit}>
+                              <Save className="h-3.5 w-3.5 text-white" />
+                            </div>
+                            <div className="p-1.5 rounded-full shadow-lg border border-white/20 hover:scale-110 transition-all duration-200 backdrop-blur-md cursor-pointer"
+                              style={{ backgroundColor: '#f59e0bcc' }} onClick={handleCancelEdit}>
+                              <X className="h-3.5 w-3.5 text-white" />
+                            </div>
                           </div>
                         ) : (
                           <>
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow">
-                                <Tags className="h-3.5 w-3.5 text-white" />
-                              </div>
                               <span className="font-bold text-sm truncate">{type.name}</span>
                               <Badge className="bg-white/20 text-white text-xs shrink-0 h-5 ml-auto">
                                 {equipments.filter(eq => eq.type === type.name).length}
                               </Badge>
                             </div>
-                            <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-                              <div className="h-6 w-6 rounded bg-blue-500 flex items-center justify-center cursor-pointer hover:bg-blue-600"
+                            <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                              <div className="p-1.5 rounded-full shadow-lg border border-white/20 hover:scale-110 transition-all duration-200 backdrop-blur-md cursor-pointer"
+                                style={{ backgroundColor: '#3b82f6cc' }}
                                 onClick={() => handleStartEdit(type)}>
-                                <Edit2 className="h-3 w-3 text-white" />
+                                <Edit2 className="h-3.5 w-3.5 text-white" />
                               </div>
-                              <div className="h-6 w-6 rounded bg-red-500 flex items-center justify-center cursor-pointer hover:bg-red-600"
+                              <div className="p-1.5 rounded-full shadow-lg border border-white/20 hover:scale-110 transition-all duration-200 backdrop-blur-md cursor-pointer"
+                                style={{ backgroundColor: '#ef4444cc' }}
                                 onClick={() => handleDeleteType(type.id)}>
-                                <Trash2 className="h-3 w-3 text-white" />
+                                <Trash2 className="h-3.5 w-3.5 text-white" />
                               </div>
                             </div>
                           </>
@@ -1696,7 +1697,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             <Link2 className="h-8 w-8 mx-auto mb-2 text-white/60/30" />
                             <p className="text-sm text-white/60 mb-2">暂无关联设备</p>
                             <Button className="bg-white/10 border-white/20 text-white hover:bg-white/20" size="sm" onClick={() => setIsLinkingMode(true)}>
-                              <div className="h-6 w-6 rounded bg-blue-500 flex items-center justify-center mr-1.5"><Link2 className="h-3.5 w-3.5 text-white" /></div>
+                              <div className="p-1.5 rounded-full shadow-lg border border-white/20 backdrop-blur-md mr-1.5" style={{ backgroundColor: '#3b82f6cc' }}><Link2 className="h-3.5 w-3.5 text-white" /></div>
                               去关联设备
                             </Button>
                           </div>
