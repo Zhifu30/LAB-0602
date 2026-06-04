@@ -1296,7 +1296,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
           }}>
             {/* 暗色玻璃遮罩 */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-none" />
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-none" />
           <DialogHeader className="relative z-10">
             <DialogTitle className="flex items-center gap-2 text-white">
               <Tags className="h-5 w-5" />
@@ -1309,7 +1309,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
           <div className="flex-1 grid grid-cols-[240px_1fr_1fr] gap-4 overflow-hidden relative z-10">
             {/* 第一列：类型列表 */}
-            <div className="flex flex-col space-y-3 overflow-hidden border border-white/20 rounded-lg bg-black/30 backdrop-blur-md p-3 relative z-10">
+            <div className="flex flex-col space-y-3 overflow-hidden border border-white/20 rounded-lg bg-black/20 backdrop-blur-md p-3 relative z-10">
               <h3 className="font-semibold text-sm flex items-center gap-2">
                 <Tags className="h-4 w-4" />
                 设备类型
@@ -1401,7 +1401,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             </div>
 
             {/* 第二列：关联设备列表 */}
-            <div className="flex flex-col overflow-hidden border border-white/20 rounded-lg bg-black/30 backdrop-blur-md relative z-10">
+            <div className="flex flex-col overflow-hidden border border-white/20 rounded-lg bg-black/20 backdrop-blur-md relative z-10">
               {selectedType ? (
                 <>
                   <div className="p-3 border-b bg-background">
@@ -1747,7 +1747,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             </div>
 
             {/* 第三列：维护计划模板与设备维护管理 */}
-            <div className="flex flex-col overflow-hidden border border-white/20 rounded-lg bg-black/30 backdrop-blur-md relative z-10">
+            <div className="flex flex-col overflow-hidden border border-white/20 rounded-lg bg-black/20 backdrop-blur-md relative z-10">
               {selectedType ? (
                 <>
                   <div className="p-3 border-b bg-background">
