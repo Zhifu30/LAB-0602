@@ -1310,7 +1310,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           <div className="flex-1 grid grid-cols-[240px_1fr_1fr] gap-3 overflow-hidden relative">
             {/* 第一列：类型列表 */}
             <div className="flex flex-col space-y-3 overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 p-3">
-              <h3 className="font-semibold text-sm flex items-center gap-2 text-white drop-shadow">
+              <h3 className="font-bold text-base flex items-center gap-2 text-white drop-shadow">
                 <Tags className="h-4 w-4" />
                 设备类型
               </h3>
@@ -1367,9 +1367,12 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                           </div>
                         ) : (
                           <>
-                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                              <span className="font-medium text-xs truncate">{type.name}</span>
-                              <Badge variant="secondary" className="text-xs shrink-0 h-5">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow">
+                                <Tags className="h-3.5 w-3.5 text-white" />
+                              </div>
+                              <span className="font-bold text-sm truncate">{type.name}</span>
+                              <Badge className="bg-white/20 text-white text-xs shrink-0 h-5 ml-auto">
                                 {equipments.filter(eq => eq.type === type.name).length}
                               </Badge>
                             </div>
@@ -1793,7 +1796,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                       </p>
                                     )}
                                   </div>
-                                  <Badge variant="secondary" className="text-xs shrink-0 ml-2">
+                                  <Badge className="bg-white/20 text-white text-xs shrink-0 ml-2">
                                     {frequencyLabels[template.frequency]}
                                   </Badge>
                                 </div>
