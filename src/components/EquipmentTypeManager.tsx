@@ -1450,8 +1450,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                   </div>
                                   <Button
                                     size="sm"
-                                    variant="ghost"
-                                    className="h-6 text-xs text-destructive hover:text-destructive"
+                                                                       className="h-6 text-xs text-destructive hover:text-destructive"
                                     onClick={() => handleUnlinkEquipment(eq.id)}
                                   >
                                     <Unlink className="h-3 w-3 mr-1" />
@@ -1478,8 +1477,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                   <>
                                     <Button
                                       size="sm"
-                                      variant="ghost"
-                                      className="h-6 text-xs"
+                                                                           className="h-6 text-xs"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleSelectAllUnlinked();
@@ -1698,7 +1696,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             <Link2 className="h-8 w-8 mx-auto mb-2 text-white/60/30" />
                             <p className="text-sm text-white/60 mb-2">暂无关联设备</p>
                             <Button variant="outline" size="sm" onClick={() => setIsLinkingMode(true)}>
-                              <Link2 className="h-4 w-4 mr-1.5" />
+                              <div className="h-6 w-6 rounded bg-blue-500 flex items-center justify-center mr-1.5"><Link2 className="h-3.5 w-3.5 text-white" /></div>
                               去关联设备
                             </Button>
                           </div>
@@ -1812,16 +1810,14 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                   </Button>
                                   <Button
                                     size="sm"
-                                    variant="ghost"
-                                    className="h-7 w-7 p-0"
+                                                                       className="h-7 w-7 p-0"
                                     onClick={() => handleEditTemplate(template)}
                                   >
                                     <Edit2 className="h-3 w-3" />
                                   </Button>
                                   <Button
                                     size="sm"
-                                    variant="ghost"
-                                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                                                                       className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                                     onClick={() => handleDeleteTemplate(template.id)}
                                   >
                                     <Trash2 className="h-3 w-3" />
@@ -1939,16 +1935,14 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                           </Button>
                                           <Button
                                             size="sm"
-                                            variant="ghost"
-                                            className="h-6 w-6 p-0"
+                                                                                       className="h-6 w-6 p-0"
                                             onClick={() => handleEditSchedule(schedule)}
                                           >
                                             <Edit2 className="h-3 w-3" />
                                           </Button>
                                           <Button
                                             size="sm"
-                                            variant="ghost"
-                                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                                                                       className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                                             onClick={() => handleDeleteSchedule(schedule.id)}
                                           >
                                             <Trash2 className="h-3 w-3" />
@@ -2072,8 +2066,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                 <div className="flex items-center justify-between">
                   <Label>选择设备</Label>
                   <Button
-                    variant="ghost"
-                    size="sm"
+                                       size="sm"
                     className="h-6 text-xs"
                     onClick={() => {
                       if (templateSelectedIds.size === linkedEquipments.length) {
