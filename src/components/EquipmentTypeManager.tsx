@@ -174,8 +174,6 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     const { data, error } = await supabase
       .from('equipment_types')
       .select('id, equipment_type, created_at')
-      .eq('model', TYPE_SENTINEL)
-      .eq('manufacturer', TYPE_SENTINEL)
       .order('created_at', { ascending: true });
 
     if (error) throw error;
@@ -473,9 +471,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         const { error } = await supabase
           .from('equipment_types')
           .update({ equipment_type: nextName } as any)
-          .eq('id', editingTypeId)
-          .eq('model', TYPE_SENTINEL)
-          .eq('manufacturer', TYPE_SENTINEL);
+          .eq('id', editingTypeId);
         if (error) throw error;
       }
     } catch (error: any) {
