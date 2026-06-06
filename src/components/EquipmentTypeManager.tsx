@@ -162,6 +162,10 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const [showLinkPlanModal, setShowLinkPlanModal] = useState(false);
   const [equipmentLinkingId, setEquipmentLinkingId] = useState<string | null>(null);
   const [planLinkIds, setPlanLinkIds] = useState<Set<string>>(new Set());
+  // 取消关联
+  const [showUnlinkModal, setShowUnlinkModal] = useState(false);
+  const [unlinkingPlan, setUnlinkingPlan] = useState<PlanGroup | null>(null);
+  const [unlinkEquipmentIds, setUnlinkEquipmentIds] = useState<Set<string>>(new Set());
 
   // 添加/编辑计划的表单
   const [showAddPlanModal, setShowAddPlanModal] = useState(false);
@@ -854,6 +858,19 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       setShowLinkPlanModal(false); setEquipmentLinkingId(null); setPlanLinkIds(new Set());
       toast({ title: '关联成功', description: `已关联 ${n} 个计划` });
     } catch (err) { console.error('关联失败:', err); toast({ title: '失败', description: '请重试', variant: 'destructive' }); }
+  };
+
+  // 取消关联
+  const handleUnlinkEquipment = async () => {
+    if (!unlinkingPlan || unlinkEquipmentIds.size === 0) return;
+    try {
+      const ids = unlinkingPlan.schedules.filter(s => unlinkEquipmentIds.has(s.equipment_id)).map(s => s.id);
+      if (ids.length === 0) return;
+      await supabase.from('maintenance_schedules').update({ is_active: false }).in('id', ids);
+      await refetchAllSchedules(); onEquipmentRefresh?.();
+      setShowUnlinkModal(false); setUnlinkingPlan(null); setUnlinkEquipmentIds(new Set());
+      toast({ title: '已取消关联', description: `已移除 ${ids.length} 台设备` });
+    } catch (err) { console.error('取消关联失败:', err); toast({ title: '失败', description: '请重试', variant: 'destructive' }); }
   };
 
   // ========== 维护计划管理功能 ==========
@@ -1797,6 +1814,12 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                       const unlinked = linkedEquipments.filter(eq => !plan.equipmentIds.includes(eq.id)).map(eq => eq.id);
                                       setLinkEquipmentIds(new Set(unlinked)); setShowLinkEquipmentModal(true);
                                     }} title="关联设备"><Link2 className="h-3.5 w-3.5" /></Button>
+                                  {plan.equipmentIds.length > 1 && (
+                                    <Button size="sm" className="h-7 w-7 p-0 bg-amber-500 hover:bg-amber-600 text-white"
+                                      onClick={(e) => { e.stopPropagation();
+                                        setUnlinkingPlan(plan); setUnlinkEquipmentIds(new Set()); setShowUnlinkModal(true);
+                                      }} title="取消关联"><Unlink className="h-3.5 w-3.5" /></Button>
+                                  )}
                                   {plan.schedules.length === 1 && (
                                     <>
                                       <Button size="sm" className="h-7 w-7 p-0 bg-orange-500 hover:bg-orange-600 text-white"
@@ -1949,6 +1972,36 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                 <Button onClick={handleLinkPlanToEquipment} disabled={linkEquipmentIds.size === 0}>确认关联</Button>
               </DialogFooter>
             </div>
+          </div>
+        </>
+      )}
+
+      {/* 取消关联弹窗 */}
+      {showUnlinkModal && unlinkingPlan && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
+          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-md bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg max-h-[80vh] overflow-y-auto">
+            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowUnlinkModal(false); setUnlinkingPlan(null); }}><X className="h-4 w-4" /></button>
+            <DialogHeader><h2 className="text-lg font-semibold">取消关联</h2><p className="text-sm text-white/60">从 "{unlinkingPlan.title}" 中移除设备</p></DialogHeader>
+            <div className="space-y-2 mt-4">
+              <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
+                <div className="space-y-1">
+                  {unlinkingPlan.equipmentIds.map(eid => {
+                    const eq = linkedEquipments.find(e => e.id === eid);
+                    return (
+                      <div key={eid} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
+                        <Checkbox id={`unlink-${eid}`} checked={unlinkEquipmentIds.has(eid)} onCheckedChange={c => { const s = new Set(unlinkEquipmentIds); c ? s.add(eid) : s.delete(eid); setUnlinkEquipmentIds(s); }} />
+                        <Label htmlFor={`unlink-${eid}`} className="text-sm flex-1 cursor-pointer text-white"><span className="font-medium">{eq?.name || eid}</span><span className="text-white/60 ml-2 text-xs">{eid}</span></Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
+            <DialogFooter className="mt-4">
+              <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowUnlinkModal(false); setUnlinkingPlan(null); }}>取消</Button>
+              <Button className="bg-red-500 hover:bg-red-600 text-white border-0" onClick={handleUnlinkEquipment} disabled={unlinkEquipmentIds.size === 0}>确认移除</Button>
+            </DialogFooter>
           </div>
         </>
       )}
