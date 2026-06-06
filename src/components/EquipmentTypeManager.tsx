@@ -1949,7 +1949,14 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                 setEditingImageIdx(idx);
                                 setImageEquipSelected(new Set(mapping.equipmentIds));
                                 setShowImageEquipModal(true);
-                              }}><Link2 className="h-3 w-3 mr-1" />关联设备</Button>
+                              }}><Link2 className="h-3 w-3 mr-1" />关联</Button>
+                            <Button size="sm" className="h-6 text-xs flex-1 bg-green-500 hover:bg-green-600 text-white border-0"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                setEditingImageIdx(idx);
+                                setImageEquipSelected(new Set(linkedEquipments.map(eq => eq.id)));
+                                setShowImageEquipModal(true);
+                              }} title="将此图片URL同步到所选设备的数据库image_url"><Check className="h-3 w-3 mr-1" />应用</Button>
                             <Button size="sm" className="h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white"
                               onClick={() => {
                                 const newMappings = imageMappings.filter((_, i) => i !== idx);
@@ -2190,10 +2197,16 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             </ScrollArea>
             <DialogFooter className="mt-4">
               <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowImageEquipModal(false); setEditingImageIdx(-1); }}>取消</Button>
-              <Button className="bg-blue-500 hover:bg-blue-600 text-white border-0" onClick={() => {
+              <Button className="bg-blue-500 hover:bg-blue-600 text-white border-0" onClick={async () => {
                 const newMappings = [...imageMappings];
+                const imgUrl = newMappings[editingImageIdx].imageUrl;
                 newMappings[editingImageIdx] = { ...newMappings[editingImageIdx], equipmentIds: Array.from(imageEquipSelected) };
                 setImageMappings(newMappings);
+                // 同步到数据库：将选中设备的 image_url 更新为当前图片URL
+                for (const eid of Array.from(imageEquipSelected)) {
+                  await supabase.from('equipment').update({ image_url: imgUrl }).eq('id', eid);
+                }
+                onEquipmentRefresh?.();
                 setShowImageEquipModal(false); setEditingImageIdx(-1);
               }}>确认 ({imageEquipSelected.size})</Button>
             </DialogFooter>
