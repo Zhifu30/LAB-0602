@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Plus, Trash2, Edit2, Save, X, Tags, ChevronRight, Wrench, Check, Link2, Unlink, User, Search, ChevronDown, ChevronUp, Calendar, Bell, Clock, FileText, Copy } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Tags, ChevronRight, Wrench, Check, Link2, Unlink, User, Search, ChevronDown, ChevronUp, Calendar, Bell, Clock, FileText, Copy, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -68,6 +68,16 @@ interface MaintenanceSchedule {
   created_at: string;
 }
 
+// 去重后的维护计划分组（按 title+description+frequency 去重）
+interface PlanGroup {
+  title: string;
+  description: string | null;
+  frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  reminder_days_before: number;
+  equipmentIds: string[];
+  schedules: MaintenanceSchedule[];
+}
+
 interface EquipmentTypeManagerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -120,22 +130,15 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const [showBatchSettings, setShowBatchSettings] = useState(false);
   const [batchResponsible, setBatchResponsible] = useState<string>('');
   
-  // 第三列：维护计划模板和设备维护管理
-  const [maintenanceTemplates, setMaintenanceTemplates] = useState<MaintenanceTemplate[]>([]);
+  // 第三列：所有维护计划（统一使用数据库 maintenance_schedules 作为数据源）
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
   const [equipmentSchedules, setEquipmentSchedules] = useState<MaintenanceSchedule[]>([]);
-  const [showAddTemplateModal, setShowAddTemplateModal] = useState(false);
-  const [showEditTemplateModal, setShowEditTemplateModal] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<MaintenanceTemplate | null>(null);
+  const [allSchedules, setAllSchedules] = useState<MaintenanceSchedule[]>([]);
+  const [planGroups, setPlanGroups] = useState<PlanGroup[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
   const [showEditScheduleModal, setShowEditScheduleModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<MaintenanceSchedule | null>(null);
-  const [templateFormData, setTemplateFormData] = useState({
-    title: '',
-    description: '',
-    frequency: 'monthly' as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly',
-    reminder_days_before: 7
-  });
   const [scheduleFormData, setScheduleFormData] = useState({
     title: '',
     description: '',
@@ -144,13 +147,26 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     reminder_days_before: 7,
     assigned_user_id: ''
   });
-  
-  // 批量应用模板的目标设备
-  const [showApplyTemplateModal, setShowApplyTemplateModal] = useState(false);
-  const [applyingTemplate, setApplyingTemplate] = useState<MaintenanceTemplate | null>(null);
-  const [applyTemplateDate, setApplyTemplateDate] = useState<Date | undefined>(getEndOfCurrentMonth());
-  const [applyMode, setApplyMode] = useState<'all' | 'selected'>('all');
-  const [templateSelectedIds, setTemplateSelectedIds] = useState<Set<string>>(new Set());
+
+  // 双向关联模态
+  const [showLinkEquipmentModal, setShowLinkEquipmentModal] = useState(false);
+  const [linkingPlan, setLinkingPlan] = useState<PlanGroup | null>(null);
+  const [linkEquipmentIds, setLinkEquipmentIds] = useState<Set<string>>(new Set());
+  const [linkDate, setLinkDate] = useState<Date | undefined>(getEndOfCurrentMonth());
+  const [showLinkPlanModal, setShowLinkPlanModal] = useState(false);
+  const [equipmentLinkingId, setEquipmentLinkingId] = useState<string | null>(null);
+  const [planLinkIds, setPlanLinkIds] = useState<Set<string>>(new Set());
+
+  // 添加/编辑计划的表单
+  const [showAddPlanModal, setShowAddPlanModal] = useState(false);
+  const [showEditPlanModal, setShowEditPlanModal] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<PlanGroup | null>(null);
+  const [planFormData, setPlanFormData] = useState({
+    title: '',
+    description: '',
+    frequency: 'monthly' as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly',
+    reminder_days_before: 7,
+  });
 
   // 保存类型到localStorage - 立即同步
   const saveTypes = useCallback((newTypes: EquipmentTypeConfig[]) => {
@@ -265,22 +281,47 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     }
   }, [isOpen, fetchTypesFromDb, migrateLocalTypesToDbIfNeeded, saveTypes, toast]);
 
-  // 当选中类型变化时，加载该类型的模板
-  useEffect(() => {
-    if (selectedTypeId) {
-      const savedTemplates = localStorage.getItem(`${STORAGE_KEY}-templates-${selectedTypeId}`);
-      if (savedTemplates) {
-        try {
-          setMaintenanceTemplates(JSON.parse(savedTemplates));
-        } catch (e) {
-          console.error('Failed to parse saved templates:', e);
-          setMaintenanceTemplates([]);
-        }
-      } else {
-        setMaintenanceTemplates([]);
+  // 去重：按 title+description+frequency 分组
+  const groupSchedulesIntoPlans = useCallback((schedules: MaintenanceSchedule[]): PlanGroup[] => {
+    const map = new Map<string, { title: string; description: string | null; frequency: string; reminder_days_before: number; equipmentIds: Set<string>; schedules: MaintenanceSchedule[] }>();
+    for (const s of schedules) {
+      const key = `${s.title}|||${s.description || ''}|||${s.frequency}`;
+      if (!map.has(key)) {
+        map.set(key, { title: s.title, description: s.description, frequency: s.frequency, reminder_days_before: s.reminder_days_before, equipmentIds: new Set(), schedules: [] });
       }
+      const g = map.get(key)!;
+      g.equipmentIds.add(s.equipment_id);
+      g.schedules.push(s);
     }
-  }, [selectedTypeId]);
+    return Array.from(map.values()).map(g => ({
+      title: g.title, description: g.description, frequency: g.frequency as PlanGroup['frequency'],
+      reminder_days_before: g.reminder_days_before, equipmentIds: Array.from(g.equipmentIds), schedules: g.schedules,
+    }));
+  }, []);
+
+  // 统一获取当前类型下所有关联设备的所有维护计划
+  const refetchAllSchedules = useCallback(async () => {
+    if (!selectedTypeId || linkedEquipments.length === 0) { setAllSchedules([]); setPlanGroups([]); return; }
+    setSchedulesLoading(true);
+    try {
+      const ids = linkedEquipments.map(eq => eq.id);
+      const { data, error } = await supabase.from('maintenance_schedules').select('*').in('equipment_id', ids).eq('is_active', true).order('next_due_date');
+      if (error) throw error;
+      const schedules = (data || []) as MaintenanceSchedule[];
+      setAllSchedules(schedules);
+      setPlanGroups(groupSchedulesIntoPlans(schedules));
+    } catch (err) { console.error('获取维护计划失败:', err); setAllSchedules([]); setPlanGroups([]); }
+    finally { setSchedulesLoading(false); }
+  }, [selectedTypeId, linkedEquipments, groupSchedulesIntoPlans]);
+
+  // 当类型或关联设备变化时刷新
+  useEffect(() => { refetchAllSchedules(); }, [refetchAllSchedules]);
+
+  // 从 allSchedules 派生当前选中设备的计划
+  const derivedEquipmentSchedules = useMemo(() => {
+    if (!selectedEquipmentId) return [];
+    return allSchedules.filter(s => s.equipment_id === selectedEquipmentId);
+  }, [allSchedules, selectedEquipmentId]);
 
   // 获取用户列表
   const fetchUsers = async () => {
@@ -296,39 +337,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     }
   };
 
-  // 获取选中设备的维护计划
-  const fetchEquipmentSchedules = useCallback(async (equipmentId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('maintenance_schedules')
-        .select('*')
-        .eq('equipment_id', equipmentId)
-        .eq('is_active', true)
-        .order('next_due_date');
-      
-      if (error) throw error;
-      setEquipmentSchedules((data || []) as MaintenanceSchedule[]);
-    } catch (error) {
-      console.error('获取维护计划失败:', error);
-    }
-  }, []);
-
-  // 当选中设备变化时加载维护计划
-  useEffect(() => {
-    if (selectedEquipmentId) {
-      fetchEquipmentSchedules(selectedEquipmentId);
-    } else {
-      setEquipmentSchedules([]);
-    }
-  }, [selectedEquipmentId, fetchEquipmentSchedules]);
-
-  // 保存模板到localStorage
-  const saveTemplates = useCallback((templates: MaintenanceTemplate[]) => {
-    if (selectedTypeId) {
-      localStorage.setItem(`${STORAGE_KEY}-templates-${selectedTypeId}`, JSON.stringify(templates));
-      setMaintenanceTemplates(templates);
-    }
-  }, [selectedTypeId]);
+  // 同步派生设备计划
+  useEffect(() => { setEquipmentSchedules(derivedEquipmentSchedules); }, [derivedEquipmentSchedules]);
 
   // 获取当前选中的类型
   const selectedType = useMemo(() => 
@@ -574,22 +584,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       if (createMaintenancePlan && maintenanceDate) {
         const nextDueDate = format(maintenanceDate, 'yyyy-MM-dd');
         const scheduleTitle = maintenanceTitle.trim() || `${selectedType.name} 维护`;
-        // 确保维护描述一定有值 - 优先使用用户输入的，否则自动生成
         const baseDescription = maintenanceDescription.trim();
-        
-        // 同时创建维护模板（如果不存在相同标题的模板）
-        const existingTemplate = maintenanceTemplates.find(t => t.title === scheduleTitle);
-        if (!existingTemplate) {
-          const newTemplate: MaintenanceTemplate = {
-            id: `template-${Date.now()}`,
-            title: scheduleTitle,
-            description: baseDescription || `${selectedType.name} 设备定期维护`,
-            frequency: maintenanceFrequency as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly',
-            reminder_days_before: maintenanceReminderDays
-          };
-          saveTemplates([...maintenanceTemplates, newTemplate]);
-        }
-        
+
         for (const eq of linkedEquipmentList) {
           // 确定责任人：优先使用批量设置的责任人（非保持原有），其次是设备原有的责任人
           const assignedName = shouldUpdateResponsible ? batchResponsible : (eq.responsible || null);
@@ -879,7 +875,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
       // 刷新当前选中设备的维护计划
       if (selectedEquipmentId) {
-        await fetchEquipmentSchedules(selectedEquipmentId);
+        await refetchAllSchedules();
       }
       onEquipmentRefresh?.();
 
@@ -962,7 +958,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       toast({ title: '成功', description: '维护计划已添加' });
       setShowAddScheduleModal(false);
       resetScheduleForm();
-      fetchEquipmentSchedules(selectedEquipmentId);
+      refetchAllSchedules();
       onEquipmentRefresh?.();
     } catch (error) {
       console.error('添加维护计划失败:', error);
@@ -1022,7 +1018,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       setEditingSchedule(null);
       resetScheduleForm();
       if (selectedEquipmentId) {
-        fetchEquipmentSchedules(selectedEquipmentId);
+        refetchAllSchedules();
       }
       onEquipmentRefresh?.();
     } catch (error) {
@@ -1048,7 +1044,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
       toast({ title: '成功', description: '维护计划已删除' });
       if (selectedEquipmentId) {
-        fetchEquipmentSchedules(selectedEquipmentId);
+        refetchAllSchedules();
       }
       onEquipmentRefresh?.();
     } catch (error) {
@@ -1111,7 +1107,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
       toast({ title: '成功', description: '维护已完成，下次维护日期已更新' });
       if (selectedEquipmentId) {
-        fetchEquipmentSchedules(selectedEquipmentId);
+        refetchAllSchedules();
       }
       onEquipmentRefresh?.();
     } catch (error) {
@@ -1743,9 +1739,28 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                 <div className="font-medium text-sm text-white truncate">{eq.name}</div>
                                 <div className="text-xs text-white/60">
                                   {eq.id} {eq.responsible && `· ${eq.responsible}`}
+                                  {allSchedules.filter(s => s.equipment_id === eq.id).length > 0 && (
+                                    <span className="text-blue-400 ml-1">· {allSchedules.filter(s => s.equipment_id === eq.id).length}个计划</span>
+                                  )}
                                 </div>
                               </div>
-                              <ChevronRight className={`h-4 w-4 text-white/60 transition-transform ${
+                              <Button
+                                size="sm" variant="ghost"
+                                className="h-6 text-xs text-blue-400 hover:text-blue-300 hover:bg-white/10 shrink-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEquipmentLinkingId(eq.id);
+                                  setLinkDate(getEndOfCurrentMonth());
+                                  const existingKeys = allSchedules.filter(s => s.equipment_id === eq.id).map(s => `${s.title}|||${s.description||''}|||${s.frequency}`);
+                                  const available = planGroups.filter(p => !existingKeys.includes(`${p.title}|||${p.description||''}|||${p.frequency}`)).map(p => `${p.title}|||${p.description||''}|||${p.frequency}`);
+                                  setPlanLinkIds(new Set(available));
+                                  setShowLinkPlanModal(true);
+                                }}
+                              >
+                                <Link2 className="h-3 w-3 mr-0.5" />
+                                计划
+                              </Button>
+                              <ChevronRight className={`h-4 w-4 text-white/60 transition-transform shrink-0 ${
                                 selectedEquipmentId === eq.id ? 'rotate-90' : ''
                               }`} />
                             </div>
@@ -1766,7 +1781,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
               )}
             </div>
 
-            {/* 第三列：维护计划模板与设备维护管理 */}
+            {/* 第三列：所有维护计划 */}
             <div className="flex flex-col overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
               {selectedType ? (
                 <>
@@ -1775,82 +1790,77 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                       <div>
                         <h3 className="font-semibold text-sm flex items-center gap-1.5 text-white drop-shadow">
                           <FileText className="h-4 w-4" />
-                          维护计划模板
+                          所有维护计划
                         </h3>
-                        <p className="text-xs text-white/60">为 {selectedType.name} 创建模板，批量应用到设备</p>
+                        <p className="text-xs text-white/60">{selectedType.name} 类型 · {linkedEquipments.length}台设备</p>
                       </div>
                       <Button
                         size="sm"
                         className="h-7 text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          resetTemplateForm('Monthly Maintenance');
-                          setShowAddTemplateModal(true);
+                          setPlanFormData({ title: 'Monthly Maintenance', description: '', frequency: 'monthly', reminder_days_before: 7 });
+                          setShowAddPlanModal(true);
                         }}
                       >
                         <Plus className="h-3.5 w-3.5 mr-1" />
-                        添加模板
+                        添加计划
                       </Button>
                     </div>
                   </div>
 
                   <ScrollArea className="flex-1 p-3">
                     <div className="space-y-3">
-                      {/* 维护模板列表 */}
-                      {maintenanceTemplates.length > 0 && (
+                      {/* 维护计划列表 — 从所有关联设备中提取去重计划 */}
+                      {schedulesLoading ? (
+                        <div className="text-center py-6">
+                          <RefreshCw className="h-6 w-6 mx-auto mb-2 animate-spin text-white/40" />
+                          <p className="text-xs text-white/60">加载中...</p>
+                        </div>
+                      ) : planGroups.length > 0 ? (
                         <div className="space-y-2">
-                          {maintenanceTemplates.map(template => (
-                            <Card key={template.id} className="bg-white/5 border-white/20">
+                          {planGroups.map((plan, idx) => (
+                            <Card key={`${plan.title}-${plan.frequency}-${idx}`} className="bg-white/5 border-white/20">
                               <CardHeader className="p-3 pb-2">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1 min-w-0">
                                     <CardTitle className="text-sm font-medium truncate flex items-center gap-1.5 text-white">
                                       <FileText className="h-3.5 w-3.5 text-blue-400" />
-                                      {template.title}
+                                      {plan.title}
                                     </CardTitle>
-                                    {template.description && (
-                                      <p className="text-xs text-white/60 mt-0.5 line-clamp-1">
-                                        {template.description}
-                                      </p>
+                                    {plan.description && (
+                                      <p className="text-xs text-white/60 mt-0.5 line-clamp-1">{plan.description}</p>
                                     )}
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Badge className="text-xs bg-white/20 text-white border-white/30">{frequencyLabels[plan.frequency]}</Badge>
+                                      <span className="text-xs text-white/60">已关联 {plan.equipmentIds.length} 台设备</span>
+                                    </div>
                                   </div>
-                                  <Badge className="text-xs shrink-0 ml-2 bg-white/20 text-white border-white/30">
-                                    {frequencyLabels[template.frequency]}
-                                  </Badge>
                                 </div>
                               </CardHeader>
                               <CardContent className="p-3 pt-0">
                                 <div className="flex items-center gap-1">
                                   <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                                    size="sm" variant="outline"
+                                    className="h-7 text-xs flex-1 bg-white/10 border-blue-400/40 text-blue-300 hover:bg-blue-500/20"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setApplyingTemplate(template);
-                                      setApplyTemplateDate(getEndOfCurrentMonth());
-                                      setApplyMode('all');
-                                      setTemplateSelectedIds(new Set());
-                                      setShowApplyTemplateModal(true);
+                                      setLinkingPlan(plan);
+                                      setLinkDate(getEndOfCurrentMonth());
+                                      const unlinked = linkedEquipments.filter(eq => !plan.equipmentIds.includes(eq.id)).map(eq => eq.id);
+                                      setLinkEquipmentIds(new Set(unlinked));
+                                      setShowLinkEquipmentModal(true);
                                     }}
                                   >
-                                    <Copy className="h-3 w-3 mr-1" />
-                                    应用到设备
+                                    <Link2 className="h-3 w-3 mr-1" />
+                                    关联设备
                                   </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-7 w-7 p-0 text-white/60 hover:text-white hover:bg-white/10"
-                                    onClick={(e) => { e.stopPropagation(); handleEditTemplate(template); }}
-                                  >
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-white/60 hover:text-white hover:bg-white/10"
+                                    onClick={(e) => { e.stopPropagation(); handleEditPlan(plan); }}>
                                     <Edit2 className="h-3 w-3" />
                                   </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-white/10"
-                                    onClick={() => handleDeleteTemplate(template.id)}
-                                  >
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-white/10"
+                                    onClick={() => handleDeletePlan(plan)}>
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
                                 </div>
@@ -1858,24 +1868,22 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             </Card>
                           ))}
                         </div>
-                      )}
-
-                      {maintenanceTemplates.length === 0 && !selectedEquipmentId && (
+                      ) : (
                         <div className="text-center py-6">
                           <FileText className="h-8 w-8 mx-auto mb-2 text-white/30" />
-                          <p className="text-sm text-white/60 mb-2">暂无维护模板</p>
-                          <p className="text-xs text-white/60 mb-3">创建模板后可批量应用到关联设备</p>
+                          <p className="text-sm text-white/60 mb-2">暂无维护计划</p>
+                          <p className="text-xs text-white/60 mb-3">添加维护计划后可关联到设备</p>
                           <Button
                             size="sm"
                             className="bg-green-500 hover:bg-green-600 text-white border-0"
                             onClick={(e) => {
                               e.stopPropagation();
-                              resetTemplateForm('Monthly Maintenance');
-                              setShowAddTemplateModal(true);
+                              setPlanFormData({ title: 'Monthly Maintenance', description: '', frequency: 'monthly', reminder_days_before: 7 });
+                              setShowAddPlanModal(true);
                             }}
                           >
                             <Plus className="h-4 w-4 mr-1.5" />
-                            创建第一个模板
+                            创建第一个计划
                           </Button>
                         </div>
                       )}
@@ -2000,7 +2008,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                   <div className="text-center">
                     <Wrench className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">选择设备类型</p>
-                    <p className="text-xs mt-1">管理维护计划模板</p>
+                    <p className="text-xs mt-1">管理维护计划与设备关联</p>
                   </div>
                 </div>
               )}
@@ -2012,100 +2020,128 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         </DialogPrimitive.Content>
       </DialogPrimitive.Root>
 
-      {/* 添加维护模板弹窗 — 纯 div，不用 Dialog 避免与外部 DialogPrimitive 冲突 */}
-      {showAddTemplateModal && (
+      {/* 添加维护计划弹窗 */}
+      {showAddPlanModal && (
         <>
           <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
           <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
-            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => setShowAddTemplateModal(false)}><X className="h-4 w-4" /></button>
+            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => setShowAddPlanModal(false)}><X className="h-4 w-4" /></button>
             <DialogHeader>
-              <h2 className="text-lg font-semibold leading-none tracking-tight">添加维护模板</h2>
-              <p className="text-sm text-white/60">为 {selectedType?.name} 类型创建维护计划模板</p>
+              <h2 className="text-lg font-semibold leading-none tracking-tight">添加维护计划</h2>
+              <p className="text-sm text-white/60">新计划将自动关联到{selectedType?.name}下所有设备</p>
             </DialogHeader>
-            <TemplateFormContent onSubmit={handleAddTemplate} submitLabel="添加" />
+            <div className="space-y-4 mt-2">
+              <div className="space-y-2"><Label className="text-white/80">计划标题 *</Label><Input value={planFormData.title} onChange={e => setPlanFormData(p => ({...p, title: e.target.value}))} placeholder="输入维护计划标题" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" /></div>
+              <div className="space-y-2"><Label className="text-white/80">描述</Label><Textarea value={planFormData.description} onChange={e => setPlanFormData(p => ({...p, description: e.target.value}))} placeholder="输入维护描述" rows={2} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label className="text-white/80">维护周期</Label><Select value={planFormData.frequency} onValueChange={v => setPlanFormData(p => ({...p, frequency: v as any}))}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(frequencyLabels).map(([v,l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2"><Label className="text-white/80">提前提醒天数</Label><Input type="number" min={1} max={30} value={planFormData.reminder_days_before} onChange={e => setPlanFormData(p => ({...p, reminder_days_before: parseInt(e.target.value)||7}))} className="bg-white/10 border-white/20 text-white" /></div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => setShowAddPlanModal(false)}>取消</Button>
+                <Button onClick={handleAddPlan}>添加</Button>
+              </DialogFooter>
+            </div>
           </div>
         </>
       )}
 
-      {/* 编辑维护模板弹窗 */}
-      {showEditTemplateModal && (
+      {/* 编辑维护计划弹窗 */}
+      {showEditPlanModal && editingPlan && (
         <>
           <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
           <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
-            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowEditTemplateModal(false); setEditingTemplate(null); resetTemplateForm(); }}><X className="h-4 w-4" /></button>
+            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowEditPlanModal(false); setEditingPlan(null); }}><X className="h-4 w-4" /></button>
             <DialogHeader>
-              <h2 className="text-lg font-semibold leading-none tracking-tight">编辑维护模板</h2>
-              <p className="text-sm text-white/60">修改 {editingTemplate?.title} 模板</p>
+              <h2 className="text-lg font-semibold leading-none tracking-tight">编辑维护计划</h2>
+              <p className="text-sm text-white/60">修改 "{editingPlan?.title}"（影响 {editingPlan?.equipmentIds.length} 台设备）</p>
             </DialogHeader>
-            <TemplateFormContent onSubmit={handleUpdateTemplate} submitLabel="保存" />
+            <div className="space-y-4 mt-2">
+              <div className="space-y-2"><Label className="text-white/80">计划标题 *</Label><Input value={planFormData.title} onChange={e => setPlanFormData(p => ({...p, title: e.target.value}))} placeholder="输入维护计划标题" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" /></div>
+              <div className="space-y-2"><Label className="text-white/80">描述</Label><Textarea value={planFormData.description} onChange={e => setPlanFormData(p => ({...p, description: e.target.value}))} placeholder="输入维护描述" rows={2} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label className="text-white/80">维护周期</Label><Select value={planFormData.frequency} onValueChange={v => setPlanFormData(p => ({...p, frequency: v as any}))}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(frequencyLabels).map(([v,l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2"><Label className="text-white/80">提前提醒天数</Label><Input type="number" min={1} max={30} value={planFormData.reminder_days_before} onChange={e => setPlanFormData(p => ({...p, reminder_days_before: parseInt(e.target.value)||7}))} className="bg-white/10 border-white/20 text-white" /></div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowEditPlanModal(false); setEditingPlan(null); }}>取消</Button>
+                <Button onClick={handleUpdatePlan}>保存</Button>
+              </DialogFooter>
+            </div>
           </div>
         </>
       )}
 
-      {/* 应用模板弹窗 */}
-      {showApplyTemplateModal && (
+      {/* 关联设备弹窗（计划→设备） */}
+      {showLinkEquipmentModal && linkingPlan && (
         <>
           <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
           <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg max-h-[90vh] overflow-y-auto">
-            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowApplyTemplateModal(false); setApplyingTemplate(null); setTemplateSelectedIds(new Set()); }}><X className="h-4 w-4" /></button>
+            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set()); }}><X className="h-4 w-4" /></button>
             <DialogHeader>
-              <h2 className="text-lg font-semibold leading-none tracking-tight">应用维护模板</h2>
-              <p className="text-sm text-white/60">将 "{applyingTemplate?.title}" 模板应用到关联设备</p>
+              <h2 className="text-lg font-semibold leading-none tracking-tight">关联设备到计划</h2>
+              <p className="text-sm text-white/60">将 "{linkingPlan.title}" 关联到更多设备</p>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 mt-2">
+              <div className="space-y-2"><Label className="text-white/80">首次维护日期</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20"><Calendar className="mr-2 h-4 w-4" />{linkDate ? format(linkDate, 'yyyy-MM-dd') : '选择日期'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0 z-[200]" align="start"><CalendarComponent mode="single" selected={linkDate} onSelect={setLinkDate} initialFocus className="pointer-events-auto" /></PopoverContent></Popover></div>
               <div className="space-y-2">
-                <Label className="text-white/80">首次维护日期</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {applyTemplateDate ? format(applyTemplateDate, 'yyyy-MM-dd') : '选择日期'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-[200]" align="start">
-                    <CalendarComponent mode="single" selected={applyTemplateDate} onSelect={setApplyTemplateDate} initialFocus className="pointer-events-auto" />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-white/80">应用范围</Label>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <input type="radio" id="apply-all" checked={applyMode === 'all'} onChange={() => setApplyMode('all')} className="h-4 w-4 accent-white" />
-                    <Label htmlFor="apply-all" className="text-sm font-normal text-white">所有关联设备 ({linkedEquipments.length}台)</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input type="radio" id="apply-selected" checked={applyMode === 'selected'} onChange={() => setApplyMode('selected')} className="h-4 w-4 accent-white" />
-                    <Label htmlFor="apply-selected" className="text-sm font-normal text-white">选择特定设备</Label>
-                  </div>
-                </div>
-              </div>
-              {applyMode === 'selected' && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-white/80">选择设备</Label>
-                    <Button variant="ghost" size="sm" className="h-6 text-xs text-white hover:bg-white/10" onClick={() => { if (templateSelectedIds.size === linkedEquipments.length) { setTemplateSelectedIds(new Set()); } else { setTemplateSelectedIds(new Set(linkedEquipments.map(eq => eq.id))); } }}>
-                      {templateSelectedIds.size === linkedEquipments.length ? '取消全选' : '全选'}
-                    </Button>
-                  </div>
-                  <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
-                    <div className="space-y-1">
-                      {linkedEquipments.map(eq => (
-                        <div key={eq.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
-                          <Checkbox id={`template-eq-${eq.id}`} checked={templateSelectedIds.has(eq.id)} onCheckedChange={(checked) => { const newSet = new Set(templateSelectedIds); if (checked) { newSet.add(eq.id); } else { newSet.delete(eq.id); } setTemplateSelectedIds(newSet); }} />
-                          <Label htmlFor={`template-eq-${eq.id}`} className="text-sm font-normal flex-1 cursor-pointer text-white">
-                            <span className="font-medium">{eq.name}</span><span className="text-white/60 ml-2 text-xs">{eq.id}</span>
-                          </Label>
+                <Label className="text-white/80">选择设备</Label>
+                <p className="text-xs text-white/60">已关联 {linkingPlan.equipmentIds.length} 台，可选 {linkedEquipments.filter(eq => !linkingPlan.equipmentIds.includes(eq.id)).length} 台</p>
+                <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
+                  <div className="space-y-1">
+                    {linkedEquipments.map(eq => {
+                      const already = linkingPlan.equipmentIds.includes(eq.id);
+                      return (
+                        <div key={eq.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/10 ${already ? 'opacity-50' : ''}`}>
+                          <Checkbox id={`le-${eq.id}`} checked={linkEquipmentIds.has(eq.id)} disabled={already} onCheckedChange={c => { const s = new Set(linkEquipmentIds); c ? s.add(eq.id) : s.delete(eq.id); setLinkEquipmentIds(s); }} />
+                          <Label htmlFor={`le-${eq.id}`} className="text-sm flex-1 cursor-pointer text-white"><span className="font-medium">{eq.name}</span><span className="text-white/60 ml-2 text-xs">{eq.id}</span>{already && <span className="text-green-400 ml-2 text-xs">(已关联)</span>}</Label>
                         </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                  <p className="text-xs text-white/60">已选择 {templateSelectedIds.size} 台设备</p>
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </div>
               <DialogFooter>
-                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowApplyTemplateModal(false); setApplyingTemplate(null); setTemplateSelectedIds(new Set()); }}>取消</Button>
-                <Button onClick={handleApplyTemplate}>确认应用</Button>
+                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set()); }}>取消</Button>
+                <Button onClick={handleLinkPlanToEquipment} disabled={linkEquipmentIds.size === 0}>确认关联</Button>
+              </DialogFooter>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 关联维护计划弹窗（设备→计划） */}
+      {showLinkPlanModal && equipmentLinkingId && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
+          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg max-h-[90vh] overflow-y-auto">
+            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowLinkPlanModal(false); setEquipmentLinkingId(null); setPlanLinkIds(new Set()); }}><X className="h-4 w-4" /></button>
+            <DialogHeader>
+              <h2 className="text-lg font-semibold leading-none tracking-tight">关联维护计划</h2>
+              <p className="text-sm text-white/60">为 {linkedEquipments.find(eq => eq.id === equipmentLinkingId)?.name} 选择维护计划</p>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <div className="space-y-2"><Label className="text-white/80">首次维护日期</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20"><Calendar className="mr-2 h-4 w-4" />{linkDate ? format(linkDate, 'yyyy-MM-dd') : '选择日期'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0 z-[200]" align="start"><CalendarComponent mode="single" selected={linkDate} onSelect={setLinkDate} initialFocus className="pointer-events-auto" /></PopoverContent></Popover></div>
+              <div className="space-y-2">
+                <Label className="text-white/80">选择计划</Label>
+                <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
+                  <div className="space-y-1">
+                    {planGroups.map((plan, idx) => {
+                      const key = `${plan.title}|||${plan.description||''}|||${plan.frequency}`;
+                      const already = plan.equipmentIds.includes(equipmentLinkingId);
+                      return (
+                        <div key={idx} className={`flex items-center gap-2 p-1.5 rounded ${already ? 'opacity-50' : ''}`}>
+                          <Checkbox id={`lp-${idx}`} checked={planLinkIds.has(key)} disabled={already} onCheckedChange={c => { const s = new Set(planLinkIds); c ? s.add(key) : s.delete(key); setPlanLinkIds(s); }} />
+                          <Label htmlFor={`lp-${idx}`} className="text-sm flex-1 cursor-pointer text-white"><span className="font-medium">{plan.title}</span><span className="text-white/60 ml-2 text-xs">{frequencyLabels[plan.frequency]}</span>{already && <span className="text-green-400 ml-2 text-xs">(已关联)</span>}</Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowLinkPlanModal(false); setEquipmentLinkingId(null); setPlanLinkIds(new Set()); }}>取消</Button>
+                <Button onClick={handleLinkEquipmentToPlans} disabled={planLinkIds.size === 0}>确认关联</Button>
               </DialogFooter>
             </div>
           </div>
