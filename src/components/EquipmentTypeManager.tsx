@@ -391,24 +391,23 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   // 当类型或关联设备变化时刷新
   useEffect(() => { refetchAllSchedules(); }, [refetchAllSchedules]);
 
-  // 图片映射：自动包含关联设备图片 + localStorage 手动添加
+  // 图片映射：自动包含关联设备图片 + localStorage 手动添加（去重）
   useEffect(() => {
     if (selectedTypeId) {
       const saved = localStorage.getItem(`${STORAGE_KEY}-images-${selectedTypeId}`);
       const manual: ImageMapping[] = saved ? JSON.parse(saved) : [];
       // 自动包含关联设备的图片
-      const eqImages = linkedEquipments.filter(eq => eq.imageUrl).map(eq => ({ imageUrl: eq.imageUrl!, equipmentIds: [eq.id] }));
-      // 合并：手动映射 + 尚未在映射中的设备图片
-      const merged = [...manual];
-      for (const eqImg of eqImages) {
-        const existing = merged.find(m => m.imageUrl === eqImg.imageUrl);
-        if (existing) {
-          if (!existing.equipmentIds.includes(eqImg.equipmentIds[0])) existing.equipmentIds.push(eqImg.equipmentIds[0]);
-        } else {
-          merged.push(eqImg);
-        }
+      const eqImages = linkedEquipments.filter(eq => eq.imageUrl).map(eq => ({ imageUrl: eq.imageUrl!.trim(), equipmentIds: [eq.id] }));
+      // 合并去重
+      const map = new Map<string, Set<string>>();
+      for (const m of [...manual, ...eqImages]) {
+        const url = m.imageUrl.trim();
+        if (!url) continue;
+        if (!map.has(url)) map.set(url, new Set());
+        const ids = map.get(url)!;
+        m.equipmentIds.forEach(id => ids.add(id));
       }
-      setImageMappings(merged);
+      setImageMappings(Array.from(map.entries()).map(([url, ids]) => ({ imageUrl: url, equipmentIds: Array.from(ids) })));
     } else { setImageMappings([]); }
   }, [selectedTypeId, linkedEquipments]);
   useEffect(() => {
