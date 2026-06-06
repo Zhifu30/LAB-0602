@@ -1405,13 +1405,12 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             <div className="flex flex-col overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
               {selectedType ? (
                 <>
-                  <div className="p-3 border-b bg-background">
+                  <div className="p-3 border-b border-white/20 bg-white/5">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold text-sm">{selectedType.name} - 关联设备</h3>
                       <Button
-                        variant={isLinkingMode ? "default" : "outline"}
                         size="sm"
-                        className="h-7 text-xs"
+                        className={`h-7 text-xs text-white border-0 ${isLinkingMode ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-500 hover:bg-blue-600'}`}
                         onClick={() => setIsLinkingMode(!isLinkingMode)}
                       >
                         <Link2 className="h-3.5 w-3.5 mr-1" />
@@ -1703,7 +1702,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                           <div className="text-center py-8">
                             <Link2 className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
                             <p className="text-sm text-muted-foreground mb-2">暂无关联设备</p>
-                            <Button variant="outline" size="sm" onClick={() => setIsLinkingMode(true)}>
+                            <Button size="sm" onClick={() => setIsLinkingMode(true)} className="bg-blue-500 hover:bg-blue-600 text-white border-0">
                               <Link2 className="h-4 w-4 mr-1.5" />
                               去关联设备
                             </Button>
@@ -1751,7 +1750,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             <div className="flex flex-col overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
               {selectedType ? (
                 <>
-                  <div className="p-3 border-b bg-background">
+                  <div className="p-3 border-b border-white/20 bg-white/5">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-semibold text-sm flex items-center gap-1.5">
