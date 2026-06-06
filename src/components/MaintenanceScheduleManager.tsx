@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Bell, Check, Trash2, Edit, Clock } from 'lucide-react';
+import { Plus, Calendar, Bell, Check, Trash2, Edit, Clock, Link2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -61,6 +61,12 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<MaintenanceSchedule | null>(null);
   const [users, setUsers] = useState<Array<{user_id: string; username: string; email?: string}>>([]);
+  // 每个 schedule 关联的其他设备
+  const [scheduleEquipMap, setScheduleEquipMap] = useState<Record<string, { id: string; name: string }[]>>({});
+  const [showLinkEquipModal, setShowLinkEquipModal] = useState(false);
+  const [linkingSchedule, setLinkingSchedule] = useState<MaintenanceSchedule | null>(null);
+  const [linkEquipIds, setLinkEquipIds] = useState<Set<string>>(new Set());
+  const [linkEquipDate, setLinkEquipDate] = useState('');
 
   const [formData, setFormData] = useState({
     title: '',
@@ -111,13 +117,42 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
         .order('next_due_date');
 
       if (error) throw error;
-      setSchedules((data || []) as MaintenanceSchedule[]);
+      const fetchedSchedules = (data || []) as MaintenanceSchedule[];
+      setSchedules(fetchedSchedules);
+      // 查询相同计划关联的其他设备
+      fetchRelatedEquipment(fetchedSchedules);
     } catch (error) {
       console.error('Error fetching maintenance schedules:', error);
       toast.error('获取维护计划失败');
     } finally {
       setLoading(false);
     }
+  };
+
+  // 查询与当前设备共享相同计划的其他设备
+  const fetchRelatedEquipment = async (currentSchedules: MaintenanceSchedule[]) => {
+    if (currentSchedules.length === 0) { setScheduleEquipMap({}); return; }
+    try {
+      const titles = [...new Set(currentSchedules.map(s => s.title))];
+      const { data } = await supabase
+        .from('maintenance_schedules')
+        .select('equipment_id, title')
+        .in('title', titles)
+        .eq('is_active', true)
+        .neq('equipment_id', equipmentId);
+      if (!data) { setScheduleEquipMap({}); return; }
+      // 获取设备名称
+      const eqIds = [...new Set(data.map(d => d.equipment_id))];
+      const { data: eqData } = await supabase.from('equipment').select('id, name').in('id', eqIds);
+      const eqNameMap: Record<string, string> = {};
+      (eqData || []).forEach((e: any) => { eqNameMap[e.id] = e.name || e.id; });
+      const map: Record<string, { id: string; name: string }[]> = {};
+      for (const s of currentSchedules) {
+        const related = data.filter(d => d.title === s.title).map(d => ({ id: d.equipment_id, name: eqNameMap[d.equipment_id] || d.equipment_id }));
+        map[s.id] = related;
+      }
+      setScheduleEquipMap(map);
+    } catch { setScheduleEquipMap({}); }
   };
 
   const fetchUsers = async () => {
@@ -450,9 +485,29 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
                           提前 {schedule.reminder_days_before} 天提醒
                         </span>
                       </div>
+                      {/* 关联设备信息 */}
+                      {scheduleEquipMap[schedule.id] && scheduleEquipMap[schedule.id].length > 0 && (
+                        <div className="text-xs text-white/50 flex items-center gap-1 mt-1">
+                          <div className="p-0.5 bg-green-500 rounded"><Link2 className="h-2.5 w-2.5 text-white" /></div>
+                          {scheduleEquipMap[schedule.id].map(e => e.id).join('、')}
+                        </div>
+                      )}
                     </div>
                     {!readOnly && (
                       <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setLinkingSchedule(schedule);
+                            setLinkEquipDate(new Date().toISOString().split('T')[0]);
+                            setLinkEquipIds(new Set());
+                            setShowLinkEquipModal(true);
+                          }}
+                          title="关联到其他设备"
+                          className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
+                        >
+                          <Link2 className="h-3.5 w-3.5" />
+                        </Button>
                         <Button
                           size="sm"
                           onClick={() => handleSendReminder(schedule)}
@@ -672,6 +727,57 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
             </Button>
             <Button onClick={handleUpdateSchedule}>保存</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 关联设备弹窗 */}
+      <Dialog open={showLinkEquipModal} onOpenChange={setShowLinkEquipModal}>
+        <DialogContent className="bg-black/40 backdrop-blur-md border-white/20 text-white">
+          <DialogHeader>
+            <DialogTitle>关联到其他设备</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-white/80">计划: {linkingSchedule?.title}</Label>
+            </div>
+            <div>
+              <Label className="text-white/80">下次维护日期</Label>
+              <Input type="date" value={linkEquipDate} onChange={e => setLinkEquipDate(e.target.value)}
+                className="bg-white/10 border-white/20 text-white mt-1" />
+            </div>
+            <p className="text-xs text-white/60">将在所选设备上创建同名维护计划</p>
+            <DialogFooter>
+              <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                onClick={() => setShowLinkEquipModal(false)}>取消</Button>
+              <Button onClick={async () => {
+                if (!linkingSchedule || !linkEquipDate) return;
+                try {
+                  const { data: eqData } = await supabase.from('equipment').select('id, name, responsible, responsible_email')
+                    .eq('type', (await supabase.from('equipment').select('type').eq('id', equipmentId).single()).data?.type)
+                    .neq('id', equipmentId).neq('is_scrapped', true);
+                  if (!eqData) return;
+                  let n = 0;
+                  for (const eq of eqData as any[]) {
+                    const { data: exist } = await supabase.from('maintenance_schedules').select('id')
+                      .eq('equipment_id', eq.id).eq('title', linkingSchedule.title).eq('is_active', true).limit(1);
+                    if (exist && exist.length > 0) continue;
+                    const { error } = await supabase.from('maintenance_schedules').insert({
+                      equipment_id: eq.id, title: linkingSchedule.title, description: linkingSchedule.description,
+                      frequency: linkingSchedule.frequency, next_due_date: linkEquipDate,
+                      reminder_days_before: linkingSchedule.reminder_days_before,
+                      assigned_name: eq.responsible || null, assigned_email: eq.responsible_email || null,
+                      is_active: true,
+                    });
+                    if (!error) n++;
+                  }
+                  toast.success(`已关联 ${n} 台设备`);
+                  setShowLinkEquipModal(false);
+                  fetchSchedules();
+                  onScheduleChange?.();
+                } catch (err) { console.error(err); toast.error('关联失败'); }
+              }}>确认关联</Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </Card>
