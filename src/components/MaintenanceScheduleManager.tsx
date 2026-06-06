@@ -35,6 +35,7 @@ interface MaintenanceScheduleManagerProps {
   equipmentName: string;
   equipmentResponsible: string;
   equipmentResponsibleEmail?: string;
+  equipmentType?: string;
   onScheduleChange?: () => void;
   readOnly?: boolean;
 }
@@ -52,6 +53,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
   equipmentName,
   equipmentResponsible,
   equipmentResponsibleEmail,
+  equipmentType,
   onScheduleChange,
   readOnly = false
 }) => {
@@ -135,21 +137,27 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
     if (currentSchedules.length === 0) { setScheduleEquipMap({}); return; }
     try {
       const titles = [...new Set(currentSchedules.map(s => s.title))];
-      const { data } = await supabase
+      let query = supabase
         .from('maintenance_schedules')
         .select('equipment_id, title')
         .in('title', titles)
         .eq('is_active', true)
         .neq('equipment_id', equipmentId);
+      const { data } = await query;
       if (!data) { setScheduleEquipMap({}); return; }
-      // 获取设备名称
+      // 获取设备名称，按类型过滤
       const eqIds = [...new Set(data.map(d => d.equipment_id))];
-      const { data: eqData } = await supabase.from('equipment').select('id, name').in('id', eqIds);
+      let eqQuery = supabase.from('equipment').select('id, name, type').in('id', eqIds);
+      if (equipmentType) eqQuery = eqQuery.eq('type', equipmentType);
+      const { data: eqData } = await eqQuery;
       const eqNameMap: Record<string, string> = {};
+      const validEqIds = new Set((eqData || []).map((e: any) => e.id));
       (eqData || []).forEach((e: any) => { eqNameMap[e.id] = e.name || e.id; });
       const map: Record<string, { id: string; name: string }[]> = {};
       for (const s of currentSchedules) {
-        const related = data.filter(d => d.title === s.title).map(d => ({ id: d.equipment_id, name: eqNameMap[d.equipment_id] || d.equipment_id }));
+        const related = data
+          .filter(d => d.title === s.title && validEqIds.has(d.equipment_id))
+          .map(d => ({ id: d.equipment_id, name: eqNameMap[d.equipment_id] || d.equipment_id }));
         map[s.id] = related;
       }
       setScheduleEquipMap(map);

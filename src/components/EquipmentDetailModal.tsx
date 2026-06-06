@@ -181,7 +181,8 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
             )}
             <MaintenanceScheduleManager
               equipmentId={equipment.id} equipmentName={equipment.name} equipmentResponsible={equipment.responsible}
-              equipmentResponsibleEmail={equipment.responsible_email} onScheduleChange={() => setMaintenanceSchedulesKey(prev => prev + 1)} readOnly={readOnly} />
+              equipmentResponsibleEmail={equipment.responsible_email} equipmentType={equipment.type}
+              onScheduleChange={() => setMaintenanceSchedulesKey(prev => prev + 1)} readOnly={readOnly} />
           </div>
         </div>
       </div>
