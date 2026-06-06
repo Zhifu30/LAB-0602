@@ -1768,41 +1768,31 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                           <RefreshCw className="h-6 w-6 mx-auto mb-2 animate-spin text-white/40" />
                           <p className="text-xs text-white/60">加载中...</p>
                         </div>
-                      ) : planGroups.length > 0 ? (
+                      ) : allSchedules.length > 0 ? (
                         <div className="space-y-2">
-                          {planGroups.map((plan, idx) => {
-                            // 取最早的 next_due_date 和最常见的负责人
-                            const dates = plan.schedules.map(s => s.next_due_date).sort();
-                            const earliestDate = dates[0] || '';
-                            const names = plan.schedules.map(s => s.assigned_name).filter(Boolean);
-                            const uniqueNames = [...new Set(names)];
-                            const assignee = uniqueNames.length === 1 ? uniqueNames[0] : (uniqueNames.length > 1 ? `${uniqueNames[0]} 等` : '');
-                            const isOverdue = earliestDate && new Date(earliestDate) < new Date();
-                            const daysUntilDue = earliestDate ? Math.ceil((new Date(earliestDate).getTime() - Date.now()) / 86400000) : undefined;
-                            const sortedEids = [...plan.equipmentIds].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+                          {allSchedules.map(schedule => {
+                            const eq = activeEquipments.find(e => e.id === schedule.equipment_id);
+                            const daysUntil = Math.ceil((new Date(schedule.next_due_date).getTime() - Date.now()) / 86400000);
                             return (
                             <MaintenancePlanCard
-                              key={`${plan.title}-${plan.frequency}-${idx}`}
-                              title={plan.title}
-                              description={plan.description}
-                              frequency={plan.frequency}
-                              nextDueDate={earliestDate || undefined}
-                              assignedName={assignee || undefined}
-                              reminderDaysBefore={plan.reminder_days_before}
-                              daysUntilDue={daysUntilDue}
-                              equipmentIds={sortedEids.map(eid => { const eq = activeEquipments.find(e => e.id === eid); return eq ? eq.id : eid; })}
+                              key={schedule.id}
+                              title={schedule.title}
+                              description={schedule.description}
+                              frequency={schedule.frequency}
+                              nextDueDate={schedule.next_due_date}
+                              assignedName={schedule.assigned_name || undefined}
+                              reminderDaysBefore={schedule.reminder_days_before}
+                              daysUntilDue={daysUntil}
+                              reminderSent={schedule.reminder_sent}
+                              equipmentIds={eq ? [eq.id] : [schedule.equipment_id]}
                               actions={
                                 <>
+                                  <Button size="sm" className="h-7 w-7 p-0 bg-green-500 hover:bg-green-600 text-white"
+                                    onClick={() => handleCompleteSchedule(schedule)} title="完成"><Check className="h-3.5 w-3.5" /></Button>
                                   <Button size="sm" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
-                                    onClick={(e) => { e.stopPropagation();
-                                      setLinkingPlan(plan); setLinkDate(getEndOfCurrentMonth());
-                                      const unlinked = linkedEquipments.filter(eq => !plan.equipmentIds.includes(eq.id)).map(eq => eq.id);
-                                      setLinkEquipmentIds(new Set(unlinked)); setShowLinkEquipmentModal(true);
-                                    }} title="关联设备"><Link2 className="h-3.5 w-3.5" /></Button>
-                                  <Button size="sm" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
-                                    onClick={(e) => { e.stopPropagation(); handleEditPlan(plan); }} title="编辑计划"><Edit2 className="h-3.5 w-3.5" /></Button>
+                                    onClick={(e) => { e.stopPropagation(); handleEditSchedule(schedule); }} title="编辑"><Edit2 className="h-3.5 w-3.5" /></Button>
                                   <Button size="sm" className="h-7 w-7 p-0 bg-red-500 hover:bg-red-600 text-white"
-                                    onClick={() => handleDeletePlan(plan)} title="删除计划"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                    onClick={() => handleDeleteSchedule(schedule.id)} title="删除"><Trash2 className="h-3.5 w-3.5" /></Button>
                                 </>
                               }
                             />
