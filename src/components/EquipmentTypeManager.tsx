@@ -1958,10 +1958,16 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                 setShowImageEquipModal(true);
                               }} title="将此图片URL同步到所选设备的数据库image_url"><Check className="h-3 w-3 mr-1" />应用</Button>
                             <Button size="sm" className="h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white"
-                              onClick={() => {
+                              onClick={async () => {
+                                const mapping = imageMappings[idx];
+                                // 同时清除数据库中关联设备的 image_url
+                                for (const eid of mapping.equipmentIds) {
+                                  await supabase.from('equipment').update({ image_url: null }).eq('id', eid);
+                                }
                                 const newMappings = imageMappings.filter((_, i) => i !== idx);
                                 setImageMappings(newMappings);
-                              }} title="删除图片"><Trash2 className="h-3 w-3" /></Button>
+                                onEquipmentRefresh?.();
+                              }} title="删除图片及设备关联"><Trash2 className="h-3 w-3" /></Button>
                           </div>
                         </div>
                       </div>
