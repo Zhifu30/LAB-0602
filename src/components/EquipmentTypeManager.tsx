@@ -16,7 +16,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Equipment } from '@/types/equipment';
@@ -1780,55 +1779,50 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             const isOverdue = earliestDate && new Date(earliestDate) < new Date();
                             const sortedEids = [...plan.equipmentIds].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
                             return (
-                            <Card key={`${plan.title}-${plan.frequency}-${idx}`} className={isOverdue && earliestDate ? 'border-red-500/50 bg-red-500/10' : 'bg-white/5 border-white/20'}>
-                              <CardHeader className="p-2.5 pb-1.5">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <CardTitle className="text-xs font-medium truncate text-white">{plan.title}</CardTitle>
-                                    {plan.description && (
-                                      <p className="text-xs text-white/60 mt-0.5 whitespace-pre-wrap">{plan.description}</p>
+                            <div key={`${plan.title}-${plan.frequency}-${idx}`} className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                                    <span className="font-medium text-white text-xs">{plan.title}</span>
+                                    <Badge variant="outline" className="border-white/30 text-white/80 text-xs">
+                                      {frequencyLabels[plan.frequency]}
+                                    </Badge>
+                                    {earliestDate && (
+                                      <Badge className={`text-xs ${isOverdue ? 'bg-red-500 text-white' : 'bg-white/20 text-white/80'}`}>
+                                        {isOverdue ? `最早逾期` : earliestDate}
+                                      </Badge>
                                     )}
                                   </div>
-                                  <Badge className={`text-xs shrink-0 ml-2 h-5 ${isOverdue && earliestDate ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-white/20 text-white border-white/30'}`}>
-                                    {frequencyLabels[plan.frequency]}
-                                  </Badge>
-                                </div>
-                              </CardHeader>
-                              <CardContent className="p-2.5 pt-0 space-y-1.5">
-                                <div className="flex items-center gap-3 text-xs">
-                                  <div className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3 text-white/60" />
-                                    <span className={isOverdue ? 'text-red-400 font-medium' : 'text-white'}>
-                                      {earliestDate || '—'}
-                                    </span>
-                                    {isOverdue && <span className="text-red-400">(最早逾期)</span>}
-                                  </div>
-                                  {assignee && (
-                                    <div className="flex items-center gap-1">
-                                      <User className="h-3 w-3 text-white/60" />
-                                      <span>{assignee}</span>
-                                    </div>
+                                  {plan.description && (
+                                    <p className="text-sm text-white font-bold mb-2 whitespace-pre-line">{plan.description}</p>
                                   )}
+                                  <div className="text-xs text-white/50 flex items-center gap-3 flex-wrap">
+                                    {earliestDate && (
+                                      <span className="flex items-center gap-1">
+                                        <div className="p-0.5 bg-blue-500 rounded"><Calendar className="h-2.5 w-2.5 text-white" /></div>
+                                        下次: {earliestDate}
+                                      </span>
+                                    )}
+                                    {assignee && (
+                                      <span className="flex items-center gap-1">
+                                        <div className="p-0.5 bg-purple-500 rounded"><User className="h-2.5 w-2.5 text-white" /></div>
+                                        {assignee}
+                                      </span>
+                                    )}
+                                    <span className="flex items-center gap-1">
+                                      <div className="p-0.5 bg-green-500 rounded"><Link2 className="h-2.5 w-2.5 text-white" /></div>
+                                      {sortedEids.map(eid => { const eq = activeEquipments.find(e => e.id === eid); return eq ? eq.id : eid; }).join('、')}
+                                    </span>
+                                  </div>
                                 </div>
-                                <p className="text-xs text-white/50">
-                                  关联设备：{sortedEids.map(eid => {
-                                    const eq = activeEquipments.find(e => e.id === eid);
-                                    return eq ? eq.id : eid;
-                                  }).join('、')}
-                                </p>
-                                <div className="flex items-center gap-1">
-                                  <Button size="sm"
-                                    className="h-7 text-xs flex-1 bg-blue-500 hover:bg-blue-600 text-white border-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setLinkingPlan(plan);
-                                      setLinkDate(getEndOfCurrentMonth());
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <Button size="sm" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
+                                    onClick={(e) => { e.stopPropagation();
+                                      setLinkingPlan(plan); setLinkDate(getEndOfCurrentMonth());
                                       const unlinked = linkedEquipments.filter(eq => !plan.equipmentIds.includes(eq.id)).map(eq => eq.id);
-                                      setLinkEquipmentIds(new Set(unlinked));
-                                      setShowLinkEquipmentModal(true);
-                                    }}
-                                  >
-                                    <Link2 className="h-3 w-3 mr-1" />关联设备
+                                      setLinkEquipmentIds(new Set(unlinked)); setShowLinkEquipmentModal(true);
+                                    }} title="关联设备">
+                                    <Link2 className="h-3.5 w-3.5" />
                                   </Button>
                                   <Button size="sm" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
                                     onClick={(e) => { e.stopPropagation(); handleEditPlan(plan); }} title="编辑计划">
@@ -1839,8 +1833,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
-                              </CardContent>
-                            </Card>
+                              </div>
+                            </div>
                           );})}
                         </div>
                       ) : null}
