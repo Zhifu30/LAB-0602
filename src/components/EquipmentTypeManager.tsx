@@ -391,23 +391,21 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   // 当类型或关联设备变化时刷新
   useEffect(() => { refetchAllSchedules(); }, [refetchAllSchedules]);
 
-  // 图片映射：自动包含关联设备图片 + localStorage 手动添加（去重）
+  // 图片映射：按设备展示，去重 URL 后合并设备
   useEffect(() => {
     if (selectedTypeId) {
       const saved = localStorage.getItem(`${STORAGE_KEY}-images-${selectedTypeId}`);
       const manual: ImageMapping[] = saved ? JSON.parse(saved) : [];
-      // 自动包含关联设备的图片
       const eqImages = linkedEquipments.filter(eq => eq.imageUrl).map(eq => ({ imageUrl: eq.imageUrl!.trim(), equipmentIds: [eq.id] }));
-      // 合并去重
+      const all = [...manual, ...eqImages];
       const map = new Map<string, Set<string>>();
-      for (const m of [...manual, ...eqImages]) {
+      for (const m of all) {
         const url = m.imageUrl.trim();
         if (!url) continue;
         if (!map.has(url)) map.set(url, new Set());
-        const ids = map.get(url)!;
-        m.equipmentIds.forEach(id => ids.add(id));
+        m.equipmentIds.forEach(id => map.get(url)!.add(id));
       }
-      setImageMappings(Array.from(map.entries()).map(([url, ids]) => ({ imageUrl: url, equipmentIds: Array.from(ids) })));
+      setImageMappings(Array.from(map.entries()).map(([url, ids]) => ({ imageUrl: url, equipmentIds: Array.from(ids).sort((a,b) => a.localeCompare(b,undefined,{numeric:true})) })));
     } else { setImageMappings([]); }
   }, [selectedTypeId, linkedEquipments]);
   useEffect(() => {
