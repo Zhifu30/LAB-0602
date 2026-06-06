@@ -1514,7 +1514,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                         >
                                           {/* 固定头部：标题 + 顶部确定按钮 */}
                                           <div className="flex items-center justify-between border-b pb-2 mb-2 shrink-0">
-                                            <h4 className="font-medium text-sm">批量关联设置</h4>
+                                            <h4 className="font-medium text-sm text-white">批量关联设置</h4>
                                             <Button
                                               size="sm"
                                               className="h-7 text-xs"
@@ -1720,7 +1720,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             >
                               <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium text-sm truncate">{eq.name}</div>
+                                <div className="font-medium text-sm text-white truncate">{eq.name}</div>
                                 <div className="text-xs text-white/60">
                                   {eq.id} {eq.responsible && `· ${eq.responsible}`}
                                 </div>
@@ -1739,7 +1739,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                 <div className="flex-1 flex items-center justify-center text-white/60">
                   <div className="text-center">
                     <Tags className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">选择左侧类型</p>
+                    <p className="text-sm text-white/60">选择左侧类型</p>
                     <p className="text-xs mt-1">查看关联设备</p>
                   </div>
                 </div>
@@ -1864,7 +1864,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
                               <div>
-                                <h4 className="font-medium text-sm">{selectedEquipment.name} 的维护计划</h4>
+                                <h4 className="font-medium text-sm text-white">{selectedEquipment.name} 的维护计划</h4>
                                 <p className="text-xs text-white/60">{selectedEquipment.id}</p>
                               </div>
                               <Button
@@ -1990,7 +1990,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
       {/* 添加维护模板弹窗 */}
       <Dialog open={showAddTemplateModal} onOpenChange={setShowAddTemplateModal}>
-        <DialogContent>
+        <DialogContent className="bg-gray-900/95 text-white border-white/20">
           <DialogHeader>
             <DialogTitle>添加维护模板</DialogTitle>
             <DialogDescription>
@@ -2003,7 +2003,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
       {/* 编辑维护模板弹窗 */}
       <Dialog open={showEditTemplateModal} onOpenChange={setShowEditTemplateModal}>
-        <DialogContent>
+        <DialogContent className="bg-gray-900/95 text-white border-white/20">
           <DialogHeader>
             <DialogTitle>编辑维护模板</DialogTitle>
             <DialogDescription>
@@ -2016,7 +2016,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
       {/* 应用模板弹窗 */}
       <Dialog open={showApplyTemplateModal} onOpenChange={setShowApplyTemplateModal}>
-        <DialogContent>
+        <DialogContent className="bg-gray-900/95 text-white border-white/20">
           <DialogHeader>
             <DialogTitle>应用维护模板</DialogTitle>
             <DialogDescription>
@@ -2145,7 +2145,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
       {/* 添加维护计划弹窗 */}
       <Dialog open={showAddScheduleModal} onOpenChange={setShowAddScheduleModal}>
-        <DialogContent>
+        <DialogContent className="bg-gray-900/95 text-white border-white/20">
           <DialogHeader>
             <DialogTitle>添加维护计划</DialogTitle>
             <DialogDescription>
@@ -2158,7 +2158,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
       {/* 编辑维护计划弹窗 */}
       <Dialog open={showEditScheduleModal} onOpenChange={setShowEditScheduleModal}>
-        <DialogContent>
+        <DialogContent className="bg-gray-900/95 text-white border-white/20">
           <DialogHeader>
             <DialogTitle>编辑维护计划</DialogTitle>
             <DialogDescription>
