@@ -1529,7 +1529,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                                   </Select>
                                                 </div>
                                                 <div className="space-y-2">
-                                                  <Label className="text-xs text-white/80">首次维护日期</Label>
+                                                  <Label className="text-xs text-white/80">下次维护日期</Label>
                                                   <Popover>
                                                     <PopoverTrigger asChild>
                                                       <Button variant="outline" className="w-full h-8 text-xs justify-start bg-white/10 border-white/20 text-white hover:bg-white/20">
@@ -1757,12 +1757,17 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                       {plan.title}
                                     </CardTitle>
                                     {plan.description && (
-                                      <p className="text-xs text-white/60 mt-0.5 line-clamp-1">{plan.description}</p>
+                                      <p className="text-xs text-white/60 mt-0.5 whitespace-pre-wrap">{plan.description}</p>
                                     )}
                                     <div className="flex items-center gap-2 mt-1">
                                       <Badge className="text-xs bg-white/20 text-white border-white/30">{frequencyLabels[plan.frequency]}</Badge>
-                                      <span className="text-xs text-white/60">已关联 {plan.equipmentIds.length} 台设备</span>
                                     </div>
+                                    <p className="text-xs text-white/50 mt-0.5">
+                                      关联设备：{plan.equipmentIds.map(eid => {
+                                        const eq = activeEquipments.find(e => e.id === eid);
+                                        return eq ? eq.id : eid;
+                                      }).join('、')}
+                                    </p>
                                   </div>
                                 </div>
                               </CardHeader>
@@ -1816,118 +1821,6 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                         </div>
                       )}
 
-                      {/* 选中设备的维护计划 */}
-                      {selectedEquipment && selectedEquipmentId && (
-                        <>
-                          <Separator className="my-3 bg-white/20" />
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h4 className="font-medium text-sm text-white">{selectedEquipment.name} 的维护计划</h4>
-                                <p className="text-xs text-white/60">{selectedEquipment.id}</p>
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs bg-white/10 border-white/20 text-white hover:bg-white/20"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  resetScheduleForm();
-                                  setShowAddScheduleModal(true);
-                                }}
-                              >
-                                <Plus className="h-3.5 w-3.5 mr-1" />
-                                添加
-                              </Button>
-                            </div>
-
-                            {equipmentSchedules.length === 0 ? (
-                              <div className="text-center py-4">
-                                <Calendar className="h-6 w-6 mx-auto mb-2 text-white/30" />
-                                <p className="text-xs text-white/60">暂无维护计划</p>
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                {equipmentSchedules.map(schedule => {
-                                  const dueDate = new Date(schedule.next_due_date);
-                                  const today = new Date();
-                                  const isOverdue = dueDate < today;
-                                  const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                                  
-                                  return (
-                                    <Card key={schedule.id} className={isOverdue ? 'border-red-500/50 bg-red-500/10' : 'bg-white/5 border-white/20'}>
-                                      <CardHeader className="p-2.5 pb-1.5">
-                                        <div className="flex items-start justify-between">
-                                          <div className="flex-1 min-w-0">
-                                            <CardTitle className="text-xs font-medium truncate text-white">
-                                              {schedule.title}
-                                            </CardTitle>
-                                            {schedule.description && (
-                                              <p className="text-xs text-white/60 mt-0.5 line-clamp-1">
-                                                {schedule.description}
-                                              </p>
-                                            )}
-                                          </div>
-                                          <Badge className={`text-xs shrink-0 ml-2 h-5 ${isOverdue ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-white/20 text-white border-white/30'}`}>
-                                            {frequencyLabels[schedule.frequency]}
-                                          </Badge>
-                                        </div>
-                                      </CardHeader>
-                                      <CardContent className="p-2.5 pt-0 space-y-1.5">
-                                        <div className="flex items-center gap-3 text-xs">
-                                          <div className="flex items-center gap-1">
-                                            <Calendar className="h-3 w-3 text-white/60" />
-                                            <span className={isOverdue ? 'text-red-400 font-medium' : 'text-white'}>
-                                              {schedule.next_due_date}
-                                            </span>
-                                            {isOverdue && <span className="text-red-400">(已逾期)</span>}
-                                            {!isOverdue && daysUntil <= schedule.reminder_days_before && (
-                                              <span className="text-orange-500">(剩余{daysUntil}天)</span>
-                                            )}
-                                          </div>
-                                          {schedule.assigned_name && (
-                                            <div className="flex items-center gap-1">
-                                              <User className="h-3 w-3 text-white/60" />
-                                              <span>{schedule.assigned_name}</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-6 text-xs flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
-                                            onClick={() => handleCompleteSchedule(schedule)}
-                                          >
-                                            <Check className="h-3 w-3 mr-1" />
-                                            完成
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="h-6 w-6 p-0 text-white/60 hover:text-white hover:bg-white/10"
-                                            onClick={(e) => { e.stopPropagation(); handleEditSchedule(schedule); }}
-                                          >
-                                            <Edit2 className="h-3 w-3" />
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-white/10"
-                                            onClick={() => handleDeleteSchedule(schedule.id)}
-                                          >
-                                            <Trash2 className="h-3 w-3" />
-                                          </Button>
-                                        </div>
-                                      </CardContent>
-                                    </Card>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
                     </div>
                   </ScrollArea>
                 </>
@@ -2011,7 +1904,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
               <p className="text-sm text-white/60">将 "{linkingPlan.title}" 关联到更多设备</p>
             </DialogHeader>
             <div className="space-y-4 mt-2">
-              <div className="space-y-2"><Label className="text-white/80">首次维护日期</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20"><Calendar className="mr-2 h-4 w-4" />{linkDate ? format(linkDate, 'yyyy-MM-dd') : '选择日期'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0 z-[200]" align="start"><CalendarComponent mode="single" selected={linkDate} onSelect={setLinkDate} initialFocus className="pointer-events-auto" /></PopoverContent></Popover></div>
+              <div className="space-y-2"><Label className="text-white/80">下次维护日期</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20"><Calendar className="mr-2 h-4 w-4" />{linkDate ? format(linkDate, 'yyyy-MM-dd') : '选择日期'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0 z-[200]" align="start"><CalendarComponent mode="single" selected={linkDate} onSelect={setLinkDate} initialFocus className="pointer-events-auto" /></PopoverContent></Popover></div>
               <div className="space-y-2">
                 <Label className="text-white/80">选择设备</Label>
                 <p className="text-xs text-white/60">已关联 {linkingPlan.equipmentIds.length} 台，可选 {linkedEquipments.filter(eq => !linkingPlan.equipmentIds.includes(eq.id)).length} 台</p>
@@ -2049,7 +1942,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
               <p className="text-sm text-white/60">为 {linkedEquipments.find(eq => eq.id === equipmentLinkingId)?.name} 选择维护计划</p>
             </DialogHeader>
             <div className="space-y-4 mt-2">
-              <div className="space-y-2"><Label className="text-white/80">首次维护日期</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20"><Calendar className="mr-2 h-4 w-4" />{linkDate ? format(linkDate, 'yyyy-MM-dd') : '选择日期'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0 z-[200]" align="start"><CalendarComponent mode="single" selected={linkDate} onSelect={setLinkDate} initialFocus className="pointer-events-auto" /></PopoverContent></Popover></div>
+              <div className="space-y-2"><Label className="text-white/80">下次维护日期</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20"><Calendar className="mr-2 h-4 w-4" />{linkDate ? format(linkDate, 'yyyy-MM-dd') : '选择日期'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0 z-[200]" align="start"><CalendarComponent mode="single" selected={linkDate} onSelect={setLinkDate} initialFocus className="pointer-events-auto" /></PopoverContent></Popover></div>
               <div className="space-y-2">
                 <Label className="text-white/80">选择计划</Label>
                 <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
