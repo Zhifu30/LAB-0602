@@ -34,7 +34,7 @@ const Index = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
-  const { equipment, loading, tableSchema, addEquipment, updateEquipment, deleteEquipment, scrapEquipment: scrapEquipmentFn, importEquipment, fetchEquipment } = useEquipment();
+  const { equipment, loading, tableSchema, addEquipment, updateEquipment, deleteEquipment, scrapEquipment: scrapEquipmentFn, importEquipment, fetchEquipment } = useEquipment(true);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);

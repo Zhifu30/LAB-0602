@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Equipment, snakeToCamel, camelToSnake, buildColumnConfigs, ColumnConfig } from '@/types/equipment';
 import { useToast } from '@/hooks/use-toast';
 
-export const useEquipment = () => {
+export const useEquipment = (includeScrapped = false) => {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -46,12 +46,14 @@ export const useEquipment = () => {
   const fetchEquipment = async () => {
     try {
       setLoading(true);
-      // 查询未报废的设备（is_scrapped = false 或 is_scrapped = null）
-      const { data, error } = await supabase
+      // 默认排除报废设备，includeScrapped=true 时包含所有设备
+      let query = supabase
         .from('equipment')
-        .select('*')
-        .or('is_scrapped.eq.false,is_scrapped.is.null')
-        .order('created_at', { ascending: false });
+        .select('*');
+      if (!includeScrapped) {
+        query = query.or('is_scrapped.eq.false,is_scrapped.is.null');
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
         throw error;

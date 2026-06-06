@@ -1766,7 +1766,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                       <Button
                         size="sm"
                         className="h-7 text-xs"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           resetTemplateForm();
                           setShowAddTemplateModal(true);
                         }}
@@ -1808,7 +1809,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                     size="sm"
                                     variant="outline"
                                     className="h-7 text-xs flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       setApplyingTemplate(template);
                                       setApplyTemplateDate(getEndOfCurrentMonth());
                                       setApplyMode('all');
@@ -1823,7 +1825,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                     size="sm"
                                     variant="ghost"
                                     className="h-7 w-7 p-0 text-white/60 hover:text-white hover:bg-white/10"
-                                    onClick={() => handleEditTemplate(template)}
+                                    onClick={(e) => { e.stopPropagation(); handleEditTemplate(template); }}
                                   >
                                     <Edit2 className="h-3 w-3" />
                                   </Button>
@@ -1850,7 +1852,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                           <Button
                             size="sm"
                             className="bg-green-500 hover:bg-green-600 text-white border-0"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               resetTemplateForm();
                               setShowAddTemplateModal(true);
                             }}
@@ -1875,7 +1878,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                 size="sm"
                                 variant="outline"
                                 className="h-7 text-xs bg-white/10 border-white/20 text-white hover:bg-white/20"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   resetScheduleForm();
                                   setShowAddScheduleModal(true);
                                 }}
@@ -1950,7 +1954,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                             size="sm"
                                             variant="ghost"
                                             className="h-6 w-6 p-0 text-white/60 hover:text-white hover:bg-white/10"
-                                            onClick={() => handleEditSchedule(schedule)}
+                                            onClick={(e) => { e.stopPropagation(); handleEditSchedule(schedule); }}
                                           >
                                             <Edit2 className="h-3 w-3" />
                                           </Button>
@@ -1993,66 +1997,40 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       </DialogPrimitive.Root>
 
       {/* 添加维护模板弹窗 */}
-      <DialogPrimitive.Root modal={false} open={showAddTemplateModal} onOpenChange={setShowAddTemplateModal}>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm" />
-          <DialogPrimitive.Content
-            className="fixed left-[50%] top-[50%] z-[60] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 bg-black/40 backdrop-blur-md border-white/20 text-white sm:rounded-lg"
-            onInteractOutside={(e) => e.preventDefault()}
-            onPointerDownOutside={(e) => e.preventDefault()}
-          >
-            <DialogHeader>
-              <DialogTitle>添加维护模板</DialogTitle>
-              <DialogDescription>
-                为 {selectedType?.name} 类型创建维护计划模板
-              </DialogDescription>
-            </DialogHeader>
-            <TemplateFormContent onSubmit={handleAddTemplate} submitLabel="添加" />
-            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
-              <X className="h-4 w-4 text-white" />
-            </DialogPrimitive.Close>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
-      </DialogPrimitive.Root>
+      <Dialog open={showAddTemplateModal} onOpenChange={setShowAddTemplateModal}>
+        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
+          <DialogHeader>
+            <DialogTitle>添加维护模板</DialogTitle>
+            <DialogDescription>
+              为 {selectedType?.name} 类型创建维护计划模板
+            </DialogDescription>
+          </DialogHeader>
+          <TemplateFormContent onSubmit={handleAddTemplate} submitLabel="添加" />
+        </DialogContent>
+      </Dialog>
 
       {/* 编辑维护模板弹窗 */}
-      <DialogPrimitive.Root modal={false} open={showEditTemplateModal} onOpenChange={setShowEditTemplateModal}>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm" />
-          <DialogPrimitive.Content
-            className="fixed left-[50%] top-[50%] z-[60] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 bg-black/40 backdrop-blur-md border-white/20 text-white sm:rounded-lg"
-            onInteractOutside={(e) => e.preventDefault()}
-            onPointerDownOutside={(e) => e.preventDefault()}
-          >
-            <DialogHeader>
-              <DialogTitle>编辑维护模板</DialogTitle>
-              <DialogDescription>
-                修改 {editingTemplate?.title} 模板
-              </DialogDescription>
-            </DialogHeader>
-            <TemplateFormContent onSubmit={handleUpdateTemplate} submitLabel="保存" />
-            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
-              <X className="h-4 w-4 text-white" />
-            </DialogPrimitive.Close>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
-      </DialogPrimitive.Root>
+      <Dialog open={showEditTemplateModal} onOpenChange={setShowEditTemplateModal}>
+        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
+          <DialogHeader>
+            <DialogTitle>编辑维护模板</DialogTitle>
+            <DialogDescription>
+              修改 {editingTemplate?.title} 模板
+            </DialogDescription>
+          </DialogHeader>
+          <TemplateFormContent onSubmit={handleUpdateTemplate} submitLabel="保存" />
+        </DialogContent>
+      </Dialog>
 
       {/* 应用模板弹窗 */}
-      <DialogPrimitive.Root modal={false} open={showApplyTemplateModal} onOpenChange={setShowApplyTemplateModal}>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm" />
-          <DialogPrimitive.Content
-            className="fixed left-[50%] top-[50%] z-[60] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 bg-black/40 backdrop-blur-md border-white/20 text-white sm:rounded-lg"
-            onInteractOutside={(e) => e.preventDefault()}
-            onPointerDownOutside={(e) => e.preventDefault()}
-          >
-            <DialogHeader>
-              <DialogTitle>应用维护模板</DialogTitle>
-              <DialogDescription>
-                将 "{applyingTemplate?.title}" 模板应用到关联设备
-              </DialogDescription>
-            </DialogHeader>
+      <Dialog open={showApplyTemplateModal} onOpenChange={setShowApplyTemplateModal}>
+        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
+          <DialogHeader>
+            <DialogTitle>应用维护模板</DialogTitle>
+            <DialogDescription>
+              将 "{applyingTemplate?.title}" 模板应用到关联设备
+            </DialogDescription>
+          </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label className="text-white/80">首次维护日期</Label>
@@ -2074,7 +2052,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                 </PopoverContent>
               </Popover>
             </div>
-            
+
             <div className="space-y-2">
               <Label className="text-white/80">应用范围</Label>
               <div className="flex flex-col gap-2">
@@ -2170,58 +2148,34 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
               </Button>
             </DialogFooter>
           </div>
-          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
-            <X className="h-4 w-4 text-white" />
-          </DialogPrimitive.Close>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+        </DialogContent>
+      </Dialog>
 
       {/* 添加维护计划弹窗 */}
-      <DialogPrimitive.Root modal={false} open={showAddScheduleModal} onOpenChange={setShowAddScheduleModal}>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm" />
-          <DialogPrimitive.Content
-            className="fixed left-[50%] top-[50%] z-[60] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 bg-black/40 backdrop-blur-md border-white/20 text-white sm:rounded-lg"
-            onInteractOutside={(e) => e.preventDefault()}
-            onPointerDownOutside={(e) => e.preventDefault()}
-          >
-            <DialogHeader>
-              <DialogTitle>添加维护计划</DialogTitle>
-              <DialogDescription>
-                为 {selectedEquipment?.name} 添加新的维护计划
-              </DialogDescription>
-            </DialogHeader>
-            <ScheduleFormContent onSubmit={handleAddSchedule} submitLabel="添加" />
-            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
-              <X className="h-4 w-4 text-white" />
-            </DialogPrimitive.Close>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
-      </DialogPrimitive.Root>
+      <Dialog open={showAddScheduleModal} onOpenChange={setShowAddScheduleModal}>
+        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
+          <DialogHeader>
+            <DialogTitle>添加维护计划</DialogTitle>
+            <DialogDescription>
+              为 {selectedEquipment?.name} 添加新的维护计划
+            </DialogDescription>
+          </DialogHeader>
+          <ScheduleFormContent onSubmit={handleAddSchedule} submitLabel="添加" />
+        </DialogContent>
+      </Dialog>
 
       {/* 编辑维护计划弹窗 */}
-      <DialogPrimitive.Root modal={false} open={showEditScheduleModal} onOpenChange={setShowEditScheduleModal}>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm" />
-          <DialogPrimitive.Content
-            className="fixed left-[50%] top-[50%] z-[60] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 bg-black/40 backdrop-blur-md border-white/20 text-white sm:rounded-lg"
-            onInteractOutside={(e) => e.preventDefault()}
-            onPointerDownOutside={(e) => e.preventDefault()}
-          >
-            <DialogHeader>
-              <DialogTitle>编辑维护计划</DialogTitle>
-              <DialogDescription>
-                修改 {editingSchedule?.title} 的维护计划
-              </DialogDescription>
-            </DialogHeader>
-            <ScheduleFormContent onSubmit={handleUpdateSchedule} submitLabel="保存" />
-            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
-              <X className="h-4 w-4 text-white" />
-            </DialogPrimitive.Close>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
-      </DialogPrimitive.Root>
+      <Dialog open={showEditScheduleModal} onOpenChange={setShowEditScheduleModal}>
+        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
+          <DialogHeader>
+            <DialogTitle>编辑维护计划</DialogTitle>
+            <DialogDescription>
+              修改 {editingSchedule?.title} 的维护计划
+            </DialogDescription>
+          </DialogHeader>
+          <ScheduleFormContent onSubmit={handleUpdateSchedule} submitLabel="保存" />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
