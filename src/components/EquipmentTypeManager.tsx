@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -231,15 +233,6 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   // 打开弹窗时：从数据库加载类型（并在需要时把旧 localStorage 数据迁移进数据库）
   useEffect(() => {
     if (isOpen) {
-      // 使弹窗遮罩完全透明
-      setTimeout(() => {
-        document.querySelectorAll('[data-state="open"]').forEach(el => {
-          if (el instanceof HTMLElement && !el.hasAttribute('role') && el.style.position === 'fixed') {
-            el.style.background = 'transparent';
-            el.style.backdropFilter = 'none';
-          }
-        });
-      }, 100);
       let cancelled = false;
 
       const load = async () => {
@@ -1299,13 +1292,16 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
   return (
     <>
-            <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col border-0 rounded-xl equipment-type-overlay" style={{
+      <DialogPrimitive.Root open={isOpen} onOpenChange={onClose} modal={false}>
+        <DialogPrimitive.Content className={cn(
+          "fixed left-[50%] top-[50%] z-50 grid translate-x-[-50%] translate-y-[-50%] shadow-2xl duration-200",
+          "max-w-6xl max-h-[85vh] w-[95vw] overflow-hidden flex flex-col border-0 rounded-xl",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+        )} style={{
             backgroundImage: selectedType?.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.imageUrl ? `url(${linkedEquipments[0].imageUrl})` : undefined,
             backgroundSize: 'cover', backgroundPosition: 'center',
           }}>
-            {/* 暗色渐变遮罩 — 与 EquipmentDetailModal 一致 */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black/80 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black/80 pointer-events-none rounded-lg" />
           <DialogHeader className="relative">
             <DialogTitle className="flex items-center gap-2 text-white drop-shadow">
               <Tags className="h-5 w-5" />
@@ -1987,8 +1983,11 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
               )}
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        <DialogPrimitive.Close className="absolute right-4 top-4 z-20 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
+            <X className="h-4 w-4 text-white" />
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Root>
 
       {/* 添加维护模板弹窗 */}
       <Dialog open={showAddTemplateModal} onOpenChange={setShowAddTemplateModal}>
