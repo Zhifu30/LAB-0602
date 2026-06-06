@@ -1753,7 +1753,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                   <div className="p-3 border-b border-white/20 bg-white/5">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                        <h3 className="font-semibold text-sm flex items-center gap-1.5 text-white drop-shadow">
                           <FileText className="h-4 w-4" />
                           维护计划模板
                         </h3>
@@ -1843,9 +1843,9 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                           <FileText className="h-8 w-8 mx-auto mb-2 text-white/60/30" />
                           <p className="text-sm text-white/60 mb-2">暂无维护模板</p>
                           <p className="text-xs text-white/60 mb-3">创建模板后可批量应用到关联设备</p>
-                          <Button 
-                            variant="outline" 
+                          <Button
                             size="sm"
+                            className="bg-green-500 hover:bg-green-600 text-white border-0"
                             onClick={() => {
                               resetTemplateForm();
                               setShowAddTemplateModal(true);
