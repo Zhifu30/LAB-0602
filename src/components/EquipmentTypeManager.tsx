@@ -1787,6 +1787,13 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                               equipmentIds={eq ? [eq.id] : [schedule.equipment_id]}
                               actions={
                                 <>
+                                  <Button size="sm" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
+                                    onClick={(e) => { e.stopPropagation();
+                                      const plan = planGroups.find(p => p.title === schedule.title && p.frequency === schedule.frequency);
+                                      if (plan) { setLinkingPlan(plan); setLinkDate(getEndOfCurrentMonth());
+                                        const unlinked = linkedEquipments.filter(eq => !plan.equipmentIds.includes(eq.id)).map(eq => eq.id);
+                                        setLinkEquipmentIds(new Set(unlinked)); setShowLinkEquipmentModal(true); }
+                                    }} title="关联设备"><Link2 className="h-3.5 w-3.5" /></Button>
                                   <Button size="sm" className="h-7 w-7 p-0 bg-green-500 hover:bg-green-600 text-white"
                                     onClick={() => handleCompleteSchedule(schedule)} title="完成"><Check className="h-3.5 w-3.5" /></Button>
                                   <Button size="sm" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
