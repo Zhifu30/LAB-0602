@@ -1778,6 +1778,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             const uniqueNames = [...new Set(names)];
                             const assignee = uniqueNames.length === 1 ? uniqueNames[0] : (uniqueNames.length > 1 ? `${uniqueNames[0]} 等` : '');
                             const isOverdue = earliestDate && new Date(earliestDate) < new Date();
+                            const daysUntilDue = earliestDate ? Math.ceil((new Date(earliestDate).getTime() - Date.now()) / 86400000) : undefined;
                             const sortedEids = [...plan.equipmentIds].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
                             return (
                             <MaintenancePlanCard
@@ -1788,6 +1789,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                               nextDueDate={earliestDate || undefined}
                               assignedName={assignee || undefined}
                               reminderDaysBefore={plan.reminder_days_before}
+                              daysUntilDue={daysUntilDue}
                               equipmentIds={sortedEids.map(eid => { const eq = activeEquipments.find(e => e.id === eid); return eq ? eq.id : eid; })}
                               actions={
                                 <>
