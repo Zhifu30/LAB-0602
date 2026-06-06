@@ -2004,186 +2004,135 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         </DialogPrimitive.Content>
       </DialogPrimitive.Root>
 
-      {/* 添加维护模板弹窗 */}
-      <Dialog modal={false} open={showAddTemplateModal} onOpenChange={setShowAddTemplateModal}>
-        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle>添加维护模板</DialogTitle>
-            <DialogDescription>
-              为 {selectedType?.name} 类型创建维护计划模板
-            </DialogDescription>
-          </DialogHeader>
-          <TemplateFormContent onSubmit={handleAddTemplate} submitLabel="添加" />
-        </DialogContent>
-      </Dialog>
+      {/* 添加维护模板弹窗 — 纯 div，不用 Dialog 避免与外部 DialogPrimitive 冲突 */}
+      {showAddTemplateModal && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={() => setShowAddTemplateModal(false)} />
+          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
+            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => setShowAddTemplateModal(false)}><X className="h-4 w-4" /></button>
+            <DialogHeader>
+              <DialogTitle>添加维护模板</DialogTitle>
+              <DialogDescription>为 {selectedType?.name} 类型创建维护计划模板</DialogDescription>
+            </DialogHeader>
+            <TemplateFormContent onSubmit={handleAddTemplate} submitLabel="添加" />
+          </div>
+        </>
+      )}
 
       {/* 编辑维护模板弹窗 */}
-      <Dialog modal={false} open={showEditTemplateModal} onOpenChange={setShowEditTemplateModal}>
-        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle>编辑维护模板</DialogTitle>
-            <DialogDescription>
-              修改 {editingTemplate?.title} 模板
-            </DialogDescription>
-          </DialogHeader>
-          <TemplateFormContent onSubmit={handleUpdateTemplate} submitLabel="保存" />
-        </DialogContent>
-      </Dialog>
+      {showEditTemplateModal && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={() => { setShowEditTemplateModal(false); setEditingTemplate(null); resetTemplateForm(); }} />
+          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
+            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowEditTemplateModal(false); setEditingTemplate(null); resetTemplateForm(); }}><X className="h-4 w-4" /></button>
+            <DialogHeader>
+              <DialogTitle>编辑维护模板</DialogTitle>
+              <DialogDescription>修改 {editingTemplate?.title} 模板</DialogDescription>
+            </DialogHeader>
+            <TemplateFormContent onSubmit={handleUpdateTemplate} submitLabel="保存" />
+          </div>
+        </>
+      )}
 
       {/* 应用模板弹窗 */}
-      <Dialog modal={false} open={showApplyTemplateModal} onOpenChange={setShowApplyTemplateModal}>
-        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle>应用维护模板</DialogTitle>
-            <DialogDescription>
-              将 "{applyingTemplate?.title}" 模板应用到关联设备
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-white/80">首次维护日期</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {applyTemplateDate ? format(applyTemplateDate, 'yyyy-MM-dd') : '选择日期'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 z-[200]" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={applyTemplateDate}
-                    onSelect={setApplyTemplateDate}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-white/80">应用范围</Label>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    id="apply-all"
-                    checked={applyMode === 'all'}
-                    onChange={() => setApplyMode('all')}
-                    className="h-4 w-4 accent-white"
-                  />
-                  <Label htmlFor="apply-all" className="text-sm font-normal text-white">
-                    所有关联设备 ({linkedEquipments.length}台)
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    id="apply-selected"
-                    checked={applyMode === 'selected'}
-                    onChange={() => setApplyMode('selected')}
-                    className="h-4 w-4 accent-white"
-                  />
-                  <Label htmlFor="apply-selected" className="text-sm font-normal text-white">
-                    选择特定设备
-                  </Label>
-                </div>
-              </div>
-            </div>
-
-            {applyMode === 'selected' && (
+      {showApplyTemplateModal && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={() => { setShowApplyTemplateModal(false); setApplyingTemplate(null); setTemplateSelectedIds(new Set()); }} />
+          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg max-h-[90vh] overflow-y-auto">
+            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowApplyTemplateModal(false); setApplyingTemplate(null); setTemplateSelectedIds(new Set()); }}><X className="h-4 w-4" /></button>
+            <DialogHeader>
+              <DialogTitle>应用维护模板</DialogTitle>
+              <DialogDescription>将 "{applyingTemplate?.title}" 模板应用到关联设备</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-white/80">选择设备</Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs text-white hover:bg-white/10"
-                    onClick={() => {
-                      if (templateSelectedIds.size === linkedEquipments.length) {
-                        setTemplateSelectedIds(new Set());
-                      } else {
-                        setTemplateSelectedIds(new Set(linkedEquipments.map(eq => eq.id)));
-                      }
-                    }}
-                  >
-                    {templateSelectedIds.size === linkedEquipments.length ? '取消全选' : '全选'}
-                  </Button>
-                </div>
-                <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
-                  <div className="space-y-1">
-                    {linkedEquipments.map(eq => (
-                      <div key={eq.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
-                        <Checkbox
-                          id={`template-eq-${eq.id}`}
-                          checked={templateSelectedIds.has(eq.id)}
-                          onCheckedChange={(checked) => {
-                            const newSet = new Set(templateSelectedIds);
-                            if (checked) {
-                              newSet.add(eq.id);
-                            } else {
-                              newSet.delete(eq.id);
-                            }
-                            setTemplateSelectedIds(newSet);
-                          }}
-                        />
-                        <Label htmlFor={`template-eq-${eq.id}`} className="text-sm font-normal flex-1 cursor-pointer text-white">
-                          <span className="font-medium">{eq.name}</span>
-                          <span className="text-white/60 ml-2 text-xs">{eq.id}</span>
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-                {applyMode === 'selected' && (
-                  <p className="text-xs text-white/60">
-                    已选择 {templateSelectedIds.size} 台设备
-                  </p>
-                )}
+                <Label className="text-white/80">首次维护日期</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {applyTemplateDate ? format(applyTemplateDate, 'yyyy-MM-dd') : '选择日期'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[200]" align="start">
+                    <CalendarComponent mode="single" selected={applyTemplateDate} onSelect={setApplyTemplateDate} initialFocus className="pointer-events-auto" />
+                  </PopoverContent>
+                </Popover>
               </div>
-            )}
-
-            <DialogFooter>
-              <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => {
-                setShowApplyTemplateModal(false);
-                setApplyingTemplate(null);
-                setTemplateSelectedIds(new Set());
-              }}>
-                取消
-              </Button>
-              <Button onClick={handleApplyTemplate}>
-                确认应用
-              </Button>
-            </DialogFooter>
+              <div className="space-y-2">
+                <Label className="text-white/80">应用范围</Label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <input type="radio" id="apply-all" checked={applyMode === 'all'} onChange={() => setApplyMode('all')} className="h-4 w-4 accent-white" />
+                    <Label htmlFor="apply-all" className="text-sm font-normal text-white">所有关联设备 ({linkedEquipments.length}台)</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input type="radio" id="apply-selected" checked={applyMode === 'selected'} onChange={() => setApplyMode('selected')} className="h-4 w-4 accent-white" />
+                    <Label htmlFor="apply-selected" className="text-sm font-normal text-white">选择特定设备</Label>
+                  </div>
+                </div>
+              </div>
+              {applyMode === 'selected' && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-white/80">选择设备</Label>
+                    <Button variant="ghost" size="sm" className="h-6 text-xs text-white hover:bg-white/10" onClick={() => { if (templateSelectedIds.size === linkedEquipments.length) { setTemplateSelectedIds(new Set()); } else { setTemplateSelectedIds(new Set(linkedEquipments.map(eq => eq.id))); } }}>
+                      {templateSelectedIds.size === linkedEquipments.length ? '取消全选' : '全选'}
+                    </Button>
+                  </div>
+                  <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
+                    <div className="space-y-1">
+                      {linkedEquipments.map(eq => (
+                        <div key={eq.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
+                          <Checkbox id={`template-eq-${eq.id}`} checked={templateSelectedIds.has(eq.id)} onCheckedChange={(checked) => { const newSet = new Set(templateSelectedIds); if (checked) { newSet.add(eq.id); } else { newSet.delete(eq.id); } setTemplateSelectedIds(newSet); }} />
+                          <Label htmlFor={`template-eq-${eq.id}`} className="text-sm font-normal flex-1 cursor-pointer text-white">
+                            <span className="font-medium">{eq.name}</span><span className="text-white/60 ml-2 text-xs">{eq.id}</span>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                  <p className="text-xs text-white/60">已选择 {templateSelectedIds.size} 台设备</p>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowApplyTemplateModal(false); setApplyingTemplate(null); setTemplateSelectedIds(new Set()); }}>取消</Button>
+                <Button onClick={handleApplyTemplate}>确认应用</Button>
+              </DialogFooter>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </>
+      )}
 
       {/* 添加维护计划弹窗 */}
-      <Dialog modal={false} open={showAddScheduleModal} onOpenChange={setShowAddScheduleModal}>
-        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle>添加维护计划</DialogTitle>
-            <DialogDescription>
-              为 {selectedEquipment?.name} 添加新的维护计划
-            </DialogDescription>
-          </DialogHeader>
-          <ScheduleFormContent onSubmit={handleAddSchedule} submitLabel="添加" />
-        </DialogContent>
-      </Dialog>
+      {showAddScheduleModal && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={() => setShowAddScheduleModal(false)} />
+          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
+            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => setShowAddScheduleModal(false)}><X className="h-4 w-4" /></button>
+            <DialogHeader>
+              <DialogTitle>添加维护计划</DialogTitle>
+              <DialogDescription>为 {selectedEquipment?.name} 添加新的维护计划</DialogDescription>
+            </DialogHeader>
+            <ScheduleFormContent onSubmit={handleAddSchedule} submitLabel="添加" />
+          </div>
+        </>
+      )}
 
       {/* 编辑维护计划弹窗 */}
-      <Dialog modal={false} open={showEditScheduleModal} onOpenChange={setShowEditScheduleModal}>
-        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle>编辑维护计划</DialogTitle>
-            <DialogDescription>
-              修改 {editingSchedule?.title} 的维护计划
-            </DialogDescription>
-          </DialogHeader>
-          <ScheduleFormContent onSubmit={handleUpdateSchedule} submitLabel="保存" />
-        </DialogContent>
-      </Dialog>
+      {showEditScheduleModal && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={() => { setShowEditScheduleModal(false); setEditingSchedule(null); resetScheduleForm(); }} />
+          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
+            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowEditScheduleModal(false); setEditingSchedule(null); resetScheduleForm(); }}><X className="h-4 w-4" /></button>
+            <DialogHeader>
+              <DialogTitle>编辑维护计划</DialogTitle>
+              <DialogDescription>修改 {editingSchedule?.title} 的维护计划</DialogDescription>
+            </DialogHeader>
+            <ScheduleFormContent onSubmit={handleUpdateSchedule} submitLabel="保存" />
+          </div>
+        </>
+      )}
     </>
   );
 };
