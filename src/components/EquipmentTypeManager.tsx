@@ -2005,7 +2005,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       </DialogPrimitive.Root>
 
       {/* 添加维护模板弹窗 */}
-      <Dialog open={showAddTemplateModal} onOpenChange={setShowAddTemplateModal}>
+      <Dialog modal={false} open={showAddTemplateModal} onOpenChange={setShowAddTemplateModal}>
         <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
           <DialogHeader>
             <DialogTitle>添加维护模板</DialogTitle>
@@ -2018,7 +2018,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       </Dialog>
 
       {/* 编辑维护模板弹窗 */}
-      <Dialog open={showEditTemplateModal} onOpenChange={setShowEditTemplateModal}>
+      <Dialog modal={false} open={showEditTemplateModal} onOpenChange={setShowEditTemplateModal}>
         <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
           <DialogHeader>
             <DialogTitle>编辑维护模板</DialogTitle>
@@ -2031,7 +2031,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       </Dialog>
 
       {/* 应用模板弹窗 */}
-      <Dialog open={showApplyTemplateModal} onOpenChange={setShowApplyTemplateModal}>
+      <Dialog modal={false} open={showApplyTemplateModal} onOpenChange={setShowApplyTemplateModal}>
         <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
           <DialogHeader>
             <DialogTitle>应用维护模板</DialogTitle>
@@ -2160,7 +2160,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       </Dialog>
 
       {/* 添加维护计划弹窗 */}
-      <Dialog open={showAddScheduleModal} onOpenChange={setShowAddScheduleModal}>
+      <Dialog modal={false} open={showAddScheduleModal} onOpenChange={setShowAddScheduleModal}>
         <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
           <DialogHeader>
             <DialogTitle>添加维护计划</DialogTitle>
@@ -2173,7 +2173,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       </Dialog>
 
       {/* 编辑维护计划弹窗 */}
-      <Dialog open={showEditScheduleModal} onOpenChange={setShowEditScheduleModal}>
+      <Dialog modal={false} open={showEditScheduleModal} onOpenChange={setShowEditScheduleModal}>
         <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
           <DialogHeader>
             <DialogTitle>编辑维护计划</DialogTitle>
