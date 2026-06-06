@@ -231,6 +231,15 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   // 打开弹窗时：从数据库加载类型（并在需要时把旧 localStorage 数据迁移进数据库）
   useEffect(() => {
     if (isOpen) {
+      // 使弹窗遮罩完全透明
+      setTimeout(() => {
+        document.querySelectorAll('[data-state="open"]').forEach(el => {
+          if (el instanceof HTMLElement && !el.hasAttribute('role') && el.style.position === 'fixed') {
+            el.style.background = 'transparent';
+            el.style.backdropFilter = 'none';
+          }
+        });
+      }, 100);
       let cancelled = false;
 
       const load = async () => {
@@ -1290,8 +1299,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
   return (
     <>
-      <style>{`.equipment-type-overlay [data-slot="dialog-overlay"] { background: transparent !important; backdrop-filter: none !important; }`}</style>
-      <Dialog open={isOpen} onOpenChange={onClose}>
+            <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col border-0 rounded-xl equipment-type-overlay" style={{
             backgroundImage: selectedType?.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.imageUrl ? `url(${linkedEquipments[0].imageUrl})` : undefined,
             backgroundSize: 'cover', backgroundPosition: 'center',
