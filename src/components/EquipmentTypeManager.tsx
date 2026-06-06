@@ -1696,8 +1696,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                 </div>
                               </div>
                               <Button
-                                size="sm" variant="ghost"
-                                className="h-6 text-xs text-blue-400 hover:text-blue-300 hover:bg-white/10 shrink-0"
+                                size="sm"
+                                className="h-6 text-xs bg-blue-500 hover:bg-blue-600 text-white border-0 shrink-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setEquipmentLinkingId(eq.id);
@@ -1817,9 +1817,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                   }).join('、')}
                                 </p>
                                 <div className="flex items-center gap-1">
-                                  <Button
-                                    size="sm" variant="outline"
-                                    className="h-6 text-xs flex-1 bg-white/10 border-blue-400/40 text-blue-300 hover:bg-blue-500/20"
+                                  <Button size="sm"
+                                    className="h-7 text-xs flex-1 bg-blue-500 hover:bg-blue-600 text-white border-0"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setLinkingPlan(plan);
@@ -1829,16 +1828,15 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                       setShowLinkEquipmentModal(true);
                                     }}
                                   >
-                                    <Link2 className="h-3 w-3 mr-1" />
-                                    关联设备
+                                    <Link2 className="h-3 w-3 mr-1" />关联设备
                                   </Button>
-                                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-white/60 hover:text-white hover:bg-white/10"
-                                    onClick={(e) => { e.stopPropagation(); handleEditPlan(plan); }}>
-                                    <Edit2 className="h-3 w-3" />
+                                  <Button size="sm" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
+                                    onClick={(e) => { e.stopPropagation(); handleEditPlan(plan); }} title="编辑计划">
+                                    <Edit2 className="h-3.5 w-3.5" />
                                   </Button>
-                                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-white/10"
-                                    onClick={() => handleDeletePlan(plan)}>
-                                    <Trash2 className="h-3 w-3" />
+                                  <Button size="sm" className="h-7 w-7 p-0 bg-red-500 hover:bg-red-600 text-white"
+                                    onClick={() => handleDeletePlan(plan)} title="删除计划">
+                                    <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
                               </CardContent>
