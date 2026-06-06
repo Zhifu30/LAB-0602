@@ -2058,14 +2058,14 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       )}
 
       {/* 编辑维护计划弹窗 */}
-      {showEditScheduleModal && (
+      {showEditScheduleModal && editingSchedule && (
         <>
           <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
-          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
+          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg" key={editingSchedule.id}>
             <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowEditScheduleModal(false); setEditingSchedule(null); resetScheduleForm(); }}><X className="h-4 w-4" /></button>
             <DialogHeader>
               <h2 className="text-lg font-semibold leading-none tracking-tight">编辑维护计划</h2>
-              <p className="text-sm text-white/60">修改 {editingSchedule?.title} 的维护计划</p>
+              <p className="text-sm text-white/60">修改 {editingSchedule.title} 的维护计划</p>
             </DialogHeader>
             <ScheduleFormContent onSubmit={handleUpdateSchedule} submitLabel="保存" />
           </div>
