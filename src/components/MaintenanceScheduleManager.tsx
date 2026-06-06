@@ -664,7 +664,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
 
       {/* 关联设备弹窗 */}
       <Dialog modal={false} open={showLinkEquipModal} onOpenChange={setShowLinkEquipModal}>
-        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white">
+        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white z-[60]">
           <DialogHeader>
             <DialogTitle>关联到其他设备</DialogTitle>
           </DialogHeader>
