@@ -485,7 +485,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
       </CardContent>
 
       {/* Add Schedule Modal */}
-      <Dialog modal={false} open={showAddModal} onOpenChange={setShowAddModal}>
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>添加维护计划</DialogTitle>
@@ -574,7 +574,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
       </Dialog>
 
       {/* Edit Schedule Modal */}
-      <Dialog modal={false} open={showEditModal} onOpenChange={setShowEditModal}>
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>编辑维护计划</DialogTitle>
@@ -663,8 +663,8 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
       </Dialog>
 
       {/* 关联设备弹窗 */}
-      <Dialog modal={false} open={showLinkEquipModal} onOpenChange={setShowLinkEquipModal}>
-        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white z-[60]">
+      <Dialog open={showLinkEquipModal} onOpenChange={setShowLinkEquipModal}>
+        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white z-[70]">
           <DialogHeader>
             <DialogTitle>关联到其他设备</DialogTitle>
           </DialogHeader>
