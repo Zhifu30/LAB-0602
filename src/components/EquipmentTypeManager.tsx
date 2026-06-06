@@ -1863,9 +1863,9 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                       {schedule.assigned_name && <><User className="h-3 w-3 text-white/60 ml-1" /><span>{schedule.assigned_name}</span></>}
                                     </div>
                                     <div className="flex items-center gap-1">
-                                      <Button size="sm" variant="outline" className="h-6 text-xs flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                                      <Button size="sm" className="h-6 text-xs flex-1 bg-green-500 hover:bg-green-600 text-white border-0"
                                         onClick={() => handleCompleteSchedule(schedule)}><Check className="h-3 w-3 mr-1" />完成</Button>
-                                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-white/60 hover:text-white hover:bg-white/10"
+                                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-blue-400 hover:text-blue-300 hover:bg-white/10"
                                         onClick={(e) => { e.stopPropagation(); handleEditSchedule(schedule); }}><Edit2 className="h-3 w-3" /></Button>
                                       <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-white/10"
                                         onClick={() => handleDeleteSchedule(schedule.id)}><Trash2 className="h-3 w-3" /></Button>
