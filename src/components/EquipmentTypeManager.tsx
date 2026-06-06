@@ -1798,8 +1798,19 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                       setLinkEquipmentIds(new Set(unlinked)); setShowLinkEquipmentModal(true);
                                     }} title="关联设备"><Link2 className="h-3.5 w-3.5" /></Button>
                                   {plan.schedules.length === 1 && (
-                                    <Button size="sm" className="h-7 w-7 p-0 bg-green-500 hover:bg-green-600 text-white"
-                                      onClick={() => handleCompleteSchedule(plan.schedules[0])} title="完成"><Check className="h-3.5 w-3.5" /></Button>
+                                    <>
+                                      <Button size="sm" className="h-7 w-7 p-0 bg-orange-500 hover:bg-orange-600 text-white"
+                                        onClick={async () => {
+                                          const s = plan.schedules[0];
+                                          try {
+                                            const recipients = [s.assigned_email, 'zhifu.feng@brightfuture.com.hk'].filter(Boolean);
+                                            await supabase.functions.invoke('send-equipment-notification', { body: { scheduleId: s.id, equipmentId: s.equipment_id, equipmentName: '', status: 'maintenance-reminder', recipients, scheduleTitle: s.title, nextDueDate: s.next_due_date } });
+                                            toast({ title: '已发送', description: '提醒已发送' });
+                                          } catch { toast({ title: '发送失败', variant: 'destructive' as const }); }
+                                        }} title="发送提醒"><Bell className="h-3.5 w-3.5" /></Button>
+                                      <Button size="sm" className="h-7 w-7 p-0 bg-green-500 hover:bg-green-600 text-white"
+                                        onClick={() => handleCompleteSchedule(plan.schedules[0])} title="完成"><Check className="h-3.5 w-3.5" /></Button>
+                                    </>
                                   )}
                                   <Button size="sm" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
                                     onClick={(e) => { e.stopPropagation(); handleEditPlan(plan); }} title="编辑计划"><Edit2 className="h-3.5 w-3.5" /></Button>
