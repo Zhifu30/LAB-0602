@@ -1300,7 +1300,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             </p>
           </DialogHeader>
 
-          <div className="flex-1 grid grid-cols-[280px_minmax(200px,1fr)_minmax(180px,1fr)] gap-3 overflow-hidden relative">
+          <div className="flex-1 grid grid-cols-[260px_minmax(180px,0.8fr)_minmax(160px,0.7fr)_minmax(120px,0.4fr)] gap-3 overflow-hidden relative">
             {/* 第一列：类型列表 */}
             <div className="flex flex-col space-y-3 overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 p-3">
               <h3 className="font-semibold text-sm flex items-center gap-2 text-white drop-shadow">
@@ -1879,6 +1879,25 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                 </div>
               )}
             </div>
+
+            {/* 第四列：背景图 */}
+            {selectedType && (
+              <div className="flex flex-col overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
+                <div className="p-3 border-b border-white/20 bg-white/5">
+                  <h3 className="font-semibold text-sm text-white drop-shadow">{selectedType.name}</h3>
+                </div>
+                <div className="flex-1 relative" style={{
+                  backgroundImage: selectedType.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.imageUrl ? `url(${linkedEquipments[0].imageUrl})` : undefined,
+                  backgroundSize: 'cover', backgroundPosition: 'center',
+                }}>
+                  {!(selectedType.sharedImageUrl || linkedEquipments[0]?.imageUrl) && (
+                    <div className="absolute inset-0 flex items-center justify-center text-white/40">
+                      <p className="text-xs text-center">暂无背景图<br/>上传类型共享图片</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         <button onClick={onClose} className="absolute right-4 top-4 z-20 rounded-sm opacity-70 transition-opacity hover:opacity-100">
             <X className="h-4 w-4 text-white" />
