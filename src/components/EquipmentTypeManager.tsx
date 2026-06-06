@@ -732,11 +732,16 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   };
 
   // ========== 维护模板管理功能 ==========
-  const resetTemplateForm = () => {
-    setTemplateFormData({ title: '', description: '', frequency: 'monthly', reminder_days_before: 7 });
+  const resetTemplateForm = (prefillTitle?: string) => {
+    setTemplateFormData({ title: prefillTitle || '', description: '', frequency: 'monthly', reminder_days_before: 7 });
     clearTemplateForm();
     tplFreqRef.current = 'monthly';
     tplRemindRef.current = 7;
+    if (prefillTitle) {
+      setTimeout(() => {
+        if (tplTitleRef.current) tplTitleRef.current.value = prefillTitle;
+      }, 60);
+    }
   };
 
   const handleAddTemplate = () => {
@@ -1779,7 +1784,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                         className="h-7 text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          resetTemplateForm();
+                          resetTemplateForm('月度维护');
                           setShowAddTemplateModal(true);
                         }}
                       >
@@ -1865,7 +1870,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             className="bg-green-500 hover:bg-green-600 text-white border-0"
                             onClick={(e) => {
                               e.stopPropagation();
-                              resetTemplateForm();
+                              resetTemplateForm('月度维护');
                               setShowAddTemplateModal(true);
                             }}
                           >
