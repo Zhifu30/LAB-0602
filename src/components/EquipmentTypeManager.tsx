@@ -1132,18 +1132,18 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const TemplateFormContent = ({ onSubmit, submitLabel }: { onSubmit: () => void; submitLabel: string }) => (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>模板标题 *</Label>
+        <Label className="text-white/80">模板标题 *</Label>
         <Input ref={tplTitleRef} placeholder="输入维护模板标题" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
       </div>
       <div className="space-y-2">
-        <Label>描述</Label>
+        <Label className="text-white/80">描述</Label>
         <Textarea ref={tplDescRef as any} placeholder="输入维护描述" rows={2} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>维护周期</Label>
+          <Label className="text-white/80">维护周期</Label>
           <Select defaultValue="monthly" onValueChange={(v: any) => { tplFreqRef.current = v; }}>
-            <SelectTrigger>
+            <SelectTrigger className="bg-white/10 border-white/20 text-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1154,18 +1154,19 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>提前提醒天数</Label>
+          <Label className="text-white/80">提前提醒天数</Label>
           <Input
             type="number"
             min={1}
             max={30}
             value={templateFormData.reminder_days_before}
             onBlur={(e) => { tplRemindRef.current = parseInt(e.target.value) || 7; }}
+            className="bg-white/10 border-white/20 text-white"
           />
         </div>
       </div>
       <DialogFooter>
-        <Button variant="outline" onClick={() => {
+        <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => {
           setShowAddTemplateModal(false);
           setShowEditTemplateModal(false);
           setEditingTemplate(null);
@@ -1182,30 +1183,32 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const ScheduleFormContent = ({ onSubmit, submitLabel }: { onSubmit: () => void; submitLabel: string }) => (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>维护标题 *</Label>
+        <Label className="text-white/80">维护标题 *</Label>
         <Input
           value={scheduleFormData.title}
           onChange={(e) => setScheduleFormData(prev => ({ ...prev, title: e.target.value }))}
           placeholder="输入维护标题"
+          className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
         />
       </div>
       <div className="space-y-2">
-        <Label>描述</Label>
+        <Label className="text-white/80">描述</Label>
         <Textarea
           value={scheduleFormData.description}
           onChange={(e) => setScheduleFormData(prev => ({ ...prev, description: e.target.value }))}
           placeholder="输入维护描述"
           rows={2}
+          className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
         />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>维护周期</Label>
+          <Label className="text-white/80">维护周期</Label>
           <Select
             value={scheduleFormData.frequency}
             onValueChange={(value) => setScheduleFormData(prev => ({ ...prev, frequency: value as typeof prev.frequency }))}
           >
-            <SelectTrigger>
+            <SelectTrigger className="bg-white/10 border-white/20 text-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1216,10 +1219,10 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>下次维护日期 *</Label>
+          <Label className="text-white/80">下次维护日期 *</Label>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-start text-left font-normal">
+              <Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20">
                 <Calendar className="mr-2 h-4 w-4" />
                 {scheduleFormData.next_due_date || '选择日期'}
               </Button>
@@ -1241,28 +1244,29 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>提前提醒天数</Label>
+          <Label className="text-white/80">提前提醒天数</Label>
           <Input
             type="number"
             min={1}
             max={30}
             value={scheduleFormData.reminder_days_before}
-            onChange={(e) => setScheduleFormData(prev => ({ 
-              ...prev, 
-              reminder_days_before: parseInt(e.target.value) || 7 
+            onChange={(e) => setScheduleFormData(prev => ({
+              ...prev,
+              reminder_days_before: parseInt(e.target.value) || 7
             }))}
+            className="bg-white/10 border-white/20 text-white"
           />
         </div>
         <div className="space-y-2">
-          <Label>负责人</Label>
+          <Label className="text-white/80">负责人</Label>
           <Select
             value={scheduleFormData.assigned_user_id || '__none__'}
-            onValueChange={(value) => setScheduleFormData(prev => ({ 
-              ...prev, 
-              assigned_user_id: value === '__none__' ? '' : value 
+            onValueChange={(value) => setScheduleFormData(prev => ({
+              ...prev,
+              assigned_user_id: value === '__none__' ? '' : value
             }))}
           >
-            <SelectTrigger>
+            <SelectTrigger className="bg-white/10 border-white/20 text-white">
               <SelectValue placeholder="选择负责人" />
             </SelectTrigger>
             <SelectContent>
@@ -1277,7 +1281,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         </div>
       </div>
       <DialogFooter>
-        <Button variant="outline" onClick={() => {
+        <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => {
           setShowAddScheduleModal(false);
           setShowEditScheduleModal(false);
           setEditingSchedule(null);
@@ -1430,7 +1434,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             placeholder="搜索设备..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-7 h-8 text-xs"
+                            className="pl-7 h-8 text-xs bg-white/10 border-white/20 text-white placeholder:text-white/50"
                           />
                         </div>
 
@@ -1447,7 +1451,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                               {linkedEquipments.map(eq => (
                                 <div
                                   key={eq.id}
-                                  className="flex items-center justify-between p-2 bg-primary/5 border border-primary/20 rounded-md"
+                                  className="flex items-center justify-between p-2 bg-white/10 border border-white/20 rounded-md"
                                 >
                                   <div className="flex-1 min-w-0">
                                     <span className="font-medium text-xs text-white">{eq.name}</span>
@@ -1456,7 +1460,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="h-6 text-xs text-destructive hover:text-destructive"
+                                    className="h-6 text-xs text-red-400 hover:text-red-300"
                                     onClick={() => handleUnlinkEquipment(eq.id)}
                                   >
                                     <Unlink className="h-3 w-3 mr-1" />
@@ -1468,12 +1472,12 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                           )}
                         </div>
 
-                        <Separator />
+                        <Separator className="bg-white/20" />
 
                         {/* 可关联设备 */}
                         <Collapsible open={!unlinkedCollapsed} onOpenChange={(open) => setUnlinkedCollapsed(!open)}>
                           <CollapsibleTrigger asChild>
-                            <div className="flex items-center justify-between cursor-pointer py-1 hover:bg-muted/50 rounded px-1">
+                            <div className="flex items-center justify-between cursor-pointer py-1 hover:bg-white/10 rounded px-1">
                               <h4 className="font-medium text-xs text-white flex items-center gap-1.5">
                                 <Link2 className="h-3.5 w-3.5 text-white/60" />
                                 可关联 ({filteredUnlinkedEquipments.length})
@@ -1484,7 +1488,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      className="h-6 text-xs"
+                                      className="h-6 text-xs text-white hover:bg-white/10"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleSelectAllUnlinked();
@@ -1497,15 +1501,15 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                         <PopoverTrigger asChild>
                                           <Button
                                             size="sm"
-                                            className="h-6 text-xs"
+                                            className="h-6 text-xs bg-green-500 hover:bg-green-600 text-white border-0"
                                             onClick={(e) => e.stopPropagation()}
                                           >
                                             关联 ({batchSelectedIds.size})
                                           </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent 
-                                          className="w-80 max-h-[70vh] overflow-hidden z-50 flex flex-col" 
-                                          align="start" 
+                                        <PopoverContent
+                                          className="w-80 max-h-[70vh] overflow-hidden z-50 flex flex-col bg-black/40 backdrop-blur-md border-white/20 text-white"
+                                          align="start"
                                           side="bottom"
                                           sideOffset={5}
                                           avoidCollisions={true}
@@ -1529,7 +1533,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                             <div className="space-y-2">
                                               <Label className="text-xs text-white/80">统一责任人</Label>
                                               <Select value={batchResponsible || '__keep_original__'} onValueChange={setBatchResponsible}>
-                                                <SelectTrigger className="h-8 text-xs">
+                                                <SelectTrigger className="h-8 text-xs bg-white/10 border-white/20 text-white">
                                                   <SelectValue placeholder="保持原有" />
                                                 </SelectTrigger>
                                                 <SelectContent className="z-[100]">
@@ -1559,7 +1563,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                                     value={maintenanceTitle}
                                                     onChange={(e) => setMaintenanceTitle(e.target.value)}
                                                     placeholder={`${selectedType?.name || '设备'} 维护`}
-                                                    className="h-8 text-xs"
+                                                    className="h-8 text-xs bg-white/10 border-white/20 text-white placeholder:text-white/50"
                                                   />
                                                 </div>
                                                 <div className="space-y-2">
@@ -1568,13 +1572,13 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                                     value={maintenanceDescription}
                                                     onChange={(e) => setMaintenanceDescription(e.target.value)}
                                                     placeholder="详细描述维护工作内容..."
-                                                    className="text-xs min-h-[50px] max-h-[80px]"
+                                                    className="text-xs min-h-[50px] max-h-[80px] bg-white/10 border-white/20 text-white placeholder:text-white/50"
                                                   />
                                                 </div>
                                                 <div className="space-y-2">
                                                   <Label className="text-xs text-white/80">维护周期</Label>
                                                   <Select value={maintenanceFrequency} onValueChange={setMaintenanceFrequency}>
-                                                    <SelectTrigger className="h-8 text-xs">
+                                                    <SelectTrigger className="h-8 text-xs bg-white/10 border-white/20 text-white">
                                                       <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent className="z-[100]">
@@ -1588,7 +1592,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                                   <Label className="text-xs text-white/80">首次维护日期</Label>
                                                   <Popover>
                                                     <PopoverTrigger asChild>
-                                                      <Button variant="outline" className="w-full h-8 text-xs justify-start">
+                                                      <Button variant="outline" className="w-full h-8 text-xs justify-start bg-white/10 border-white/20 text-white hover:bg-white/20">
                                                         <Calendar className="mr-2 h-3.5 w-3.5" />
                                                         {maintenanceDate ? format(maintenanceDate, 'yyyy-MM-dd') : '选择日期'}
                                                       </Button>
@@ -1606,11 +1610,11 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                                 </div>
                                                 <div className="space-y-2">
                                                   <Label className="text-xs text-white/80">提前提醒天数</Label>
-                                                  <Select 
-                                                    value={String(maintenanceReminderDays)} 
+                                                  <Select
+                                                    value={String(maintenanceReminderDays)}
                                                     onValueChange={(v) => setMaintenanceReminderDays(parseInt(v))}
                                                   >
-                                                    <SelectTrigger className="h-8 text-xs">
+                                                    <SelectTrigger className="h-8 text-xs bg-white/10 border-white/20 text-white">
                                                       <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent className="z-[100]">
@@ -1629,11 +1633,11 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                           </div>
                                           
                                           {/* 固定底部：取消 + 确定关联 */}
-                                          <div className="flex gap-2 pt-3 mt-2 border-t shrink-0">
+                                          <div className="flex gap-2 pt-3 mt-2 border-t border-white/20 shrink-0">
                                             <Button
                                               variant="outline"
                                               size="sm"
-                                              className="flex-1"
+                                              className="flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
                                               onClick={() => setShowBatchSettings(false)}
                                             >
                                               取消
@@ -1670,9 +1674,9 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                   <div
                                     key={eq.id}
                                     className={`flex items-center gap-2 p-2 border rounded-md cursor-pointer transition-colors ${
-                                      batchSelectedIds.has(eq.id) 
-                                        ? 'bg-primary/10 border-primary/30' 
-                                        : 'bg-background hover:bg-muted/50'
+                                      batchSelectedIds.has(eq.id)
+                                        ? 'bg-white/20 border-white/40'
+                                        : 'bg-white/5 border-white/20 hover:bg-white/10'
                                     }`}
                                     onClick={() => handleToggleBatchSelect(eq.id)}
                                   >
@@ -1685,7 +1689,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                       <span className="font-medium text-xs text-white">{eq.name}</span>
                                       <span className="text-xs text-white/60 ml-2">{eq.id}</span>
                                       {eq.responsible && (
-                                        <span className="text-xs text-primary ml-2">· {eq.responsible}</span>
+                                        <span className="text-xs text-blue-400 ml-2">· {eq.responsible}</span>
                                       )}
                                     </div>
                                   </div>
@@ -1779,12 +1783,12 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                       {maintenanceTemplates.length > 0 && (
                         <div className="space-y-2">
                           {maintenanceTemplates.map(template => (
-                            <Card key={template.id} className="bg-background">
+                            <Card key={template.id} className="bg-white/5 border-white/20">
                               <CardHeader className="p-3 pb-2">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1 min-w-0">
-                                    <CardTitle className="text-sm font-medium truncate flex items-center gap-1.5">
-                                      <FileText className="h-3.5 w-3.5 text-primary" />
+                                    <CardTitle className="text-sm font-medium truncate flex items-center gap-1.5 text-white">
+                                      <FileText className="h-3.5 w-3.5 text-blue-400" />
                                       {template.title}
                                     </CardTitle>
                                     {template.description && (
@@ -1793,7 +1797,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                       </p>
                                     )}
                                   </div>
-                                  <Badge variant="secondary" className="text-xs shrink-0 ml-2">
+                                  <Badge className="text-xs shrink-0 ml-2 bg-white/20 text-white border-white/30">
                                     {frequencyLabels[template.frequency]}
                                   </Badge>
                                 </div>
@@ -1803,7 +1807,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-7 text-xs flex-1"
+                                    className="h-7 text-xs flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
                                     onClick={() => {
                                       setApplyingTemplate(template);
                                       setApplyTemplateDate(getEndOfCurrentMonth());
@@ -1818,7 +1822,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="h-7 w-7 p-0"
+                                    className="h-7 w-7 p-0 text-white/60 hover:text-white hover:bg-white/10"
                                     onClick={() => handleEditTemplate(template)}
                                   >
                                     <Edit2 className="h-3 w-3" />
@@ -1826,7 +1830,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                                    className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-white/10"
                                     onClick={() => handleDeleteTemplate(template.id)}
                                   >
                                     <Trash2 className="h-3 w-3" />
@@ -1840,7 +1844,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
                       {maintenanceTemplates.length === 0 && !selectedEquipmentId && (
                         <div className="text-center py-6">
-                          <FileText className="h-8 w-8 mx-auto mb-2 text-white/60/30" />
+                          <FileText className="h-8 w-8 mx-auto mb-2 text-white/30" />
                           <p className="text-sm text-white/60 mb-2">暂无维护模板</p>
                           <p className="text-xs text-white/60 mb-3">创建模板后可批量应用到关联设备</p>
                           <Button
@@ -1860,7 +1864,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                       {/* 选中设备的维护计划 */}
                       {selectedEquipment && selectedEquipmentId && (
                         <>
-                          <Separator className="my-3" />
+                          <Separator className="my-3 bg-white/20" />
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
                               <div>
@@ -1870,7 +1874,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-7 text-xs"
+                                className="h-7 text-xs bg-white/10 border-white/20 text-white hover:bg-white/20"
                                 onClick={() => {
                                   resetScheduleForm();
                                   setShowAddScheduleModal(true);
@@ -1883,7 +1887,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
                             {equipmentSchedules.length === 0 ? (
                               <div className="text-center py-4">
-                                <Calendar className="h-6 w-6 mx-auto mb-2 text-white/60/30" />
+                                <Calendar className="h-6 w-6 mx-auto mb-2 text-white/30" />
                                 <p className="text-xs text-white/60">暂无维护计划</p>
                               </div>
                             ) : (
@@ -1895,11 +1899,11 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                   const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                                   
                                   return (
-                                    <Card key={schedule.id} className={isOverdue ? 'border-destructive/50 bg-destructive/5' : 'bg-background'}>
+                                    <Card key={schedule.id} className={isOverdue ? 'border-red-500/50 bg-red-500/10' : 'bg-white/5 border-white/20'}>
                                       <CardHeader className="p-2.5 pb-1.5">
                                         <div className="flex items-start justify-between">
                                           <div className="flex-1 min-w-0">
-                                            <CardTitle className="text-xs font-medium truncate">
+                                            <CardTitle className="text-xs font-medium truncate text-white">
                                               {schedule.title}
                                             </CardTitle>
                                             {schedule.description && (
@@ -1908,7 +1912,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                               </p>
                                             )}
                                           </div>
-                                          <Badge variant={isOverdue ? "destructive" : "secondary"} className="text-xs shrink-0 ml-2 h-5">
+                                          <Badge className={`text-xs shrink-0 ml-2 h-5 ${isOverdue ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-white/20 text-white border-white/30'}`}>
                                             {frequencyLabels[schedule.frequency]}
                                           </Badge>
                                         </div>
@@ -1917,10 +1921,10 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                         <div className="flex items-center gap-3 text-xs">
                                           <div className="flex items-center gap-1">
                                             <Calendar className="h-3 w-3 text-white/60" />
-                                            <span className={isOverdue ? 'text-destructive font-medium' : ''}>
+                                            <span className={isOverdue ? 'text-red-400 font-medium' : 'text-white'}>
                                               {schedule.next_due_date}
                                             </span>
-                                            {isOverdue && <span className="text-destructive">(已逾期)</span>}
+                                            {isOverdue && <span className="text-red-400">(已逾期)</span>}
                                             {!isOverdue && daysUntil <= schedule.reminder_days_before && (
                                               <span className="text-orange-500">(剩余{daysUntil}天)</span>
                                             )}
@@ -1936,7 +1940,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                           <Button
                                             size="sm"
                                             variant="outline"
-                                            className="h-6 text-xs flex-1"
+                                            className="h-6 text-xs flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
                                             onClick={() => handleCompleteSchedule(schedule)}
                                           >
                                             <Check className="h-3 w-3 mr-1" />
@@ -1945,7 +1949,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            className="h-6 w-6 p-0"
+                                            className="h-6 w-6 p-0 text-white/60 hover:text-white hover:bg-white/10"
                                             onClick={() => handleEditSchedule(schedule)}
                                           >
                                             <Edit2 className="h-3 w-3" />
@@ -1953,7 +1957,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                            className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-white/10"
                                             onClick={() => handleDeleteSchedule(schedule.id)}
                                           >
                                             <Trash2 className="h-3 w-3" />
@@ -1989,46 +1993,72 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       </DialogPrimitive.Root>
 
       {/* 添加维护模板弹窗 */}
-      <Dialog open={showAddTemplateModal} onOpenChange={setShowAddTemplateModal}>
-        <DialogContent className="bg-black/40 backdrop-blur-md border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle>添加维护模板</DialogTitle>
-            <DialogDescription>
-              为 {selectedType?.name} 类型创建维护计划模板
-            </DialogDescription>
-          </DialogHeader>
-          <TemplateFormContent onSubmit={handleAddTemplate} submitLabel="添加" />
-        </DialogContent>
-      </Dialog>
+      <DialogPrimitive.Root modal={false} open={showAddTemplateModal} onOpenChange={setShowAddTemplateModal}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm" />
+          <DialogPrimitive.Content
+            className="fixed left-[50%] top-[50%] z-[60] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 bg-black/40 backdrop-blur-md border-white/20 text-white sm:rounded-lg"
+            onInteractOutside={(e) => e.preventDefault()}
+            onPointerDownOutside={(e) => e.preventDefault()}
+          >
+            <DialogHeader>
+              <DialogTitle>添加维护模板</DialogTitle>
+              <DialogDescription>
+                为 {selectedType?.name} 类型创建维护计划模板
+              </DialogDescription>
+            </DialogHeader>
+            <TemplateFormContent onSubmit={handleAddTemplate} submitLabel="添加" />
+            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
+              <X className="h-4 w-4 text-white" />
+            </DialogPrimitive.Close>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
 
       {/* 编辑维护模板弹窗 */}
-      <Dialog open={showEditTemplateModal} onOpenChange={setShowEditTemplateModal}>
-        <DialogContent className="bg-black/40 backdrop-blur-md border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle>编辑维护模板</DialogTitle>
-            <DialogDescription>
-              修改 {editingTemplate?.title} 模板
-            </DialogDescription>
-          </DialogHeader>
-          <TemplateFormContent onSubmit={handleUpdateTemplate} submitLabel="保存" />
-        </DialogContent>
-      </Dialog>
+      <DialogPrimitive.Root modal={false} open={showEditTemplateModal} onOpenChange={setShowEditTemplateModal}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm" />
+          <DialogPrimitive.Content
+            className="fixed left-[50%] top-[50%] z-[60] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 bg-black/40 backdrop-blur-md border-white/20 text-white sm:rounded-lg"
+            onInteractOutside={(e) => e.preventDefault()}
+            onPointerDownOutside={(e) => e.preventDefault()}
+          >
+            <DialogHeader>
+              <DialogTitle>编辑维护模板</DialogTitle>
+              <DialogDescription>
+                修改 {editingTemplate?.title} 模板
+              </DialogDescription>
+            </DialogHeader>
+            <TemplateFormContent onSubmit={handleUpdateTemplate} submitLabel="保存" />
+            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
+              <X className="h-4 w-4 text-white" />
+            </DialogPrimitive.Close>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
 
       {/* 应用模板弹窗 */}
-      <Dialog open={showApplyTemplateModal} onOpenChange={setShowApplyTemplateModal}>
-        <DialogContent className="bg-black/40 backdrop-blur-md border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle>应用维护模板</DialogTitle>
-            <DialogDescription>
-              将 "{applyingTemplate?.title}" 模板应用到关联设备
-            </DialogDescription>
-          </DialogHeader>
+      <DialogPrimitive.Root modal={false} open={showApplyTemplateModal} onOpenChange={setShowApplyTemplateModal}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm" />
+          <DialogPrimitive.Content
+            className="fixed left-[50%] top-[50%] z-[60] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 bg-black/40 backdrop-blur-md border-white/20 text-white sm:rounded-lg"
+            onInteractOutside={(e) => e.preventDefault()}
+            onPointerDownOutside={(e) => e.preventDefault()}
+          >
+            <DialogHeader>
+              <DialogTitle>应用维护模板</DialogTitle>
+              <DialogDescription>
+                将 "{applyingTemplate?.title}" 模板应用到关联设备
+              </DialogDescription>
+            </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>首次维护日期</Label>
+              <Label className="text-white/80">首次维护日期</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  <Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20">
                     <Calendar className="mr-2 h-4 w-4" />
                     {applyTemplateDate ? format(applyTemplateDate, 'yyyy-MM-dd') : '选择日期'}
                   </Button>
@@ -2046,7 +2076,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             </div>
             
             <div className="space-y-2">
-              <Label>应用范围</Label>
+              <Label className="text-white/80">应用范围</Label>
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <input
@@ -2054,9 +2084,9 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                     id="apply-all"
                     checked={applyMode === 'all'}
                     onChange={() => setApplyMode('all')}
-                    className="h-4 w-4"
+                    className="h-4 w-4 accent-white"
                   />
-                  <Label htmlFor="apply-all" className="text-sm font-normal">
+                  <Label htmlFor="apply-all" className="text-sm font-normal text-white">
                     所有关联设备 ({linkedEquipments.length}台)
                   </Label>
                 </div>
@@ -2066,9 +2096,9 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                     id="apply-selected"
                     checked={applyMode === 'selected'}
                     onChange={() => setApplyMode('selected')}
-                    className="h-4 w-4"
+                    className="h-4 w-4 accent-white"
                   />
-                  <Label htmlFor="apply-selected" className="text-sm font-normal">
+                  <Label htmlFor="apply-selected" className="text-sm font-normal text-white">
                     选择特定设备
                   </Label>
                 </div>
@@ -2078,11 +2108,11 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             {applyMode === 'selected' && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>选择设备</Label>
+                  <Label className="text-white/80">选择设备</Label>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 text-xs"
+                    className="h-6 text-xs text-white hover:bg-white/10"
                     onClick={() => {
                       if (templateSelectedIds.size === linkedEquipments.length) {
                         setTemplateSelectedIds(new Set());
@@ -2094,10 +2124,10 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                     {templateSelectedIds.size === linkedEquipments.length ? '取消全选' : '全选'}
                   </Button>
                 </div>
-                <ScrollArea className="h-40 border rounded-md p-2">
+                <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
                   <div className="space-y-1">
                     {linkedEquipments.map(eq => (
-                      <div key={eq.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                      <div key={eq.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
                         <Checkbox
                           id={`template-eq-${eq.id}`}
                           checked={templateSelectedIds.has(eq.id)}
@@ -2111,7 +2141,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             setTemplateSelectedIds(newSet);
                           }}
                         />
-                        <Label htmlFor={`template-eq-${eq.id}`} className="text-sm font-normal flex-1 cursor-pointer">
+                        <Label htmlFor={`template-eq-${eq.id}`} className="text-sm font-normal flex-1 cursor-pointer text-white">
                           <span className="font-medium">{eq.name}</span>
                           <span className="text-white/60 ml-2 text-xs">{eq.id}</span>
                         </Label>
@@ -2128,7 +2158,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             )}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => {
+              <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => {
                 setShowApplyTemplateModal(false);
                 setApplyingTemplate(null);
                 setTemplateSelectedIds(new Set());
@@ -2140,34 +2170,58 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
               </Button>
             </DialogFooter>
           </div>
-        </DialogContent>
-      </Dialog>
+          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
+            <X className="h-4 w-4 text-white" />
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
 
       {/* 添加维护计划弹窗 */}
-      <Dialog open={showAddScheduleModal} onOpenChange={setShowAddScheduleModal}>
-        <DialogContent className="bg-black/40 backdrop-blur-md border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle>添加维护计划</DialogTitle>
-            <DialogDescription>
-              为 {selectedEquipment?.name} 添加新的维护计划
-            </DialogDescription>
-          </DialogHeader>
-          <ScheduleFormContent onSubmit={handleAddSchedule} submitLabel="添加" />
-        </DialogContent>
-      </Dialog>
+      <DialogPrimitive.Root modal={false} open={showAddScheduleModal} onOpenChange={setShowAddScheduleModal}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm" />
+          <DialogPrimitive.Content
+            className="fixed left-[50%] top-[50%] z-[60] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 bg-black/40 backdrop-blur-md border-white/20 text-white sm:rounded-lg"
+            onInteractOutside={(e) => e.preventDefault()}
+            onPointerDownOutside={(e) => e.preventDefault()}
+          >
+            <DialogHeader>
+              <DialogTitle>添加维护计划</DialogTitle>
+              <DialogDescription>
+                为 {selectedEquipment?.name} 添加新的维护计划
+              </DialogDescription>
+            </DialogHeader>
+            <ScheduleFormContent onSubmit={handleAddSchedule} submitLabel="添加" />
+            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
+              <X className="h-4 w-4 text-white" />
+            </DialogPrimitive.Close>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
 
       {/* 编辑维护计划弹窗 */}
-      <Dialog open={showEditScheduleModal} onOpenChange={setShowEditScheduleModal}>
-        <DialogContent className="bg-black/40 backdrop-blur-md border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle>编辑维护计划</DialogTitle>
-            <DialogDescription>
-              修改 {editingSchedule?.title} 的维护计划
-            </DialogDescription>
-          </DialogHeader>
-          <ScheduleFormContent onSubmit={handleUpdateSchedule} submitLabel="保存" />
-        </DialogContent>
-      </Dialog>
+      <DialogPrimitive.Root modal={false} open={showEditScheduleModal} onOpenChange={setShowEditScheduleModal}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm" />
+          <DialogPrimitive.Content
+            className="fixed left-[50%] top-[50%] z-[60] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 bg-black/40 backdrop-blur-md border-white/20 text-white sm:rounded-lg"
+            onInteractOutside={(e) => e.preventDefault()}
+            onPointerDownOutside={(e) => e.preventDefault()}
+          >
+            <DialogHeader>
+              <DialogTitle>编辑维护计划</DialogTitle>
+              <DialogDescription>
+                修改 {editingSchedule?.title} 的维护计划
+              </DialogDescription>
+            </DialogHeader>
+            <ScheduleFormContent onSubmit={handleUpdateSchedule} submitLabel="保存" />
+            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
+              <X className="h-4 w-4 text-white" />
+            </DialogPrimitive.Close>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
     </>
   );
 };
