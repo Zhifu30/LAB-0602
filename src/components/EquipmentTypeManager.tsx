@@ -391,13 +391,26 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   // 当类型或关联设备变化时刷新
   useEffect(() => { refetchAllSchedules(); }, [refetchAllSchedules]);
 
-  // 图片映射 localStorage 读写
+  // 图片映射：自动包含关联设备图片 + localStorage 手动添加
   useEffect(() => {
     if (selectedTypeId) {
       const saved = localStorage.getItem(`${STORAGE_KEY}-images-${selectedTypeId}`);
-      setImageMappings(saved ? JSON.parse(saved) : []);
+      const manual: ImageMapping[] = saved ? JSON.parse(saved) : [];
+      // 自动包含关联设备的图片
+      const eqImages = linkedEquipments.filter(eq => eq.imageUrl).map(eq => ({ imageUrl: eq.imageUrl!, equipmentIds: [eq.id] }));
+      // 合并：手动映射 + 尚未在映射中的设备图片
+      const merged = [...manual];
+      for (const eqImg of eqImages) {
+        const existing = merged.find(m => m.imageUrl === eqImg.imageUrl);
+        if (existing) {
+          if (!existing.equipmentIds.includes(eqImg.equipmentIds[0])) existing.equipmentIds.push(eqImg.equipmentIds[0]);
+        } else {
+          merged.push(eqImg);
+        }
+      }
+      setImageMappings(merged);
     } else { setImageMappings([]); }
-  }, [selectedTypeId]);
+  }, [selectedTypeId, linkedEquipments]);
   useEffect(() => {
     if (selectedTypeId) localStorage.setItem(`${STORAGE_KEY}-images-${selectedTypeId}`, JSON.stringify(imageMappings));
   }, [imageMappings, selectedTypeId]);
@@ -1314,7 +1327,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             </p>
           </DialogHeader>
 
-          <div className="flex-1 grid grid-cols-[260px_minmax(180px,0.8fr)_minmax(160px,0.7fr)_minmax(120px,0.4fr)] gap-3 overflow-hidden relative">
+          <div className="flex-1 grid grid-cols-[240px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(200px,1fr)] gap-3 overflow-hidden relative">
             {/* 第一列：类型列表 */}
             <div className="flex flex-col space-y-3 overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 p-3">
               <h3 className="font-semibold text-sm flex items-center gap-2 text-white drop-shadow">
@@ -1923,7 +1936,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                   <div className="space-y-2">
                     {imageMappings.map((mapping, idx) => (
                       <div key={idx} className="rounded-lg overflow-hidden bg-white/5 border border-white/10">
-                        <div className="h-24 bg-cover bg-center" style={{ backgroundImage: `url(${mapping.imageUrl})` }} />
+                        <div className="h-16 bg-cover bg-center" style={{ backgroundImage: `url(${mapping.imageUrl})` }} />
                         <div className="p-2">
                           <p className="text-xs text-white/50 truncate mb-1">关联设备：{mapping.equipmentIds.length > 0
                             ? mapping.equipmentIds.sort((a,b) => a.localeCompare(b,undefined,{numeric:true})).map(eid => { const eq = linkedEquipments.find(e => e.id === eid); return eq ? eq.id : eid; }).join('、')
