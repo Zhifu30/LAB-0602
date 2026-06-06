@@ -1290,7 +1290,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
   return (
     <>
-      <style>{`.equipment-type-overlay [data-slot="dialog-overlay"] { background: rgba(0,0,0,0.15) !important; backdrop-filter: blur(2px); }`}</style>
+      <style>{`.equipment-type-overlay [data-slot="dialog-overlay"] { background: transparent !important; backdrop-filter: none !important; }`}</style>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col border-0 rounded-xl equipment-type-overlay" style={{
             backgroundImage: selectedType?.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.imageUrl ? `url(${linkedEquipments[0].imageUrl})` : undefined,
