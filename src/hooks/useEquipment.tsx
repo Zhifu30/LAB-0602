@@ -374,9 +374,12 @@ export const useEquipment = (includeScrapped = false) => {
         throw error;
       }
 
+      // 停用该设备的所有维护计划
+      await supabase.from('maintenance_schedules').update({ is_active: false }).eq('equipment_id', id);
+
       toast({
         title: "设备已报废",
-        description: "设备已标记为报废状态",
+        description: "设备已标记为报废状态，相关维护计划已停用",
       });
 
       // 重新获取数据

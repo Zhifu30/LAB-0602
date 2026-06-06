@@ -101,10 +101,12 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
       const updatedEquipment = { ...equipment, type: null as any, status: 'scrapped' as EquipmentStatus, is_scrapped: true, scrapped_at: new Date().toISOString(), scrapped_by: profile?.user_id };
       onUpdate(updatedEquipment); setEditedEquipment(updatedEquipment);
       await supabase.from('scrap_records').insert({ equipment_id: equipment.id, scrapped_by: profile?.user_id, scrapper_name: profile?.username || 'Unknown', reason, admin_password: password });
+      // 停用该设备的所有维护计划和校正提醒
+      await supabase.from('maintenance_schedules').update({ is_active: false }).eq('equipment_id', equipment.id);
       await supabase.functions.invoke('send-equipment-notification', {
         body: { equipmentId: equipment.id, equipmentName: equipment.name, status: 'scrapped', reporterName: profile?.username || 'Unknown', reason, adminEmail: 'zhifu.feng@brightfuture.com.hk' }
       });
-      toast.success('设备已报废，管理员已收到通知');
+      toast.success('设备已报废，维护计划已停用');
     } catch (error) { console.error('Error scrapping equipment:', error); toast.error('报废操作失败'); }
   };
 
