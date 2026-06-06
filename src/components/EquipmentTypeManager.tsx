@@ -727,178 +727,106 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     }
   };
 
-  // ========== 维护模板管理功能 ==========
-  const resetTemplateForm = (prefillTitle?: string) => {
-    setTemplateFormData({ title: prefillTitle || '', description: '', frequency: 'monthly', reminder_days_before: 7 });
-    clearTemplateForm();
-    tplFreqRef.current = 'monthly';
-    tplRemindRef.current = 7;
-    if (prefillTitle) {
-      setTimeout(() => {
-        if (tplTitleRef.current) tplTitleRef.current.value = prefillTitle;
-      }, 60);
-    }
-  };
-
-  const handleAddTemplate = () => {
-    if (!templateFormData.title) {
-      toast({
-        title: '错误',
-        description: '请填写模板标题',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    const form = readTemplateForm();
-    if (!form.title) { toast({ title: '错误', description: '请填写模板标题', variant: 'destructive' }); return; }
-
-    const newTemplate: MaintenanceTemplate = {
-      id: `template-${Date.now()}`,
-      ...form,
-    };
-
-    saveTemplates([...maintenanceTemplates, newTemplate]);
-    setShowAddTemplateModal(false);
-    resetTemplateForm();
-    clearTemplateForm();
-    
-    toast({ title: '成功', description: '维护模板已添加' });
-  };
-
-  const handleEditTemplate = (template: MaintenanceTemplate) => {
-    setEditingTemplate(template);
-    // 通过 DOM 设置非受控输入的值
-    setTimeout(() => {
-      if (tplTitleRef.current) tplTitleRef.current.value = template.title;
-      if (tplDescRef.current) tplDescRef.current.value = template.description || '';
-    }, 50);
-    tplFreqRef.current = template.frequency;
-    tplRemindRef.current = template.reminder_days_before;
-    setShowEditTemplateModal(true);
-  };
-
-  const handleUpdateTemplate = () => {
-    const form = readTemplateForm();
-    if (!editingTemplate || !form.title) {
-      toast({ title: '错误', description: '请填写模板标题', variant: 'destructive' });
-      return;
-    }
-
-    const updatedTemplates = maintenanceTemplates.map(t =>
-      t.id === editingTemplate.id ? { ...t, ...form } : t
-    );
-    saveTemplates(updatedTemplates);
-    setShowEditTemplateModal(false); setEditingTemplate(null); resetTemplateForm(); clearTemplateForm();
-    
-    toast({ title: '成功', description: '维护模板已更新' });
-  };
-
-  const handleDeleteTemplate = (templateId: string) => {
-    if (!window.confirm('确定要删除这个维护模板吗？')) return;
-    
-    const updatedTemplates = maintenanceTemplates.filter(t => t.id !== templateId);
-    saveTemplates(updatedTemplates);
-    
-    toast({ title: '成功', description: '维护模板已删除' });
-  };
-
-  // 应用模板到关联设备
-  const handleApplyTemplate = async () => {
-    if (!applyingTemplate || !selectedType || !applyTemplateDate) return;
-
+  // ========== 维护计划管理功能 ==========
+  // ========== 计划操作 ==========
+  const handleAddPlan = async () => {
+    if (!planFormData.title) { toast({ title: '错误', description: '请填写计划标题', variant: 'destructive' }); return; }
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const nextDueDate = format(applyTemplateDate, 'yyyy-MM-dd');
-      
-      let targetEquipments: Equipment[];
-      if (applyMode === 'all') {
-        targetEquipments = linkedEquipments;
-      } else {
-        targetEquipments = linkedEquipments.filter(eq => templateSelectedIds.has(eq.id));
-      }
-
-      if (targetEquipments.length === 0) {
-        toast({
-          title: '请选择设备',
-          description: '请至少选择一台设备来应用模板',
-          variant: 'destructive'
-        });
-        return;
-      }
-
+      const nextDueDate = format(getEndOfCurrentMonth(), 'yyyy-MM-dd');
       let createdCount = 0;
-      let skippedCount = 0;
-
-      for (const eq of targetEquipments as Equipment[]) {
-        // 检查是否已有相同标题的维护计划
-        const { data: existing } = await supabase
-          .from('maintenance_schedules')
-          .select('id')
-          .eq('equipment_id', eq.id)
-          .eq('title', applyingTemplate.title)
-          .eq('is_active', true)
-          .limit(1);
-
-        if (existing && existing.length > 0) {
-          skippedCount++;
-          continue;
-        }
-
+      for (const eq of linkedEquipments) {
         const user = users.find(u => u.username === eq.responsible);
-        
-        // 确保维护内容一定包含在内 - 使用模板描述，如果没有则使用设备名称生成
-        const scheduleDescription = applyingTemplate.description && applyingTemplate.description.trim() 
-          ? applyingTemplate.description 
-          : `${applyingTemplate.title} - ${eq.name}`;
-        
-        const { error } = await supabase
-          .from('maintenance_schedules')
-          .insert({
-            equipment_id: eq.id,
-            title: applyingTemplate.title,
-            description: scheduleDescription,
-            frequency: applyingTemplate.frequency,
-            next_due_date: nextDueDate,
-            reminder_days_before: applyingTemplate.reminder_days_before,
-            assigned_name: eq.responsible || null,
-            assigned_email: user?.email || eq.responsible_email || null,
-            assigned_user_id: user?.user_id || null,
-            is_active: true,
-            created_by: session?.user?.id || null
-          });
-
-        if (!error) {
-          createdCount++;
-        }
+        const { error } = await supabase.from('maintenance_schedules').insert({
+          equipment_id: eq.id, title: planFormData.title, description: planFormData.description || null,
+          frequency: planFormData.frequency, next_due_date: nextDueDate, reminder_days_before: planFormData.reminder_days_before,
+          assigned_name: eq.responsible || null, assigned_email: user?.email || eq.responsible_email || null,
+          assigned_user_id: user?.user_id || null, is_active: true, created_by: session?.user?.id || null
+        });
+        if (!error) createdCount++;
       }
+      await refetchAllSchedules(); onEquipmentRefresh?.();
+      setShowAddPlanModal(false); setPlanFormData({ title: '', description: '', frequency: 'monthly', reminder_days_before: 7 });
+      toast({ title: '成功', description: `已创建计划并关联 ${createdCount} 台设备` });
+    } catch (err) { console.error('添加失败:', err); toast({ title: '添加失败', description: '请重试', variant: 'destructive' }); }
+  };
 
-      // 刷新当前选中设备的维护计划
-      if (selectedEquipmentId) {
-        await refetchAllSchedules();
+  const handleEditPlan = (plan: PlanGroup) => {
+    setEditingPlan(plan);
+    setPlanFormData({ title: plan.title, description: plan.description || '', frequency: plan.frequency, reminder_days_before: plan.reminder_days_before });
+    setShowEditPlanModal(true);
+  };
+
+  const handleUpdatePlan = async () => {
+    if (!editingPlan || !planFormData.title) { toast({ title: '错误', description: '请填写计划标题', variant: 'destructive' }); return; }
+    try {
+      const ids = editingPlan.schedules.map(s => s.id);
+      const { error } = await supabase.from('maintenance_schedules').update({
+        title: planFormData.title, description: planFormData.description || null,
+        frequency: planFormData.frequency, reminder_days_before: planFormData.reminder_days_before,
+      }).in('id', ids);
+      if (error) throw error;
+      await refetchAllSchedules(); onEquipmentRefresh?.();
+      setShowEditPlanModal(false); setEditingPlan(null);
+      toast({ title: '成功', description: `已更新 ${ids.length} 条计划` });
+    } catch (err) { console.error('更新失败:', err); toast({ title: '更新失败', description: '请重试', variant: 'destructive' }); }
+  };
+
+  const handleDeletePlan = async (plan: PlanGroup) => {
+    if (!window.confirm(`确定要删除计划"${plan.title}"吗？这将移除 ${plan.equipmentIds.length} 台设备的关联。`)) return;
+    try {
+      const ids = plan.schedules.map(s => s.id);
+      const { error } = await supabase.from('maintenance_schedules').update({ is_active: false }).in('id', ids);
+      if (error) throw error;
+      await refetchAllSchedules(); onEquipmentRefresh?.();
+      toast({ title: '已删除', description: `已删除"${plan.title}"` });
+    } catch (err) { console.error('删除失败:', err); toast({ title: '删除失败', description: '请重试', variant: 'destructive' }); }
+  };
+
+  // 计划 → 设备
+  const handleLinkPlanToEquipment = async () => {
+    if (!linkingPlan || !linkDate || linkEquipmentIds.size === 0) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const nd = format(linkDate, 'yyyy-MM-dd'); let n = 0;
+      for (const eid of Array.from(linkEquipmentIds)) {
+        const eq = linkedEquipments.find(e => e.id === eid); if (!eq) continue;
+        const u = users.find(x => x.username === eq.responsible);
+        const { error } = await supabase.from('maintenance_schedules').insert({
+          equipment_id: eid, title: linkingPlan.title, description: linkingPlan.description,
+          frequency: linkingPlan.frequency, next_due_date: nd, reminder_days_before: linkingPlan.reminder_days_before,
+          assigned_name: eq.responsible || null, assigned_email: u?.email || eq.responsible_email || null,
+          assigned_user_id: u?.user_id || null, is_active: true, created_by: session?.user?.id || null
+        });
+        if (!error) n++;
       }
-      onEquipmentRefresh?.();
+      await refetchAllSchedules(); onEquipmentRefresh?.();
+      setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set());
+      toast({ title: '关联成功', description: `已关联 ${n} 台设备` });
+    } catch (err) { console.error('关联失败:', err); toast({ title: '失败', description: '请重试', variant: 'destructive' }); }
+  };
 
-      const messages = [];
-      if (createdCount > 0) messages.push(`创建 ${createdCount} 个维护计划`);
-      if (skippedCount > 0) messages.push(`跳过 ${skippedCount} 个已存在的计划`);
-
-      toast({
-        title: '应用完成',
-        description: messages.join('，') || '无变更',
-      });
-
-      setShowApplyTemplateModal(false);
-      setApplyingTemplate(null);
-      setApplyTemplateDate(getEndOfCurrentMonth());
-    } catch (error) {
-      console.error('应用模板失败:', error);
-      toast({
-        title: '应用失败',
-        description: '部分维护计划创建失败',
-        variant: 'destructive'
-      });
-    }
+  // 设备 → 计划
+  const handleLinkEquipmentToPlans = async () => {
+    if (!equipmentLinkingId || !linkDate || planLinkIds.size === 0) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const eq = linkedEquipments.find(e => e.id === equipmentLinkingId); if (!eq) return;
+      const nd = format(linkDate, 'yyyy-MM-dd'); const u = users.find(x => x.username === eq.responsible); let n = 0;
+      for (const pk of Array.from(planLinkIds)) {
+        const [title, desc, freq] = pk.split('|||');
+        const { error } = await supabase.from('maintenance_schedules').insert({
+          equipment_id: equipmentLinkingId, title, description: desc || null, frequency: freq,
+          next_due_date: nd, reminder_days_before: 7,
+          assigned_name: eq.responsible || null, assigned_email: u?.email || eq.responsible_email || null,
+          assigned_user_id: u?.user_id || null, is_active: true, created_by: session?.user?.id || null
+        });
+        if (!error) n++;
+      }
+      await refetchAllSchedules(); onEquipmentRefresh?.();
+      setShowLinkPlanModal(false); setEquipmentLinkingId(null); setPlanLinkIds(new Set());
+      toast({ title: '关联成功', description: `已关联 ${n} 个计划` });
+    } catch (err) { console.error('关联失败:', err); toast({ title: '失败', description: '请重试', variant: 'destructive' }); }
   };
 
   // ========== 维护计划管理功能 ==========
