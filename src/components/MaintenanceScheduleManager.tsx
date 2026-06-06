@@ -228,9 +228,9 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
           title: form.title,
           description: scheduleDescription,
           frequency: form.frequency as any,
-          next_due_date: formData.next_due_date,
-          reminder_days_before: formData.reminder_days_before,
-          assigned_user_id: formData.assigned_user_id || null,
+          next_due_date: form.next_due_date,
+          reminder_days_before: form.reminder_days_before,
+          assigned_user_id: form.assigned_user_id || null,
           assigned_name: selectedUser?.username || null,
           assigned_email: selectedUser?.email || null,
           reminder_sent: false
