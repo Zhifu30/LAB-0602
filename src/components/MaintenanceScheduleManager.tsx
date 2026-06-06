@@ -486,7 +486,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
 
       {/* Add Schedule Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white z-[70]">
+        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white !z-[9999]">
           <DialogHeader>
             <DialogTitle>添加维护计划</DialogTitle>
           </DialogHeader>
@@ -575,7 +575,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
 
       {/* Edit Schedule Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white z-[70]">
+        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white !z-[9999]">
           <DialogHeader>
             <DialogTitle>编辑维护计划</DialogTitle>
           </DialogHeader>
@@ -664,7 +664,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
 
       {/* 关联设备弹窗 */}
       <Dialog open={showLinkEquipModal} onOpenChange={setShowLinkEquipModal}>
-        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white z-[70]">
+        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white !z-[9999]">
           <DialogHeader>
             <DialogTitle>关联到其他设备</DialogTitle>
           </DialogHeader>
