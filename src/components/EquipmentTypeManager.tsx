@@ -1315,13 +1315,13 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           }}>
             <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black/80 pointer-events-none rounded-lg" />
           <DialogHeader className="relative -mt-1">
-            <DialogTitle className="flex items-center gap-2 text-white drop-shadow mb-0.5">
+            <h2 className="flex items-center gap-2 text-white drop-shadow mb-0.5 text-lg font-semibold leading-none tracking-tight">
               <Tags className="h-5 w-5" />
               设备类型管理
-            </DialogTitle>
-            <DialogDescription className="text-white/70 drop-shadow">
+            </h2>
+            <p className="text-sm text-white/70 drop-shadow">
               三列布局：设备类型 → 关联设备 → 维护计划模板与管理
-            </DialogDescription>
+            </p>
           </DialogHeader>
 
           <div className="flex-1 grid grid-cols-[280px_minmax(200px,1fr)_minmax(180px,1fr)] gap-3 overflow-hidden relative">
@@ -2011,8 +2011,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
             <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => setShowAddTemplateModal(false)}><X className="h-4 w-4" /></button>
             <DialogHeader>
-              <DialogTitle>添加维护模板</DialogTitle>
-              <DialogDescription>为 {selectedType?.name} 类型创建维护计划模板</DialogDescription>
+              <h2 className="text-lg font-semibold leading-none tracking-tight">添加维护模板</h2>
+              <p className="text-sm text-white/60">为 {selectedType?.name} 类型创建维护计划模板</p>
             </DialogHeader>
             <TemplateFormContent onSubmit={handleAddTemplate} submitLabel="添加" />
           </div>
@@ -2026,8 +2026,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
             <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowEditTemplateModal(false); setEditingTemplate(null); resetTemplateForm(); }}><X className="h-4 w-4" /></button>
             <DialogHeader>
-              <DialogTitle>编辑维护模板</DialogTitle>
-              <DialogDescription>修改 {editingTemplate?.title} 模板</DialogDescription>
+              <h2 className="text-lg font-semibold leading-none tracking-tight">编辑维护模板</h2>
+              <p className="text-sm text-white/60">修改 {editingTemplate?.title} 模板</p>
             </DialogHeader>
             <TemplateFormContent onSubmit={handleUpdateTemplate} submitLabel="保存" />
           </div>
@@ -2041,8 +2041,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg max-h-[90vh] overflow-y-auto">
             <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowApplyTemplateModal(false); setApplyingTemplate(null); setTemplateSelectedIds(new Set()); }}><X className="h-4 w-4" /></button>
             <DialogHeader>
-              <DialogTitle>应用维护模板</DialogTitle>
-              <DialogDescription>将 "{applyingTemplate?.title}" 模板应用到关联设备</DialogDescription>
+              <h2 className="text-lg font-semibold leading-none tracking-tight">应用维护模板</h2>
+              <p className="text-sm text-white/60">将 "{applyingTemplate?.title}" 模板应用到关联设备</p>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -2111,8 +2111,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
             <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => setShowAddScheduleModal(false)}><X className="h-4 w-4" /></button>
             <DialogHeader>
-              <DialogTitle>添加维护计划</DialogTitle>
-              <DialogDescription>为 {selectedEquipment?.name} 添加新的维护计划</DialogDescription>
+              <h2 className="text-lg font-semibold leading-none tracking-tight">添加维护计划</h2>
+              <p className="text-sm text-white/60">为 {selectedEquipment?.name} 添加新的维护计划</p>
             </DialogHeader>
             <ScheduleFormContent onSubmit={handleAddSchedule} submitLabel="添加" />
           </div>
@@ -2126,8 +2126,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
             <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowEditScheduleModal(false); setEditingSchedule(null); resetScheduleForm(); }}><X className="h-4 w-4" /></button>
             <DialogHeader>
-              <DialogTitle>编辑维护计划</DialogTitle>
-              <DialogDescription>修改 {editingSchedule?.title} 的维护计划</DialogDescription>
+              <h2 className="text-lg font-semibold leading-none tracking-tight">编辑维护计划</h2>
+              <p className="text-sm text-white/60">修改 {editingSchedule?.title} 的维护计划</p>
             </DialogHeader>
             <ScheduleFormContent onSubmit={handleUpdateSchedule} submitLabel="保存" />
           </div>
