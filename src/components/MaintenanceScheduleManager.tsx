@@ -486,7 +486,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
 
       {/* Add Schedule Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent>
+        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white z-[70]">
           <DialogHeader>
             <DialogTitle>添加维护计划</DialogTitle>
           </DialogHeader>
@@ -575,7 +575,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
 
       {/* Edit Schedule Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent>
+        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white z-[70]">
           <DialogHeader>
             <DialogTitle>编辑维护计划</DialogTitle>
           </DialogHeader>
