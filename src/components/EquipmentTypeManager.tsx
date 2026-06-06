@@ -285,7 +285,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const groupSchedulesIntoPlans = useCallback((schedules: MaintenanceSchedule[]): PlanGroup[] => {
     const map = new Map<string, { title: string; description: string | null; frequency: string; reminder_days_before: number; equipmentIds: Set<string>; schedules: MaintenanceSchedule[] }>();
     for (const s of schedules) {
-      const key = `${s.title}|||${s.description || ''}|||${s.frequency}`;
+      const key = `${s.title.trim()}|||${(s.description || '').trim()}|||${s.frequency}`;
       if (!map.has(key)) {
         map.set(key, { title: s.title, description: s.description, frequency: s.frequency, reminder_days_before: s.reminder_days_before, equipmentIds: new Set(), schedules: [] });
       }
@@ -330,8 +330,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   // 获取关联到当前类型的设备列表 - 使用数据库 type 字段作为唯一真实来源，排除报废设备
   const linkedEquipments = useMemo(() => {
     if (!selectedType) return [];
-    // 只使用数据库中的 type 字段来判断关联关系，且必须是非报废设备
-    return activeEquipments.filter(eq => eq.type === selectedType.name);
+    // 只使用数据库中的 type 字段来判断关联关系，且必须是非报废设备，按ID排序
+    return activeEquipments.filter(eq => eq.type === selectedType.name).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
   }, [selectedType, activeEquipments]);
 
   // 获取选中的设备详情
@@ -1724,7 +1724,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                       </div>
                       <Button
                         size="sm"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs bg-green-500 hover:bg-green-600 text-white border-0"
                         onClick={(e) => {
                           e.stopPropagation();
                           setPlanFormData({ title: 'Monthly Maintenance', description: '', frequency: 'monthly', reminder_days_before: 7 });
@@ -1763,7 +1763,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                       <Badge className="text-xs bg-white/20 text-white border-white/30">{frequencyLabels[plan.frequency]}</Badge>
                                     </div>
                                     <p className="text-xs text-white/50 mt-0.5">
-                                      关联设备：{plan.equipmentIds.map(eid => {
+                                      关联设备：{[...plan.equipmentIds].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map(eid => {
                                         const eq = activeEquipments.find(e => e.id === eid);
                                         return eq ? eq.id : eid;
                                       }).join('、')}
