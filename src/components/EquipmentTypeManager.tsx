@@ -1295,7 +1295,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       <DialogPrimitive.Root open={isOpen} onOpenChange={onClose} modal={false}>
         <DialogPrimitive.Content className={cn(
           "fixed left-[50%] top-[50%] z-50 grid translate-x-[-50%] translate-y-[-50%] shadow-2xl duration-200",
-          "max-w-[1600px] w-[96vw] max-h-[88vh] overflow-hidden flex flex-col border-0 rounded-xl p-6",
+          "w-[90vw] max-w-[1200px] max-h-[88vh] overflow-hidden flex flex-col border-0 rounded-xl p-6",
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         )} style={{
             backgroundImage: selectedType?.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.imageUrl ? `url(${linkedEquipments[0].imageUrl})` : undefined,
@@ -1312,7 +1312,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 grid grid-cols-[280px_0.65fr_0.35fr] gap-3 overflow-hidden relative">
+          <div className="flex-1 grid grid-cols-[280px_minmax(200px,1fr)_minmax(180px,1fr)] gap-3 overflow-hidden relative">
             {/* 第一列：类型列表 */}
             <div className="flex flex-col space-y-3 overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 p-3">
               <h3 className="font-semibold text-sm flex items-center gap-2 text-white drop-shadow">
