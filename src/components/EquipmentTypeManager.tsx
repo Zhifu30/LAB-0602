@@ -134,6 +134,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   // 设备详情弹窗
   const [showEquipmentDetail, setShowEquipmentDetail] = useState(false);
   const [detailEquipment, setDetailEquipment] = useState<Equipment | null>(null);
+  const [detailModalKey, setDetailModalKey] = useState(0);
 
   // 第三列：所有维护计划（统一使用数据库 maintenance_schedules 作为数据源）
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
@@ -525,6 +526,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   // 选择关联设备（第二列点击）
   const handleSelectLinkedEquipment = (eq: Equipment) => {
     setDetailEquipment(eq);
+    setDetailModalKey(k => k + 1);
     setShowEquipmentDetail(true);
   };
 
@@ -2043,11 +2045,12 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         </>
       )}
 
-      {/* 设备详情弹窗 */}
+      {/* 设备详情弹窗 — key 确保每次打开都是全新实例 */}
       {showEquipmentDetail && detailEquipment && (
         <EquipmentDetailModal
+          key={detailModalKey}
           equipment={detailEquipment}
-          onClose={() => { setShowEquipmentDetail(false); setDetailEquipment(null); }}
+          onClose={() => { setShowEquipmentDetail(false); setDetailEquipment(null); refetchAllSchedules(); }}
           onUpdate={handleDetailUpdate}
           onDelete={handleDetailDelete}
         />
