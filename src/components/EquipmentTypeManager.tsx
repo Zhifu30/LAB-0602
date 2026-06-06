@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Equipment } from '@/types/equipment';
+import EquipmentDetailModal from '@/components/EquipmentDetailModal';
 import { supabase } from '@/integrations/supabase/client';
 import { format, endOfMonth } from 'date-fns';
 
@@ -130,6 +131,10 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const [showBatchSettings, setShowBatchSettings] = useState(false);
   const [batchResponsible, setBatchResponsible] = useState<string>('');
   
+  // 设备详情弹窗
+  const [showEquipmentDetail, setShowEquipmentDetail] = useState(false);
+  const [detailEquipment, setDetailEquipment] = useState<Equipment | null>(null);
+
   // 第三列：所有维护计划（统一使用数据库 maintenance_schedules 作为数据源）
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
   const [equipmentSchedules, setEquipmentSchedules] = useState<MaintenanceSchedule[]>([]);
@@ -518,8 +523,25 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   };
 
   // 选择关联设备（第二列点击）
-  const handleSelectLinkedEquipment = (equipmentId: string) => {
-    setSelectedEquipmentId(equipmentId);
+  const handleSelectLinkedEquipment = (eq: Equipment) => {
+    setDetailEquipment(eq);
+    setShowEquipmentDetail(true);
+  };
+
+  const handleDetailUpdate = async (e: Equipment) => {
+    const updateData: Record<string, any> = { name: e.name, model: e.model, manufacturer: e.manufacturer, status: e.status, location: e.location, maintenance_date: e.maintenanceDate, next_calibration_date: e.nextCalibrationDate, responsible: e.responsible, notes: e.notes, image_url: e.imageUrl, sop_file_url: e.sopFileUrl, responsible_email: e.responsible_email };
+    if ((e as any).type !== undefined) updateData.type = (e as any).type;
+    await supabase.from('equipment').update(updateData).eq('id', e.id);
+    setShowEquipmentDetail(false); setDetailEquipment(null);
+    onEquipmentRefresh?.();
+    refetchAllSchedules();
+  };
+
+  const handleDetailDelete = async (id: string) => {
+    await supabase.from('equipment').delete().eq('id', id);
+    setShowEquipmentDetail(false); setDetailEquipment(null);
+    onEquipmentRefresh?.();
+    refetchAllSchedules();
   };
 
   // 更新设备的类型字段
@@ -1658,12 +1680,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                           linkedEquipments.map(eq => (
                             <div
                               key={eq.id}
-                              className={`flex items-center gap-2 p-2.5 rounded-md cursor-pointer transition-colors ${
-                                selectedEquipmentId === eq.id 
-                                  ? 'bg-white/20 border border-white/30 text-white' 
-                                  : 'bg-white/5 border border-white/10 hover:bg-white/15 text-white'
-                              }`}
-                              onClick={() => handleSelectLinkedEquipment(eq.id)}
+                              className="flex items-center gap-2 p-2.5 rounded-md cursor-pointer transition-colors bg-white/5 border border-white/10 hover:bg-white/15 text-white"
+                              onClick={() => handleSelectLinkedEquipment(eq)}
                             >
                               <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
                               <div className="flex-1 min-w-0">
@@ -1827,57 +1845,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                         </div>
                       ) : null}
 
-                      {/* 选中设备的具体计划（可编辑负责人、日期等） */}
-                      {selectedEquipment && selectedEquipmentId && equipmentSchedules.length > 0 && (
-                        <>
-                          <Separator className="my-3 bg-white/20" />
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-medium text-xs text-white/80">{selectedEquipment.name} ({selectedEquipment.id})</h4>
-                              <Button size="sm" variant="outline" className="h-6 text-xs bg-white/10 border-white/20 text-white hover:bg-white/20"
-                                onClick={(e) => { e.stopPropagation(); resetScheduleForm(); setShowAddScheduleModal(true); }}>
-                                <Plus className="h-3 w-3 mr-1" />添加
-                              </Button>
-                            </div>
-                            {equipmentSchedules.map(schedule => {
-                              const dueDate = new Date(schedule.next_due_date);
-                              const isOverdue = dueDate < new Date();
-                              const daysUntil = Math.ceil((dueDate.getTime() - Date.now()) / 86400000);
-                              return (
-                                <Card key={schedule.id} className={isOverdue ? 'border-red-500/50 bg-red-500/10' : 'bg-white/5 border-white/20'}>
-                                  <CardHeader className="p-2 pb-1.5">
-                                    <div className="flex items-start justify-between">
-                                      <div className="flex-1 min-w-0">
-                                        <CardTitle className="text-xs font-medium truncate text-white">{schedule.title}</CardTitle>
-                                        {schedule.description && <p className="text-xs text-white/60 mt-0.5">{schedule.description}</p>}
-                                      </div>
-                                      <Badge className={`text-xs shrink-0 ml-2 h-5 ${isOverdue ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-white/20 text-white border-white/30'}`}>{frequencyLabels[schedule.frequency]}</Badge>
-                                    </div>
-                                  </CardHeader>
-                                  <CardContent className="p-2 pt-0 space-y-1">
-                                    <div className="flex items-center gap-2 text-xs">
-                                      <Calendar className="h-3 w-3 text-white/60" />
-                                      <span className={isOverdue ? 'text-red-400 font-medium' : 'text-white'}>{schedule.next_due_date}</span>
-                                      {isOverdue && <span className="text-red-400">(逾期)</span>}
-                                      {!isOverdue && daysUntil <= schedule.reminder_days_before && <span className="text-orange-400">({daysUntil}天)</span>}
-                                      {schedule.assigned_name && <><User className="h-3 w-3 text-white/60 ml-1" /><span>{schedule.assigned_name}</span></>}
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <Button size="sm" className="h-6 text-xs flex-1 bg-green-500 hover:bg-green-600 text-white border-0"
-                                        onClick={() => handleCompleteSchedule(schedule)}><Check className="h-3 w-3 mr-1" />完成</Button>
-                                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-blue-400 hover:text-blue-300 hover:bg-white/10"
-                                        onClick={(e) => { e.stopPropagation(); handleEditSchedule(schedule); }}><Edit2 className="h-3 w-3" /></Button>
-                                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-white/10"
-                                        onClick={() => handleDeleteSchedule(schedule.id)}><Trash2 className="h-3 w-3" /></Button>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              );
-                            })}
-                          </div>
-                        </>
-                      )}
-                      {planGroups.length === 0 && !schedulesLoading && !selectedEquipmentId ? (
+                      {planGroups.length === 0 && !schedulesLoading ? (
                         <div className="text-center py-6">
                           <FileText className="h-8 w-8 mx-auto mb-2 text-white/30" />
                           <p className="text-sm text-white/60 mb-2">暂无维护计划</p>
@@ -2073,6 +2041,16 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             <ScheduleFormContent onSubmit={handleUpdateSchedule} submitLabel="保存" />
           </div>
         </>
+      )}
+
+      {/* 设备详情弹窗 */}
+      {showEquipmentDetail && detailEquipment && (
+        <EquipmentDetailModal
+          equipment={detailEquipment}
+          onClose={() => { setShowEquipmentDetail(false); setDetailEquipment(null); }}
+          onUpdate={handleDetailUpdate}
+          onDelete={handleDetailDelete}
+        />
       )}
     </>
   );
