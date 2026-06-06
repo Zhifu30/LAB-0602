@@ -734,8 +734,11 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const nextDueDate = format(getEndOfCurrentMonth(), 'yyyy-MM-dd');
-      let createdCount = 0;
+      let createdCount = 0, skippedCount = 0;
       for (const eq of linkedEquipments) {
+        // 检查是否已存在相同标题的活跃计划
+        const { data: existing } = await supabase.from('maintenance_schedules').select('id').eq('equipment_id', eq.id).eq('title', planFormData.title).eq('is_active', true).limit(1);
+        if (existing && existing.length > 0) { skippedCount++; continue; }
         const user = users.find(u => u.username === eq.responsible);
         const { error } = await supabase.from('maintenance_schedules').insert({
           equipment_id: eq.id, title: planFormData.title, description: planFormData.description || null,
@@ -747,7 +750,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       }
       await refetchAllSchedules(); onEquipmentRefresh?.();
       setShowAddPlanModal(false); setPlanFormData({ title: '', description: '', frequency: 'monthly', reminder_days_before: 7 });
-      toast({ title: '成功', description: `已创建计划并关联 ${createdCount} 台设备` });
+      toast({ title: '成功', description: `已创建 ${createdCount} 个计划${skippedCount > 0 ? `，跳过 ${skippedCount} 个已存在` : ''}` });
     } catch (err) { console.error('添加失败:', err); toast({ title: '添加失败', description: '请重试', variant: 'destructive' }); }
   };
 
