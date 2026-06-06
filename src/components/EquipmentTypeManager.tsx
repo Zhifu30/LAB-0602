@@ -299,30 +299,6 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     }));
   }, []);
 
-  // 统一获取当前类型下所有关联设备的所有维护计划
-  const refetchAllSchedules = useCallback(async () => {
-    if (!selectedTypeId || linkedEquipments.length === 0) { setAllSchedules([]); setPlanGroups([]); return; }
-    setSchedulesLoading(true);
-    try {
-      const ids = linkedEquipments.map(eq => eq.id);
-      const { data, error } = await supabase.from('maintenance_schedules').select('*').in('equipment_id', ids).eq('is_active', true).order('next_due_date');
-      if (error) throw error;
-      const schedules = (data || []) as MaintenanceSchedule[];
-      setAllSchedules(schedules);
-      setPlanGroups(groupSchedulesIntoPlans(schedules));
-    } catch (err) { console.error('获取维护计划失败:', err); setAllSchedules([]); setPlanGroups([]); }
-    finally { setSchedulesLoading(false); }
-  }, [selectedTypeId, linkedEquipments, groupSchedulesIntoPlans]);
-
-  // 当类型或关联设备变化时刷新
-  useEffect(() => { refetchAllSchedules(); }, [refetchAllSchedules]);
-
-  // 从 allSchedules 派生当前选中设备的计划
-  const derivedEquipmentSchedules = useMemo(() => {
-    if (!selectedEquipmentId) return [];
-    return allSchedules.filter(s => s.equipment_id === selectedEquipmentId);
-  }, [allSchedules, selectedEquipmentId]);
-
   // 获取用户列表
   const fetchUsers = async () => {
     try {
@@ -336,9 +312,6 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       console.error('获取用户列表失败:', error);
     }
   };
-
-  // 同步派生设备计划
-  useEffect(() => { setEquipmentSchedules(derivedEquipmentSchedules); }, [derivedEquipmentSchedules]);
 
   // 获取当前选中的类型
   const selectedType = useMemo(() => 
@@ -386,6 +359,33 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       (eq.responsible && eq.responsible.toLowerCase().includes(query))
     );
   }, [unlinkedEquipments, searchQuery]);
+
+  // 统一获取当前类型下所有关联设备的所有维护计划
+  const refetchAllSchedules = useCallback(async () => {
+    if (!selectedTypeId || linkedEquipments.length === 0) { setAllSchedules([]); setPlanGroups([]); return; }
+    setSchedulesLoading(true);
+    try {
+      const ids = linkedEquipments.map(eq => eq.id);
+      const { data, error } = await supabase.from('maintenance_schedules').select('*').in('equipment_id', ids).eq('is_active', true).order('next_due_date');
+      if (error) throw error;
+      const schedules = (data || []) as MaintenanceSchedule[];
+      setAllSchedules(schedules);
+      setPlanGroups(groupSchedulesIntoPlans(schedules));
+    } catch (err) { console.error('获取维护计划失败:', err); setAllSchedules([]); setPlanGroups([]); }
+    finally { setSchedulesLoading(false); }
+  }, [selectedTypeId, linkedEquipments, groupSchedulesIntoPlans]);
+
+  // 当类型或关联设备变化时刷新
+  useEffect(() => { refetchAllSchedules(); }, [refetchAllSchedules]);
+
+  // 从 allSchedules 派生当前选中设备的计划
+  const derivedEquipmentSchedules = useMemo(() => {
+    if (!selectedEquipmentId) return [];
+    return allSchedules.filter(s => s.equipment_id === selectedEquipmentId);
+  }, [allSchedules, selectedEquipmentId]);
+
+  // 同步派生设备计划
+  useEffect(() => { setEquipmentSchedules(derivedEquipmentSchedules); }, [derivedEquipmentSchedules]);
 
   const handleAddType = async () => {
     const name = newTypeInputRef.current?.value?.trim() || '';
