@@ -1312,7 +1312,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 grid grid-cols-[240px_1.3fr_0.7fr] gap-3 overflow-hidden relative">
+          <div className="flex-1 grid grid-cols-[280px_0.65fr_0.35fr] gap-3 overflow-hidden relative">
             {/* 第一列：类型列表 */}
             <div className="flex flex-col space-y-3 overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 p-3">
               <h3 className="font-semibold text-sm flex items-center gap-2 text-white drop-shadow">
