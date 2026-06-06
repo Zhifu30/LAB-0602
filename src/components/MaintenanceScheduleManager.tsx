@@ -492,82 +492,42 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>维护标题 *</Label>
-              <Input
-                ref={schedTitleRef}
-                placeholder="例如: 月度保养、年度校正"
-              />
+              <Label className="text-white/80">维护标题 *</Label>
+              <Input ref={schedTitleRef} placeholder="例如: 月度保养、年度校正" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
             </div>
             <div>
-              <Label>维护内容</Label>
-              <Textarea
-                ref={schedDescRef as any}
-                placeholder="详细描述维护内容..."
-                rows={3}
-              />
+              <Label className="text-white/80">维护内容</Label>
+              <Textarea ref={schedDescRef as any} placeholder="详细描述维护内容..." rows={3} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>维护周期 *</Label>
-                <Select
-                  defaultValue="monthly"
-                  onValueChange={(v: any) => { schedFreqRef.current = v; }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">每日</SelectItem>
-                    <SelectItem value="weekly">每周</SelectItem>
-                    <SelectItem value="monthly">每月</SelectItem>
-                    <SelectItem value="quarterly">每季度</SelectItem>
-                    <SelectItem value="yearly">每年</SelectItem>
-                  </SelectContent>
+                <Label className="text-white/80">维护周期 *</Label>
+                <Select defaultValue="monthly" onValueChange={(v: any) => { schedFreqRef.current = v; }}>
+                  <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
+                  <SelectContent>{['daily','weekly','monthly','quarterly','yearly'].map(f => <SelectItem key={f} value={f}>{frequencyLabels[f]}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>下次维护日期 *</Label>
-                <Input
-                  type="date"
-                  ref={schedDateRef}
-                />
+                <Label className="text-white/80">下次维护日期 *</Label>
+                <Input type="date" ref={schedDateRef} className="bg-white/10 border-white/20 text-white" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>提前提醒天数</Label>
-                <Input
-                  type="number"
-                  ref={schedRemindRef}
-                  defaultValue={7}
-                  min={1}
-                  max={90}
-                />
+                <Label className="text-white/80">提前提醒天数</Label>
+                <Input type="number" ref={schedRemindRef} defaultValue={7} min={1} max={90} className="bg-white/10 border-white/20 text-white" />
               </div>
               <div>
-                <Label>指定维护人</Label>
-                <Select
-                  defaultValue=""
-                  onValueChange={(v) => { schedUserRef.current = v; }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择维护人" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map((user) => (
-                      <SelectItem key={user.user_id} value={user.user_id}>
-                        {user.username}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Label className="text-white/80">指定维护人</Label>
+                <Select defaultValue="" onValueChange={(v) => { schedUserRef.current = v; }}>
+                  <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue placeholder="选择维护人" /></SelectTrigger>
+                  <SelectContent>{users.map(user => <SelectItem key={user.user_id} value={user.user_id}>{user.username}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowAddModal(false); resetForm(); }}>
-              取消
-            </Button>
+            <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowAddModal(false); resetForm(); }}>取消</Button>
             <Button onClick={handleAddSchedule}>添加</Button>
           </DialogFooter>
         </DialogContent>
@@ -581,82 +541,42 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>维护标题 *</Label>
-              <Input
-                ref={schedTitleRef}
-                placeholder="例如: 月度保养、年度校正"
-              />
+              <Label className="text-white/80">维护标题 *</Label>
+              <Input ref={schedTitleRef} placeholder="例如: 月度保养、年度校正" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
             </div>
             <div>
-              <Label>维护内容</Label>
-              <Textarea
-                ref={schedDescRef as any}
-                placeholder="详细描述维护内容..."
-                rows={3}
-              />
+              <Label className="text-white/80">维护内容</Label>
+              <Textarea ref={schedDescRef as any} placeholder="详细描述维护内容..." rows={3} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>维护周期 *</Label>
-                <Select
-                  defaultValue="monthly"
-                  onValueChange={(v: any) => { schedFreqRef.current = v; }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">每日</SelectItem>
-                    <SelectItem value="weekly">每周</SelectItem>
-                    <SelectItem value="monthly">每月</SelectItem>
-                    <SelectItem value="quarterly">每季度</SelectItem>
-                    <SelectItem value="yearly">每年</SelectItem>
-                  </SelectContent>
+                <Label className="text-white/80">维护周期 *</Label>
+                <Select defaultValue="monthly" onValueChange={(v: any) => { schedFreqRef.current = v; }}>
+                  <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
+                  <SelectContent>{['daily','weekly','monthly','quarterly','yearly'].map(f => <SelectItem key={f} value={f}>{frequencyLabels[f]}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>下次维护日期 *</Label>
-                <Input
-                  type="date"
-                  ref={schedDateRef}
-                />
+                <Label className="text-white/80">下次维护日期 *</Label>
+                <Input type="date" ref={schedDateRef} className="bg-white/10 border-white/20 text-white" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>提前提醒天数</Label>
-                <Input
-                  type="number"
-                  ref={schedRemindRef}
-                  defaultValue={7}
-                  min={1}
-                  max={90}
-                />
+                <Label className="text-white/80">提前提醒天数</Label>
+                <Input type="number" ref={schedRemindRef} defaultValue={7} min={1} max={90} className="bg-white/10 border-white/20 text-white" />
               </div>
               <div>
-                <Label>指定维护人</Label>
-                <Select
-                  defaultValue=""
-                  onValueChange={(v) => { schedUserRef.current = v; }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择维护人" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map((user) => (
-                      <SelectItem key={user.user_id} value={user.user_id}>
-                        {user.username}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Label className="text-white/80">指定维护人</Label>
+                <Select defaultValue="" onValueChange={(v) => { schedUserRef.current = v; }}>
+                  <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue placeholder="选择维护人" /></SelectTrigger>
+                  <SelectContent>{users.map(user => <SelectItem key={user.user_id} value={user.user_id}>{user.username}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowEditModal(false); setEditingSchedule(null); resetForm(); }}>
-              取消
-            </Button>
+            <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowEditModal(false); setEditingSchedule(null); resetForm(); }}>取消</Button>
             <Button onClick={handleUpdateSchedule}>保存</Button>
           </DialogFooter>
         </DialogContent>
