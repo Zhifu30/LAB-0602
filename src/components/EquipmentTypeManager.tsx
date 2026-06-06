@@ -336,26 +336,31 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     [types, selectedTypeId]
   );
 
-  // 获取关联到当前类型的设备列表 - 使用数据库 type 字段作为唯一真实来源
+  // 活跃设备（排除报废）- 报废设备不参与任何管理活动
+  const activeEquipments = useMemo(() => {
+    return equipments.filter(eq => (eq as any).isScrapped !== true);
+  }, [equipments]);
+
+  // 获取关联到当前类型的设备列表 - 使用数据库 type 字段作为唯一真实来源，排除报废设备
   const linkedEquipments = useMemo(() => {
     if (!selectedType) return [];
-    // 只使用数据库中的 type 字段来判断关联关系
-    return equipments.filter(eq => eq.type === selectedType.name);
-  }, [selectedType, equipments]);
+    // 只使用数据库中的 type 字段来判断关联关系，且必须是非报废设备
+    return activeEquipments.filter(eq => eq.type === selectedType.name);
+  }, [selectedType, activeEquipments]);
 
   // 获取选中的设备详情
   const selectedEquipment = useMemo(() => {
-    return equipments.find(eq => eq.id === selectedEquipmentId);
-  }, [equipments, selectedEquipmentId]);
+    return activeEquipments.find(eq => eq.id === selectedEquipmentId);
+  }, [activeEquipments, selectedEquipmentId]);
 
-  // 获取未关联的设备列表 - 只查看数据库中 type 为空或不属于任何已定义类型的设备
+  // 获取未关联的设备列表 - 只查看数据库中 type 为空或不属于任何已定义类型的设备，排除报废
   const unlinkedEquipments = useMemo(() => {
-    if (!selectedType) return equipments;
+    if (!selectedType) return activeEquipments;
     const allTypeNames = types.map(t => t.name);
-    return equipments.filter(eq => 
+    return activeEquipments.filter(eq =>
       !eq.type || !allTypeNames.includes(eq.type)
     );
-  }, [selectedType, types, equipments]);
+  }, [selectedType, types, activeEquipments]);
 
   // 过滤后的未关联设备（支持搜索）
   const filteredUnlinkedEquipments = useMemo(() => {

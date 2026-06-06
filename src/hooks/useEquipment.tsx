@@ -364,6 +364,7 @@ export const useEquipment = (includeScrapped = false) => {
           is_scrapped: true,
           scrapped_at: new Date().toISOString(),
           scrapped_by: (await supabase.auth.getUser()).data.user?.id,
+          type: null, // 自动解除类型关联，不再参与任何管理活动
           notes: reason
         })
         .eq('id', id);
