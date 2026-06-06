@@ -1784,7 +1784,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                         className="h-7 text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          resetTemplateForm('月度维护');
+                          resetTemplateForm('Monthly Maintenance');
                           setShowAddTemplateModal(true);
                         }}
                       >
@@ -1870,7 +1870,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             className="bg-green-500 hover:bg-green-600 text-white border-0"
                             onClick={(e) => {
                               e.stopPropagation();
-                              resetTemplateForm('月度维护');
+                              resetTemplateForm('Monthly Maintenance');
                               setShowAddTemplateModal(true);
                             }}
                           >
