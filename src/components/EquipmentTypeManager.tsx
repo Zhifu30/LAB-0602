@@ -166,6 +166,9 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const [showUnlinkModal, setShowUnlinkModal] = useState(false);
   const [unlinkingPlan, setUnlinkingPlan] = useState<PlanGroup | null>(null);
   const [unlinkEquipmentIds, setUnlinkEquipmentIds] = useState<Set<string>>(new Set());
+  // 图片映射
+  interface ImageMapping { imageUrl: string; equipmentIds: string[]; }
+  const [imageMappings, setImageMappings] = useState<ImageMapping[]>([]);
 
   // 添加/编辑计划的表单
   const [showAddPlanModal, setShowAddPlanModal] = useState(false);
@@ -387,6 +390,17 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
   // 当类型或关联设备变化时刷新
   useEffect(() => { refetchAllSchedules(); }, [refetchAllSchedules]);
+
+  // 图片映射 localStorage 读写
+  useEffect(() => {
+    if (selectedTypeId) {
+      const saved = localStorage.getItem(`${STORAGE_KEY}-images-${selectedTypeId}`);
+      setImageMappings(saved ? JSON.parse(saved) : []);
+    } else { setImageMappings([]); }
+  }, [selectedTypeId]);
+  useEffect(() => {
+    if (selectedTypeId) localStorage.setItem(`${STORAGE_KEY}-images-${selectedTypeId}`, JSON.stringify(imageMappings));
+  }, [imageMappings, selectedTypeId]);
 
   // 从 allSchedules 派生当前选中设备的计划
   const derivedEquipmentSchedules = useMemo(() => {
@@ -1880,22 +1894,79 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
               )}
             </div>
 
-            {/* 第四列：背景图 */}
+            {/* 第四列：图片 ↔ 设备映射 */}
             {selectedType && (
               <div className="flex flex-col overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
-                <div className="p-3 border-b border-white/20 bg-white/5">
-                  <h3 className="font-semibold text-sm text-white drop-shadow">{selectedType.name}</h3>
+                <div className="p-3 border-b border-white/20 bg-white/5 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-sm text-white drop-shadow">图片管理</h3>
+                    <p className="text-xs text-white/60">{selectedType.name} · {linkedEquipments.length}台设备</p>
+                  </div>
+                  <Button size="sm" className="h-7 text-xs bg-green-500 hover:bg-green-600 text-white border-0"
+                    onClick={() => {
+                      const url = window.prompt('输入图片URL：');
+                      if (url && url.trim()) {
+                        const newMapping = { imageUrl: url.trim(), equipmentIds: [] as string[] };
+                        setImageMappings(prev => [...prev, newMapping]);
+                      }
+                    }}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />添加图片
+                  </Button>
                 </div>
-                <div className="flex-1 relative" style={{
-                  backgroundImage: selectedType.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.imageUrl ? `url(${linkedEquipments[0].imageUrl})` : undefined,
-                  backgroundSize: 'cover', backgroundPosition: 'center',
-                }}>
-                  {!(selectedType.sharedImageUrl || linkedEquipments[0]?.imageUrl) && (
-                    <div className="absolute inset-0 flex items-center justify-center text-white/40">
-                      <p className="text-xs text-center">暂无背景图<br/>上传类型共享图片</p>
+                <ScrollArea className="flex-1 p-2">
+                  {imageMappings.length === 0 && (
+                    <div className="text-center py-8 text-white/40 text-xs">
+                      <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      暂无图片，点击"添加图片"
                     </div>
                   )}
-                </div>
+                  <div className="space-y-2">
+                    {imageMappings.map((mapping, idx) => (
+                      <div key={idx} className="rounded-lg overflow-hidden bg-white/5 border border-white/10">
+                        <div className="h-24 bg-cover bg-center" style={{ backgroundImage: `url(${mapping.imageUrl})` }} />
+                        <div className="p-2">
+                          <p className="text-xs text-white/50 truncate mb-1">关联设备：{mapping.equipmentIds.length > 0
+                            ? mapping.equipmentIds.sort((a,b) => a.localeCompare(b,undefined,{numeric:true})).map(eid => { const eq = linkedEquipments.find(e => e.id === eid); return eq ? eq.id : eid; }).join('、')
+                            : <span className="text-white/30">无</span>}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <Button size="sm" className="h-6 text-xs flex-1 bg-blue-500 hover:bg-blue-600 text-white border-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const newMappings = [...imageMappings];
+                                const equipId = window.prompt('输入要关联的设备ID（如 QRE-001）：');
+                                if (equipId && linkedEquipments.some(e => e.id === equipId.trim()) && !mapping.equipmentIds.includes(equipId.trim())) {
+                                  newMappings[idx] = { ...mapping, equipmentIds: [...mapping.equipmentIds, equipId.trim()] };
+                                  setImageMappings(newMappings);
+                                } else if (equipId && mapping.equipmentIds.includes(equipId.trim())) {
+                                  toast({ title: '提示', description: '该设备已关联此图片' });
+                                } else if (equipId) {
+                                  toast({ title: '错误', description: '设备不存在于当前类型', variant: 'destructive' });
+                                }
+                              }}><Link2 className="h-3 w-3 mr-1" />关联设备</Button>
+                            {mapping.equipmentIds.length > 0 && (
+                              <Button size="sm" className="h-6 text-xs bg-amber-500 hover:bg-amber-600 text-white border-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const eid = window.prompt('输入要取消关联的设备ID：\n当前关联：' + mapping.equipmentIds.join('、'));
+                                  if (eid && mapping.equipmentIds.includes(eid.trim())) {
+                                    const newMappings = [...imageMappings];
+                                    newMappings[idx] = { ...mapping, equipmentIds: mapping.equipmentIds.filter(id => id !== eid.trim()) };
+                                    setImageMappings(newMappings);
+                                  }
+                                }}><Unlink className="h-3 w-3 mr-1" />取消关联</Button>
+                            )}
+                            <Button size="sm" className="h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white"
+                              onClick={() => {
+                                const newMappings = imageMappings.filter((_, i) => i !== idx);
+                                setImageMappings(newMappings);
+                              }} title="删除图片"><Trash2 className="h-3 w-3" /></Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               </div>
             )}
           </div>
