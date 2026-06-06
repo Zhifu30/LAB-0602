@@ -1747,35 +1747,56 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                         </div>
                       ) : planGroups.length > 0 ? (
                         <div className="space-y-2">
-                          {planGroups.map((plan, idx) => (
-                            <Card key={`${plan.title}-${plan.frequency}-${idx}`} className="bg-white/5 border-white/20">
-                              <CardHeader className="p-3 pb-2">
+                          {planGroups.map((plan, idx) => {
+                            // 取最早的 next_due_date 和最常见的负责人
+                            const dates = plan.schedules.map(s => s.next_due_date).sort();
+                            const earliestDate = dates[0] || '';
+                            const names = plan.schedules.map(s => s.assigned_name).filter(Boolean);
+                            const uniqueNames = [...new Set(names)];
+                            const assignee = uniqueNames.length === 1 ? uniqueNames[0] : (uniqueNames.length > 1 ? `${uniqueNames[0]} 等` : '');
+                            const isOverdue = earliestDate && new Date(earliestDate) < new Date();
+                            const sortedEids = [...plan.equipmentIds].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+                            return (
+                            <Card key={`${plan.title}-${plan.frequency}-${idx}`} className={isOverdue && earliestDate ? 'border-red-500/50 bg-red-500/10' : 'bg-white/5 border-white/20'}>
+                              <CardHeader className="p-2.5 pb-1.5">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1 min-w-0">
-                                    <CardTitle className="text-sm font-medium truncate flex items-center gap-1.5 text-white">
-                                      <FileText className="h-3.5 w-3.5 text-blue-400" />
-                                      {plan.title}
-                                    </CardTitle>
+                                    <CardTitle className="text-xs font-medium truncate text-white">{plan.title}</CardTitle>
                                     {plan.description && (
                                       <p className="text-xs text-white/60 mt-0.5 whitespace-pre-wrap">{plan.description}</p>
                                     )}
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <Badge className="text-xs bg-white/20 text-white border-white/30">{frequencyLabels[plan.frequency]}</Badge>
-                                    </div>
-                                    <p className="text-xs text-white/50 mt-0.5">
-                                      关联设备：{[...plan.equipmentIds].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map(eid => {
-                                        const eq = activeEquipments.find(e => e.id === eid);
-                                        return eq ? eq.id : eid;
-                                      }).join('、')}
-                                    </p>
                                   </div>
+                                  <Badge className={`text-xs shrink-0 ml-2 h-5 ${isOverdue && earliestDate ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-white/20 text-white border-white/30'}`}>
+                                    {frequencyLabels[plan.frequency]}
+                                  </Badge>
                                 </div>
                               </CardHeader>
-                              <CardContent className="p-3 pt-0">
+                              <CardContent className="p-2.5 pt-0 space-y-1.5">
+                                <div className="flex items-center gap-3 text-xs">
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3 text-white/60" />
+                                    <span className={isOverdue ? 'text-red-400 font-medium' : 'text-white'}>
+                                      {earliestDate || '—'}
+                                    </span>
+                                    {isOverdue && <span className="text-red-400">(最早逾期)</span>}
+                                  </div>
+                                  {assignee && (
+                                    <div className="flex items-center gap-1">
+                                      <User className="h-3 w-3 text-white/60" />
+                                      <span>{assignee}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="text-xs text-white/50">
+                                  关联设备：{sortedEids.map(eid => {
+                                    const eq = activeEquipments.find(e => e.id === eid);
+                                    return eq ? eq.id : eid;
+                                  }).join('、')}
+                                </p>
                                 <div className="flex items-center gap-1">
                                   <Button
                                     size="sm" variant="outline"
-                                    className="h-7 text-xs flex-1 bg-white/10 border-blue-400/40 text-blue-300 hover:bg-blue-500/20"
+                                    className="h-6 text-xs flex-1 bg-white/10 border-blue-400/40 text-blue-300 hover:bg-blue-500/20"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setLinkingPlan(plan);
@@ -1788,18 +1809,18 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                     <Link2 className="h-3 w-3 mr-1" />
                                     关联设备
                                   </Button>
-                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-white/60 hover:text-white hover:bg-white/10"
+                                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-white/60 hover:text-white hover:bg-white/10"
                                     onClick={(e) => { e.stopPropagation(); handleEditPlan(plan); }}>
                                     <Edit2 className="h-3 w-3" />
                                   </Button>
-                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-white/10"
+                                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-white/10"
                                     onClick={() => handleDeletePlan(plan)}>
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
                                 </div>
                               </CardContent>
                             </Card>
-                          ))}
+                          );})}
                         </div>
                       ) : (
                         <div className="text-center py-6">
