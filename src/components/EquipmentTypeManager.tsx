@@ -1295,15 +1295,15 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       <DialogPrimitive.Root open={isOpen} onOpenChange={onClose} modal={false}>
         <DialogPrimitive.Content className={cn(
           "fixed left-[50%] top-[50%] z-50 grid translate-x-[-50%] translate-y-[-50%] shadow-2xl duration-200",
-          "max-w-6xl max-h-[85vh] w-[95vw] overflow-hidden flex flex-col border-0 rounded-xl",
+          "max-w-[98vw] w-[98vw] max-h-[88vh] overflow-hidden flex flex-col border-0 rounded-xl p-6",
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         )} style={{
             backgroundImage: selectedType?.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.imageUrl ? `url(${linkedEquipments[0].imageUrl})` : undefined,
             backgroundSize: 'cover', backgroundPosition: 'center',
           }}>
             <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black/80 pointer-events-none rounded-lg" />
-          <DialogHeader className="relative">
-            <DialogTitle className="flex items-center gap-2 text-white drop-shadow">
+          <DialogHeader className="relative -mt-1">
+            <DialogTitle className="flex items-center gap-2 text-white drop-shadow mb-0.5">
               <Tags className="h-5 w-5" />
               设备类型管理
             </DialogTitle>
