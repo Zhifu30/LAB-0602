@@ -169,6 +169,9 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   // 图片映射
   interface ImageMapping { imageUrl: string; equipmentIds: string[]; }
   const [imageMappings, setImageMappings] = useState<ImageMapping[]>([]);
+  const [showImageEquipModal, setShowImageEquipModal] = useState(false);
+  const [editingImageIdx, setEditingImageIdx] = useState<number>(-1);
+  const [imageEquipSelected, setImageEquipSelected] = useState<Set<string>>(new Set());
 
   // 添加/编辑计划的表单
   const [showAddPlanModal, setShowAddPlanModal] = useState(false);
@@ -1943,29 +1946,10 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             <Button size="sm" className="h-6 text-xs flex-1 bg-blue-500 hover:bg-blue-600 text-white border-0"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const newMappings = [...imageMappings];
-                                const equipId = window.prompt('输入要关联的设备ID（如 QRE-001）：');
-                                if (equipId && linkedEquipments.some(e => e.id === equipId.trim()) && !mapping.equipmentIds.includes(equipId.trim())) {
-                                  newMappings[idx] = { ...mapping, equipmentIds: [...mapping.equipmentIds, equipId.trim()] };
-                                  setImageMappings(newMappings);
-                                } else if (equipId && mapping.equipmentIds.includes(equipId.trim())) {
-                                  toast({ title: '提示', description: '该设备已关联此图片' });
-                                } else if (equipId) {
-                                  toast({ title: '错误', description: '设备不存在于当前类型', variant: 'destructive' });
-                                }
+                                setEditingImageIdx(idx);
+                                setImageEquipSelected(new Set(mapping.equipmentIds));
+                                setShowImageEquipModal(true);
                               }}><Link2 className="h-3 w-3 mr-1" />关联设备</Button>
-                            {mapping.equipmentIds.length > 0 && (
-                              <Button size="sm" className="h-6 text-xs bg-amber-500 hover:bg-amber-600 text-white border-0"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const eid = window.prompt('输入要取消关联的设备ID：\n当前关联：' + mapping.equipmentIds.join('、'));
-                                  if (eid && mapping.equipmentIds.includes(eid.trim())) {
-                                    const newMappings = [...imageMappings];
-                                    newMappings[idx] = { ...mapping, equipmentIds: mapping.equipmentIds.filter(id => id !== eid.trim()) };
-                                    setImageMappings(newMappings);
-                                  }
-                                }}><Unlink className="h-3 w-3 mr-1" />取消关联</Button>
-                            )}
                             <Button size="sm" className="h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white"
                               onClick={() => {
                                 const newMappings = imageMappings.filter((_, i) => i !== idx);
@@ -2183,6 +2167,38 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           onUpdate={handleDetailUpdate}
           onDelete={handleDetailDelete}
         />
+      )}
+      {/* 图片关联设备弹窗（多选） */}
+      {showImageEquipModal && editingImageIdx >= 0 && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
+          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-md bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg max-h-[80vh] overflow-y-auto">
+            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowImageEquipModal(false); setEditingImageIdx(-1); }}><X className="h-4 w-4" /></button>
+            <DialogHeader><h2 className="text-lg font-semibold">选择关联设备</h2><p className="text-sm text-white/60">勾选要关联到此图片的设备</p></DialogHeader>
+            <ScrollArea className="h-48 border border-white/20 rounded-md p-2 mt-4">
+              <div className="space-y-1">
+                {linkedEquipments.map(eq => (
+                  <div key={eq.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
+                    <Checkbox id={`img-eq-${eq.id}`} checked={imageEquipSelected.has(eq.id)}
+                      onCheckedChange={c => { const s = new Set(imageEquipSelected); c ? s.add(eq.id) : s.delete(eq.id); setImageEquipSelected(s); }} />
+                    <Label htmlFor={`img-eq-${eq.id}`} className="text-sm flex-1 cursor-pointer text-white">
+                      <span className="font-medium">{eq.name}</span><span className="text-white/60 ml-2 text-xs">{eq.id}</span>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+            <DialogFooter className="mt-4">
+              <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowImageEquipModal(false); setEditingImageIdx(-1); }}>取消</Button>
+              <Button className="bg-blue-500 hover:bg-blue-600 text-white border-0" onClick={() => {
+                const newMappings = [...imageMappings];
+                newMappings[editingImageIdx] = { ...newMappings[editingImageIdx], equipmentIds: Array.from(imageEquipSelected) };
+                setImageMappings(newMappings);
+                setShowImageEquipModal(false); setEditingImageIdx(-1);
+              }}>确认 ({imageEquipSelected.size})</Button>
+            </DialogFooter>
+          </div>
+        </>
       )}
     </>
   );
