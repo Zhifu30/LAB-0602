@@ -860,8 +860,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     } catch (err) { console.error('关联失败:', err); toast({ title: '失败', description: '请重试', variant: 'destructive' }); }
   };
 
-  // 取消关联
-  const handleUnlinkEquipment = async () => {
+  // 取消计划关联
+  const handleUnlinkPlanEquipment = async () => {
     if (!unlinkingPlan || unlinkEquipmentIds.size === 0) return;
     try {
       const ids = unlinkingPlan.schedules.filter(s => unlinkEquipmentIds.has(s.equipment_id)).map(s => s.id);
@@ -2000,7 +2000,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             </div>
             <DialogFooter className="mt-4">
               <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowUnlinkModal(false); setUnlinkingPlan(null); }}>取消</Button>
-              <Button className="bg-red-500 hover:bg-red-600 text-white border-0" onClick={handleUnlinkEquipment} disabled={unlinkEquipmentIds.size === 0}>确认移除</Button>
+              <Button className="bg-red-500 hover:bg-red-600 text-white border-0" onClick={handleUnlinkPlanEquipment} disabled={unlinkEquipmentIds.size === 0}>确认移除</Button>
             </DialogFooter>
           </div>
         </>
