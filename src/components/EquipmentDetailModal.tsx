@@ -98,7 +98,7 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
 
   const handleScrapConfirm = async (password: string, reason: string) => {
     try {
-      const updatedEquipment = { ...equipment, status: 'scrapped' as EquipmentStatus, is_scrapped: true, scrapped_at: new Date().toISOString(), scrapped_by: profile?.user_id };
+      const updatedEquipment = { ...equipment, type: null as any, status: 'scrapped' as EquipmentStatus, is_scrapped: true, scrapped_at: new Date().toISOString(), scrapped_by: profile?.user_id };
       onUpdate(updatedEquipment); setEditedEquipment(updatedEquipment);
       await supabase.from('scrap_records').insert({ equipment_id: equipment.id, scrapped_by: profile?.user_id, scrapper_name: profile?.username || 'Unknown', reason, admin_password: password });
       await supabase.functions.invoke('send-equipment-notification', {

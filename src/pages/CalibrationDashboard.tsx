@@ -25,8 +25,8 @@ export default function CalibrationDashboard() {
     setLoading(true);
     const { data: eqs, error } = await supabase
       .from('equipment').select('id,name,model,manufacturer,location,responsible,responsible_email,type,next_calibration_date,image_url,status')
-      .not('next_calibration_date', 'is', null).neq('is_scrapped', true).order('next_calibration_date', { ascending: true });
-    if (error) { toast.error('加载校正数据失败'); } else { setData(eqs || []); }
+      .not('next_calibration_date', 'is', null).order('next_calibration_date', { ascending: true });
+    if (error) { toast.error('加载校正数据失败'); } else { setData((eqs || []).filter((eq: any) => eq.is_scrapped !== true && eq.status !== 'scrapped')); }
     setLoading(false);
   };
 
@@ -53,7 +53,9 @@ export default function CalibrationDashboard() {
   };
 
   const onUpdate = async (e: Equipment) => {
-    await supabase.from('equipment').update({ name: e.name, model: e.model, manufacturer: e.manufacturer, status: e.status, location: e.location, maintenance_date: e.maintenanceDate, next_calibration_date: e.nextCalibrationDate, responsible: e.responsible, notes: e.notes, image_url: e.imageUrl, sop_file_url: e.sopFileUrl, responsible_email: e.responsible_email }).eq('id', e.id);
+    const updateData: Record<string, any> = { name: e.name, model: e.model, manufacturer: e.manufacturer, status: e.status, location: e.location, maintenance_date: e.maintenanceDate, next_calibration_date: e.nextCalibrationDate, responsible: e.responsible, notes: e.notes, image_url: e.imageUrl, sop_file_url: e.sopFileUrl, responsible_email: e.responsible_email };
+    if ((e as any).type !== undefined) updateData.type = (e as any).type;
+    await supabase.from('equipment').update(updateData).eq('id', e.id);
     setShowDetail(false); fetchData();
   };
 

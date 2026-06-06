@@ -362,6 +362,7 @@ export const useEquipment = (includeScrapped = false) => {
         .from('equipment')
         .update({
           is_scrapped: true,
+          status: 'scrapped', // 同步设置状态为报废，兼容 status 字段过滤
           scrapped_at: new Date().toISOString(),
           scrapped_by: (await supabase.auth.getUser()).data.user?.id,
           type: null, // 自动解除类型关联，不再参与任何管理活动

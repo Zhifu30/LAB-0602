@@ -337,8 +337,11 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   );
 
   // 活跃设备（排除报废）- 报废设备不参与任何管理活动
+  // 同时检查 isScrapped 布尔字段和 status='scrapped'，兼容两种报废标记方式
   const activeEquipments = useMemo(() => {
-    return equipments.filter(eq => (eq as any).isScrapped !== true);
+    return equipments.filter(eq =>
+      (eq as any).isScrapped !== true && eq.status !== 'scrapped'
+    );
   }, [equipments]);
 
   // 获取关联到当前类型的设备列表 - 使用数据库 type 字段作为唯一真实来源，排除报废设备
