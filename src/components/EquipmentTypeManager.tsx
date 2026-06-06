@@ -2007,7 +2007,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       {/* 添加维护模板弹窗 — 纯 div，不用 Dialog 避免与外部 DialogPrimitive 冲突 */}
       {showAddTemplateModal && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={() => setShowAddTemplateModal(false)} />
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
           <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
             <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => setShowAddTemplateModal(false)}><X className="h-4 w-4" /></button>
             <DialogHeader>
@@ -2022,7 +2022,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       {/* 编辑维护模板弹窗 */}
       {showEditTemplateModal && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={() => { setShowEditTemplateModal(false); setEditingTemplate(null); resetTemplateForm(); }} />
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
           <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
             <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowEditTemplateModal(false); setEditingTemplate(null); resetTemplateForm(); }}><X className="h-4 w-4" /></button>
             <DialogHeader>
@@ -2037,7 +2037,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       {/* 应用模板弹窗 */}
       {showApplyTemplateModal && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={() => { setShowApplyTemplateModal(false); setApplyingTemplate(null); setTemplateSelectedIds(new Set()); }} />
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
           <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg max-h-[90vh] overflow-y-auto">
             <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowApplyTemplateModal(false); setApplyingTemplate(null); setTemplateSelectedIds(new Set()); }}><X className="h-4 w-4" /></button>
             <DialogHeader>
@@ -2107,7 +2107,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       {/* 添加维护计划弹窗 */}
       {showAddScheduleModal && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={() => setShowAddScheduleModal(false)} />
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
           <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
             <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => setShowAddScheduleModal(false)}><X className="h-4 w-4" /></button>
             <DialogHeader>
@@ -2122,7 +2122,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       {/* 编辑维护计划弹窗 */}
       {showEditScheduleModal && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={() => { setShowEditScheduleModal(false); setEditingSchedule(null); resetScheduleForm(); }} />
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
           <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
             <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowEditScheduleModal(false); setEditingSchedule(null); resetScheduleForm(); }}><X className="h-4 w-4" /></button>
             <DialogHeader>
