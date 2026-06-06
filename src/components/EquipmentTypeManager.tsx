@@ -1325,7 +1325,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                 <Input
                   ref={newTypeInputRef}
                   placeholder="新类型名称"
-                  className="flex-1 h-8 text-sm"
+                  className="flex-1 h-8 text-sm bg-white/10 border-white/20 text-white placeholder:text-white/50"
                   onKeyDown={handleKeyDown}
                 />
                 <Button onClick={handleAddType} size="sm" className="h-8 px-2">
