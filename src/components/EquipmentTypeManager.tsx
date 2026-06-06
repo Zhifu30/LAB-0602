@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Equipment } from '@/types/equipment';
 import EquipmentDetailModal from '@/components/EquipmentDetailModal';
+import MaintenancePlanCard from '@/components/MaintenancePlanCard';
 import { supabase } from '@/integrations/supabase/client';
 import { format, endOfMonth } from 'date-fns';
 
@@ -1779,62 +1780,30 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                             const isOverdue = earliestDate && new Date(earliestDate) < new Date();
                             const sortedEids = [...plan.equipmentIds].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
                             return (
-                            <div key={`${plan.title}-${plan.frequency}-${idx}`} className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                                    <span className="font-medium text-white text-xs">{plan.title}</span>
-                                    <Badge variant="outline" className="border-white/30 text-white/80 text-xs">
-                                      {frequencyLabels[plan.frequency]}
-                                    </Badge>
-                                    {earliestDate && (
-                                      <Badge className={`text-xs ${isOverdue ? 'bg-red-500 text-white' : 'bg-white/20 text-white/80'}`}>
-                                        {isOverdue ? `最早逾期` : earliestDate}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {plan.description && (
-                                    <p className="text-sm text-white font-bold mb-2 whitespace-pre-line">{plan.description}</p>
-                                  )}
-                                  <div className="text-xs text-white/50 flex items-center gap-3 flex-wrap">
-                                    {earliestDate && (
-                                      <span className="flex items-center gap-1">
-                                        <div className="p-0.5 bg-blue-500 rounded"><Calendar className="h-2.5 w-2.5 text-white" /></div>
-                                        下次: {earliestDate}
-                                      </span>
-                                    )}
-                                    {assignee && (
-                                      <span className="flex items-center gap-1">
-                                        <div className="p-0.5 bg-purple-500 rounded"><User className="h-2.5 w-2.5 text-white" /></div>
-                                        {assignee}
-                                      </span>
-                                    )}
-                                    <span className="flex items-center gap-1">
-                                      <div className="p-0.5 bg-green-500 rounded"><Link2 className="h-2.5 w-2.5 text-white" /></div>
-                                      {sortedEids.map(eid => { const eq = activeEquipments.find(e => e.id === eid); return eq ? eq.id : eid; }).join('、')}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1 shrink-0">
+                            <MaintenancePlanCard
+                              key={`${plan.title}-${plan.frequency}-${idx}`}
+                              title={plan.title}
+                              description={plan.description}
+                              frequency={plan.frequency}
+                              nextDueDate={earliestDate || undefined}
+                              assignedName={assignee || undefined}
+                              reminderDaysBefore={plan.reminder_days_before}
+                              equipmentIds={sortedEids.map(eid => { const eq = activeEquipments.find(e => e.id === eid); return eq ? eq.id : eid; })}
+                              actions={
+                                <>
                                   <Button size="sm" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
                                     onClick={(e) => { e.stopPropagation();
                                       setLinkingPlan(plan); setLinkDate(getEndOfCurrentMonth());
                                       const unlinked = linkedEquipments.filter(eq => !plan.equipmentIds.includes(eq.id)).map(eq => eq.id);
                                       setLinkEquipmentIds(new Set(unlinked)); setShowLinkEquipmentModal(true);
-                                    }} title="关联设备">
-                                    <Link2 className="h-3.5 w-3.5" />
-                                  </Button>
+                                    }} title="关联设备"><Link2 className="h-3.5 w-3.5" /></Button>
                                   <Button size="sm" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
-                                    onClick={(e) => { e.stopPropagation(); handleEditPlan(plan); }} title="编辑计划">
-                                    <Edit2 className="h-3.5 w-3.5" />
-                                  </Button>
+                                    onClick={(e) => { e.stopPropagation(); handleEditPlan(plan); }} title="编辑计划"><Edit2 className="h-3.5 w-3.5" /></Button>
                                   <Button size="sm" className="h-7 w-7 p-0 bg-red-500 hover:bg-red-600 text-white"
-                                    onClick={() => handleDeletePlan(plan)} title="删除计划">
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
+                                    onClick={() => handleDeletePlan(plan)} title="删除计划"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                </>
+                              }
+                            />
                           );})}
                         </div>
                       ) : null}

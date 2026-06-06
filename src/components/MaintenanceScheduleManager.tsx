@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import MaintenancePlanCard from '@/components/MaintenancePlanCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -439,113 +440,36 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
           <div className="space-y-2">
             {schedules.map((schedule) => {
               const daysUntil = getDaysUntilDue(schedule.next_due_date);
+              const relEquip = scheduleEquipMap[schedule.id] || [];
               return (
-                <div
+                <MaintenancePlanCard
                   key={schedule.id}
-                  className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                        <span className="font-medium text-white text-xs">{schedule.title}</span>
-                        <Badge variant="outline" className="border-white/30 text-white/80 text-xs">
-                          {frequencyLabels[schedule.frequency]}
-                        </Badge>
-                        <Badge className={`text-xs ${getUrgencyColor(daysUntil)}`}>
-                          {daysUntil < 0 ? `已过期 ${Math.abs(daysUntil)} 天` :
-                           daysUntil === 0 ? '今天到期' :
-                           `${daysUntil} 天后到期`}
-                        </Badge>
-                        {schedule.reminder_sent && (
-                          <Badge variant="secondary" className="text-xs bg-white/20 text-white/80">已发送提醒</Badge>
-                        )}
-                      </div>
-                      {schedule.description && (
-                        <p className="text-sm text-white font-bold mb-2 whitespace-pre-line">{schedule.description}</p>
+                  title={schedule.title}
+                  description={schedule.description}
+                  frequency={schedule.frequency}
+                  nextDueDate={schedule.next_due_date}
+                  assignedName={schedule.assigned_name || undefined}
+                  reminderDaysBefore={schedule.reminder_days_before}
+                  daysUntilDue={daysUntil}
+                  reminderSent={schedule.reminder_sent}
+                  equipmentIds={relEquip.length > 0 ? relEquip.map(e => e.id) : undefined}
+                  actions={!readOnly ? (
+                    <>
+                      <Button size="sm" onClick={() => { setLinkingSchedule(schedule); setLinkEquipDate(new Date().toISOString().split('T')[0]); setShowLinkEquipModal(true); }}
+                        title="关联到其他设备" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"><Link2 className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" onClick={() => handleSendReminder(schedule)} title="发送提醒"
+                        className="h-7 w-7 p-0 bg-orange-500 hover:bg-orange-600 text-white"><Bell className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" onClick={() => handleCompleteSchedule(schedule)} title="标记完成"
+                        className="h-7 w-7 p-0 bg-green-500 hover:bg-green-600 text-white"><Check className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" onClick={() => openEditModal(schedule)} title="编辑"
+                        className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"><Edit className="h-3.5 w-3.5" /></Button>
+                      {isAdmin() && (
+                        <Button size="sm" onClick={() => handleDeleteSchedule(schedule.id)} title="删除"
+                          className="h-7 w-7 p-0 bg-red-500 hover:bg-red-600 text-white"><Trash2 className="h-3.5 w-3.5" /></Button>
                       )}
-                      <div className="text-xs text-white/50 flex items-center gap-3 flex-wrap">
-                        <span className="flex items-center gap-1">
-                          <div className="p-0.5 bg-blue-500 rounded">
-                            <Calendar className="h-2.5 w-2.5 text-white" />
-                          </div>
-                          下次: {schedule.next_due_date}
-                        </span>
-                        {schedule.assigned_name && (
-                          <span className="flex items-center gap-1">
-                            <div className="p-0.5 bg-purple-500 rounded">
-                              <Bell className="h-2.5 w-2.5 text-white" />
-                            </div>
-                            {schedule.assigned_name}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1">
-                          <div className="p-0.5 bg-orange-500 rounded">
-                            <Bell className="h-2.5 w-2.5 text-white" />
-                          </div>
-                          提前 {schedule.reminder_days_before} 天提醒
-                        </span>
-                      </div>
-                      {/* 关联设备信息 */}
-                      {scheduleEquipMap[schedule.id] && scheduleEquipMap[schedule.id].length > 0 && (
-                        <div className="text-xs text-white/50 flex items-center gap-1 mt-1">
-                          <div className="p-0.5 bg-green-500 rounded"><Link2 className="h-2.5 w-2.5 text-white" /></div>
-                          {scheduleEquipMap[schedule.id].map(e => e.id).join('、')}
-                        </div>
-                      )}
-                    </div>
-                    {!readOnly && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setLinkingSchedule(schedule);
-                            setLinkEquipDate(new Date().toISOString().split('T')[0]);
-                            setLinkEquipIds(new Set());
-                            setShowLinkEquipModal(true);
-                          }}
-                          title="关联到其他设备"
-                          className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
-                        >
-                          <Link2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleSendReminder(schedule)}
-                          title="发送提醒"
-                          className="h-7 w-7 p-0 bg-orange-500 hover:bg-orange-600 text-white"
-                        >
-                          <Bell className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleCompleteSchedule(schedule)}
-                          title="标记完成"
-                          className="h-7 w-7 p-0 bg-green-500 hover:bg-green-600 text-white"
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => openEditModal(schedule)}
-                          title="编辑"
-                          className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
-                        {isAdmin() && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleDeleteSchedule(schedule.id)}
-                            title="删除"
-                            className="h-7 w-7 p-0 bg-red-500 hover:bg-red-600 text-white"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                    </>
+                  ) : undefined}
+                />
               );
             })}
           </div>
