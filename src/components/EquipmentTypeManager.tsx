@@ -2129,7 +2129,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             newMappings[editingImageIdx] = { ...newMappings[editingImageIdx], equipmentIds: Array.from(imageEquipSelected) };
             setImageMappings(newMappings);
             for (const eid of Array.from(imageEquipSelected)) { await supabase.from('equipment').update({ image_url: imgUrl }).eq('id', eid); }
-            onEquipmentRefresh?.(); setShowImageEquipModal(false); setEditingImageIdx(-1);
+            onEquipmentRefresh?.(); window.dispatchEvent(new Event('equipment-updated')); setShowImageEquipModal(false); setEditingImageIdx(-1);
           }}>确认 ({imageEquipSelected.size})</Button>
         </div>
       </GlassModal>
