@@ -151,8 +151,10 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
       if (equipmentType) eqQuery = eqQuery.eq('type', equipmentType);
       const { data: eqData } = await eqQuery;
       const eqNameMap: Record<string, string> = {};
-      const validEqIds = new Set((eqData || []).map((e: any) => e.id));
-      (eqData || []).forEach((e: any) => { eqNameMap[e.id] = e.name || e.id; });
+      // 排除报废设备
+      const activeEqData = (eqData || []).filter((e: any) => e.is_scrapped !== true && e.status !== 'scrapped');
+      const validEqIds = new Set(activeEqData.map((e: any) => e.id));
+      activeEqData.forEach((e: any) => { eqNameMap[e.id] = e.name || e.id; });
       const map: Record<string, { id: string; name: string }[]> = {};
       for (const s of currentSchedules) {
         const related = data
