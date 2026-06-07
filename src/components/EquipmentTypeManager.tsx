@@ -2029,110 +2029,64 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       )}
 
       {/* 关联设备弹窗（计划→设备） */}
-      {showLinkEquipmentModal && linkingPlan && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
-          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg max-h-[90vh] overflow-y-auto">
-            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set()); }}><X className="h-4 w-4" /></button>
-            <DialogHeader>
-              <h2 className="text-lg font-semibold leading-none tracking-tight">关联设备到计划</h2>
-              <p className="text-sm text-white/60">将 "{linkingPlan.title}" 关联到更多设备</p>
-            </DialogHeader>
-            <div className="space-y-4 mt-2">
-              <div className="space-y-2"><Label className="text-white/80">下次维护日期</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20"><Calendar className="mr-2 h-4 w-4" />{linkDate ? format(linkDate, 'yyyy-MM-dd') : '选择日期'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0 z-[200]" align="start"><CalendarComponent mode="single" selected={linkDate} onSelect={setLinkDate} initialFocus className="pointer-events-auto" /></PopoverContent></Popover></div>
-              <div className="space-y-2">
-                <Label className="text-white/80">选择设备</Label>
-                <p className="text-xs text-white/60">已关联 {linkingPlan.equipmentIds.length} 台，可选 {linkedEquipments.filter(eq => !linkingPlan.equipmentIds.includes(eq.id)).length} 台</p>
-                <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
-                  <div className="space-y-1">
-                    {linkedEquipments.map(eq => {
-                      const already = linkingPlan.equipmentIds.includes(eq.id);
-                      return (
-                        <div key={eq.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/10 ${already ? 'opacity-50' : ''}`}>
-                          <Checkbox id={`le-${eq.id}`} checked={linkEquipmentIds.has(eq.id)} disabled={already} onCheckedChange={c => { const s = new Set(linkEquipmentIds); c ? s.add(eq.id) : s.delete(eq.id); setLinkEquipmentIds(s); }} />
-                          <Label htmlFor={`le-${eq.id}`} className="text-sm flex-1 cursor-pointer text-white"><span className="font-medium">{eq.name}</span><span className="text-white/60 ml-2 text-xs">{eq.id}</span>{already && <span className="text-green-400 ml-2 text-xs">(已关联)</span>}</Label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
+      <GlassModal open={showLinkEquipmentModal && !!linkingPlan} onClose={() => { setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set()); }}
+        title="关联设备到计划" description={`将 "${linkingPlan?.title}" 关联到更多设备`}>
+        <div className="space-y-2"><Label className="text-white/80">下次维护日期</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20"><Calendar className="mr-2 h-4 w-4" />{linkDate ? format(linkDate, 'yyyy-MM-dd') : '选择日期'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0 z-[200]" align="start"><CalendarComponent mode="single" selected={linkDate} onSelect={setLinkDate} initialFocus className="pointer-events-auto" /></PopoverContent></Popover></div>
+        <div className="space-y-2 mt-4">
+          <Label className="text-white/80">选择设备</Label>
+          <p className="text-xs text-white/60">已关联 {linkingPlan?.equipmentIds.length || 0} 台，可选 {linkedEquipments.filter(eq => linkingPlan && !linkingPlan.equipmentIds.includes(eq.id)).length} 台</p>
+          <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
+            {linkedEquipments.map(eq => { const already = linkingPlan?.equipmentIds.includes(eq.id); return (
+              <div key={eq.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/10 ${already ? 'opacity-50' : ''}`}>
+                <Checkbox id={`le-${eq.id}`} checked={linkEquipmentIds.has(eq.id)} disabled={already} onCheckedChange={c => { const s = new Set(linkEquipmentIds); c ? s.add(eq.id) : s.delete(eq.id); setLinkEquipmentIds(s); }} />
+                <Label htmlFor={`le-${eq.id}`} className="text-sm flex-1 cursor-pointer text-white"><span className="font-medium">{eq.name}</span><span className="text-white/60 ml-2 text-xs">{eq.id}</span>{already && <span className="text-green-400 ml-2 text-xs">(已关联)</span>}</Label>
               </div>
-              <DialogFooter>
-                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set()); }}>取消</Button>
-                <Button onClick={handleLinkPlanToEquipment} disabled={linkEquipmentIds.size === 0}>确认关联</Button>
-              </DialogFooter>
-            </div>
-          </div>
-        </>
-      )}
+            );})}
+          </ScrollArea>
+        </div>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6">
+          <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set()); }}>取消</Button>
+          <Button onClick={handleLinkPlanToEquipment} disabled={linkEquipmentIds.size === 0}>确认关联</Button>
+        </div>
+      </GlassModal>
 
       {/* 取消关联弹窗 */}
-      {showUnlinkModal && unlinkingPlan && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
-          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-md bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg max-h-[80vh] overflow-y-auto">
-            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowUnlinkModal(false); setUnlinkingPlan(null); }}><X className="h-4 w-4" /></button>
-            <DialogHeader><h2 className="text-lg font-semibold">取消关联</h2><p className="text-sm text-white/60">从 "{unlinkingPlan.title}" 中移除设备</p></DialogHeader>
-            <div className="space-y-2 mt-4">
-              <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
-                <div className="space-y-1">
-                  {unlinkingPlan.equipmentIds.map(eid => {
-                    const eq = linkedEquipments.find(e => e.id === eid);
-                    return (
-                      <div key={eid} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
-                        <Checkbox id={`unlink-${eid}`} checked={unlinkEquipmentIds.has(eid)} onCheckedChange={c => { const s = new Set(unlinkEquipmentIds); c ? s.add(eid) : s.delete(eid); setUnlinkEquipmentIds(s); }} />
-                        <Label htmlFor={`unlink-${eid}`} className="text-sm flex-1 cursor-pointer text-white"><span className="font-medium">{eq?.name || eid}</span><span className="text-white/60 ml-2 text-xs">{eid}</span></Label>
-                      </div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
+      <GlassModal open={showUnlinkModal && !!unlinkingPlan} onClose={() => { setShowUnlinkModal(false); setUnlinkingPlan(null); }}
+        title="取消关联" description={`从 "${unlinkingPlan?.title}" 中移除设备`}>
+        <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
+          {unlinkingPlan?.equipmentIds.map(eid => { const eq = linkedEquipments.find(e => e.id === eid); return (
+            <div key={eid} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
+              <Checkbox id={`unlink-${eid}`} checked={unlinkEquipmentIds.has(eid)} onCheckedChange={c => { const s = new Set(unlinkEquipmentIds); c ? s.add(eid) : s.delete(eid); setUnlinkEquipmentIds(s); }} />
+              <Label htmlFor={`unlink-${eid}`} className="text-sm flex-1 cursor-pointer text-white"><span className="font-medium">{eq?.name || eid}</span><span className="text-white/60 ml-2 text-xs">{eid}</span></Label>
             </div>
-            <DialogFooter className="mt-4">
-              <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowUnlinkModal(false); setUnlinkingPlan(null); }}>取消</Button>
-              <Button className="bg-red-500 hover:bg-red-600 text-white border-0" onClick={handleUnlinkPlanEquipment} disabled={unlinkEquipmentIds.size === 0}>确认移除</Button>
-            </DialogFooter>
-          </div>
-        </>
-      )}
+          );})}
+        </ScrollArea>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6">
+          <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowUnlinkModal(false); setUnlinkingPlan(null); }}>取消</Button>
+          <Button className="bg-red-500 hover:bg-red-600 text-white border-0" onClick={handleUnlinkPlanEquipment} disabled={unlinkEquipmentIds.size === 0}>确认移除</Button>
+        </div>
+      </GlassModal>
 
       {/* 关联维护计划弹窗（设备→计划） */}
-      {showLinkPlanModal && equipmentLinkingId && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
-          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg max-h-[90vh] overflow-y-auto">
-            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowLinkPlanModal(false); setEquipmentLinkingId(null); setPlanLinkIds(new Set()); }}><X className="h-4 w-4" /></button>
-            <DialogHeader>
-              <h2 className="text-lg font-semibold leading-none tracking-tight">关联维护计划</h2>
-              <p className="text-sm text-white/60">为 {linkedEquipments.find(eq => eq.id === equipmentLinkingId)?.name} 选择维护计划</p>
-            </DialogHeader>
-            <div className="space-y-4 mt-2">
-              <div className="space-y-2"><Label className="text-white/80">下次维护日期</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20"><Calendar className="mr-2 h-4 w-4" />{linkDate ? format(linkDate, 'yyyy-MM-dd') : '选择日期'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0 z-[200]" align="start"><CalendarComponent mode="single" selected={linkDate} onSelect={setLinkDate} initialFocus className="pointer-events-auto" /></PopoverContent></Popover></div>
-              <div className="space-y-2">
-                <Label className="text-white/80">选择计划</Label>
-                <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
-                  <div className="space-y-1">
-                    {planGroups.map((plan, idx) => {
-                      const key = `${plan.title}|||${plan.description||''}|||${plan.frequency}`;
-                      const already = plan.equipmentIds.includes(equipmentLinkingId);
-                      return (
-                        <div key={idx} className={`flex items-center gap-2 p-1.5 rounded ${already ? 'opacity-50' : ''}`}>
-                          <Checkbox id={`lp-${idx}`} checked={planLinkIds.has(key)} disabled={already} onCheckedChange={c => { const s = new Set(planLinkIds); c ? s.add(key) : s.delete(key); setPlanLinkIds(s); }} />
-                          <Label htmlFor={`lp-${idx}`} className="text-sm flex-1 cursor-pointer text-white"><span className="font-medium">{plan.title}</span><span className="text-white/60 ml-2 text-xs">{frequencyLabels[plan.frequency]}</span>{already && <span className="text-green-400 ml-2 text-xs">(已关联)</span>}</Label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
+      <GlassModal open={showLinkPlanModal && !!equipmentLinkingId} onClose={() => { setShowLinkPlanModal(false); setEquipmentLinkingId(null); setPlanLinkIds(new Set()); }}
+        title="关联维护计划" description={`为 ${linkedEquipments.find(eq => eq.id === equipmentLinkingId)?.name} 选择维护计划`}>
+        <div className="space-y-2"><Label className="text-white/80">下次维护日期</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20"><Calendar className="mr-2 h-4 w-4" />{linkDate ? format(linkDate, 'yyyy-MM-dd') : '选择日期'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0 z-[200]" align="start"><CalendarComponent mode="single" selected={linkDate} onSelect={setLinkDate} initialFocus className="pointer-events-auto" /></PopoverContent></Popover></div>
+        <div className="space-y-2 mt-4">
+          <Label className="text-white/80">选择计划</Label>
+          <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
+            {planGroups.map((plan, idx) => { const key = `${plan.title}|||${plan.description||''}|||${plan.frequency}`; const already = plan.equipmentIds.includes(equipmentLinkingId!); return (
+              <div key={idx} className={`flex items-center gap-2 p-1.5 rounded ${already ? 'opacity-50' : ''}`}>
+                <Checkbox id={`lp-${idx}`} checked={planLinkIds.has(key)} disabled={already} onCheckedChange={c => { const s = new Set(planLinkIds); c ? s.add(key) : s.delete(key); setPlanLinkIds(s); }} />
+                <Label htmlFor={`lp-${idx}`} className="text-sm flex-1 cursor-pointer text-white"><span className="font-medium">{plan.title}</span><span className="text-white/60 ml-2 text-xs">{frequencyLabels[plan.frequency]}</span>{already && <span className="text-green-400 ml-2 text-xs">(已关联)</span>}</Label>
               </div>
-              <DialogFooter>
-                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowLinkPlanModal(false); setEquipmentLinkingId(null); setPlanLinkIds(new Set()); }}>取消</Button>
-                <Button onClick={handleLinkEquipmentToPlans} disabled={planLinkIds.size === 0}>确认关联</Button>
-              </DialogFooter>
-            </div>
-          </div>
-        </>
-      )}
+            );})}
+          </ScrollArea>
+        </div>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6">
+          <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowLinkPlanModal(false); setEquipmentLinkingId(null); setPlanLinkIds(new Set()); }}>取消</Button>
+          <Button onClick={handleLinkEquipmentToPlans} disabled={planLinkIds.size === 0}>确认关联</Button>
+        </div>
+      </GlassModal>
 
       {/* 添加维护计划弹窗 */}
       {showAddScheduleModal && (
@@ -2174,44 +2128,28 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           onDelete={handleDetailDelete}
         />
       )}
-      {/* 图片关联设备弹窗（多选） */}
-      {showImageEquipModal && editingImageIdx >= 0 && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
-          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-md bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg max-h-[80vh] overflow-y-auto">
-            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowImageEquipModal(false); setEditingImageIdx(-1); }}><X className="h-4 w-4" /></button>
-            <DialogHeader><h2 className="text-lg font-semibold">选择关联设备</h2><p className="text-sm text-white/60">勾选要关联到此图片的设备</p></DialogHeader>
-            <ScrollArea className="h-48 border border-white/20 rounded-md p-2 mt-4">
-              <div className="space-y-1">
-                {linkedEquipments.map(eq => (
-                  <div key={eq.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
-                    <Checkbox id={`img-eq-${eq.id}`} checked={imageEquipSelected.has(eq.id)}
-                      onCheckedChange={c => { const s = new Set(imageEquipSelected); c ? s.add(eq.id) : s.delete(eq.id); setImageEquipSelected(s); }} />
-                    <Label htmlFor={`img-eq-${eq.id}`} className="text-sm flex-1 cursor-pointer text-white">
-                      <span className="font-medium">{eq.name}</span><span className="text-white/60 ml-2 text-xs">{eq.id}</span>
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-            <DialogFooter className="mt-4">
-              <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowImageEquipModal(false); setEditingImageIdx(-1); }}>取消</Button>
-              <Button className="bg-blue-500 hover:bg-blue-600 text-white border-0" onClick={async () => {
-                const newMappings = [...imageMappings];
-                const imgUrl = newMappings[editingImageIdx].imageUrl;
-                newMappings[editingImageIdx] = { ...newMappings[editingImageIdx], equipmentIds: Array.from(imageEquipSelected) };
-                setImageMappings(newMappings);
-                // 同步到数据库：将选中设备的 image_url 更新为当前图片URL
-                for (const eid of Array.from(imageEquipSelected)) {
-                  await supabase.from('equipment').update({ image_url: imgUrl }).eq('id', eid);
-                }
-                onEquipmentRefresh?.();
-                setShowImageEquipModal(false); setEditingImageIdx(-1);
-              }}>确认 ({imageEquipSelected.size})</Button>
-            </DialogFooter>
-          </div>
-        </>
-      )}
+      {/* 图片关联设备弹窗 */}
+      <GlassModal open={showImageEquipModal && editingImageIdx >= 0} onClose={() => { setShowImageEquipModal(false); setEditingImageIdx(-1); }}
+        title="选择关联设备" description="勾选要关联到此图片的设备">
+        <ScrollArea className="h-48 border border-white/20 rounded-md p-2">
+          {linkedEquipments.map(eq => (
+            <div key={eq.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
+              <Checkbox id={`img-eq-${eq.id}`} checked={imageEquipSelected.has(eq.id)} onCheckedChange={c => { const s = new Set(imageEquipSelected); c ? s.add(eq.id) : s.delete(eq.id); setImageEquipSelected(s); }} />
+              <Label htmlFor={`img-eq-${eq.id}`} className="text-sm flex-1 cursor-pointer text-white"><span className="font-medium">{eq.name}</span><span className="text-white/60 ml-2 text-xs">{eq.id}</span></Label>
+            </div>
+          ))}
+        </ScrollArea>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6">
+          <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowImageEquipModal(false); setEditingImageIdx(-1); }}>取消</Button>
+          <Button className="bg-blue-500 hover:bg-blue-600 text-white border-0" onClick={async () => {
+            const newMappings = [...imageMappings]; const imgUrl = newMappings[editingImageIdx].imageUrl;
+            newMappings[editingImageIdx] = { ...newMappings[editingImageIdx], equipmentIds: Array.from(imageEquipSelected) };
+            setImageMappings(newMappings);
+            for (const eid of Array.from(imageEquipSelected)) { await supabase.from('equipment').update({ image_url: imgUrl }).eq('id', eid); }
+            onEquipmentRefresh?.(); setShowImageEquipModal(false); setEditingImageIdx(-1);
+          }}>确认 ({imageEquipSelected.size})</Button>
+        </div>
+      </GlassModal>
     </>
   );
 };
