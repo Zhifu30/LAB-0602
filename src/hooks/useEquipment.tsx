@@ -54,6 +54,8 @@ export const useEquipment = (includeScrapped = false) => {
         query = query.or('is_scrapped.eq.false,is_scrapped.is.null');
       }
       const { data, error } = await query.order('created_at', { ascending: false });
+      // 同时在前端过滤 status='scrapped'，避免 SQL NULL 问题
+      const filteredData = !includeScrapped ? (data || []).filter((item: any) => item.status !== 'scrapped') : (data || []);
 
       if (error) {
         throw error;
@@ -61,7 +63,7 @@ export const useEquipment = (includeScrapped = false) => {
 
       // 动态映射：DB列自动转camelCase
       const uuidCols = ['scrapped_by'];
-      const formattedData: Equipment[] = (data || []).map((item: any) => {
+      const formattedData: Equipment[] = filteredData.map((item: any) => {
         const mapped: any = {};
         for (const dbKey of Object.keys(item)) {
           const value = item[dbKey];
