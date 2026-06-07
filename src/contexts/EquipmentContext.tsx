@@ -23,8 +23,8 @@ export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const { data, error } = await supabase.from('equipment').select('*').order('created_at', { ascending: false });
       if (error) throw error;
       setEquipment(mapEquipmentListFromDb(data || []));
-    } catch (err) { console.error('获取设备数据失败:', err); }
-    finally { setLoading(false); }
+    } catch (err) { console.error('获取设备数据失败:', err);
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchEquipment(); }, [fetchEquipment]);
