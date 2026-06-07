@@ -21,6 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Equipment } from '@/types/equipment';
 import EquipmentDetailModal from '@/components/EquipmentDetailModal';
 import MaintenancePlanCard from '@/components/MaintenancePlanCard';
+import GlassModal from '@/components/GlassModal';
 import { supabase } from '@/integrations/supabase/client';
 import { format, endOfMonth } from 'date-fns';
 
