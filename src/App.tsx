@@ -7,6 +7,7 @@ import { LanguageProvider } from "./hooks/useLanguage";
 import { AuthProvider } from "./hooks/useAuth";
 import { AppLayout } from "./components/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { EquipmentProvider } from "./contexts/EquipmentContext";
 import Index from "./pages/Index";
 import PartsManagement from "./pages/PartsManagement";
 import EmpowerManagement from "./pages/EmpowerManagement";
@@ -25,6 +26,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <EquipmentProvider>
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
@@ -73,6 +75,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+          </EquipmentProvider>
         </TooltipProvider>
       </LanguageProvider>
     </AuthProvider>
