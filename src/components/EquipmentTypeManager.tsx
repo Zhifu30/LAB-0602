@@ -163,10 +163,6 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const [showLinkPlanModal, setShowLinkPlanModal] = useState(false);
   const [equipmentLinkingId, setEquipmentLinkingId] = useState<string | null>(null);
   const [planLinkIds, setPlanLinkIds] = useState<Set<string>>(new Set());
-  // 取消关联
-  const [showUnlinkModal, setShowUnlinkModal] = useState(false);
-  const [unlinkingPlan, setUnlinkingPlan] = useState<PlanGroup | null>(null);
-  const [unlinkEquipmentIds, setUnlinkEquipmentIds] = useState<Set<string>>(new Set());
   // 图片映射
   interface ImageMapping { imageUrl: string; equipmentIds: string[]; }
   const [imageMappings, setImageMappings] = useState<ImageMapping[]>([]);
@@ -842,14 +838,21 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     } catch (err) { console.error('删除失败:', err); toast({ title: '删除失败', description: '请重试', variant: 'destructive' }); }
   };
 
-  // 计划 → 设备
+  // 计划 ↔ 设备统一管理（关联+解除）
   const handleLinkPlanToEquipment = async () => {
-    if (!linkingPlan || !linkDate || linkEquipmentIds.size === 0) return;
+    if (!linkingPlan) return;
+    const selected = new Set(linkEquipmentIds);
+    const original = new Set(linkingPlan.equipmentIds);
+    const toAdd = [...selected].filter(id => !original.has(id));
+    const toRemove = [...original].filter(id => !selected.has(id));
+    if (toAdd.length === 0 && toRemove.length === 0) { setShowLinkEquipmentModal(false); return; }
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const nd = format(linkDate, 'yyyy-MM-dd'); let n = 0;
-      for (const eid of Array.from(linkEquipmentIds)) {
+      let added = 0, removed = 0;
+      // 新增关联
+      for (const eid of toAdd) {
         const eq = linkedEquipments.find(e => e.id === eid); if (!eq) continue;
+        const nd = format(linkDate || getEndOfCurrentMonth(), 'yyyy-MM-dd');
         const u = users.find(x => x.username === eq.responsible);
         const { error } = await supabase.from('maintenance_schedules').insert({
           equipment_id: eid, title: linkingPlan.title, description: linkingPlan.description,
@@ -857,12 +860,23 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           assigned_name: eq.responsible || null, assigned_email: u?.email || eq.responsible_email || null,
           assigned_user_id: u?.user_id || null, is_active: true, created_by: session?.user?.id || null
         });
-        if (!error) n++;
+        if (!error) added++;
+      }
+      // 解除关联
+      for (const eid of toRemove) {
+        const ids = linkingPlan.schedules.filter(s => s.equipment_id === eid).map(s => s.id);
+        if (ids.length > 0) {
+          const { error } = await supabase.from('maintenance_schedules').update({ is_active: false }).in('id', ids);
+          if (!error) removed++;
+        }
       }
       await refetchAllSchedules(); onEquipmentRefresh?.();
       setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set());
-      toast({ title: '关联成功', description: `已关联 ${n} 台设备` });
-    } catch (err) { console.error('关联失败:', err); toast({ title: '失败', description: '请重试', variant: 'destructive' }); }
+      const msgs = [];
+      if (added > 0) msgs.push(`关联 ${added} 台`);
+      if (removed > 0) msgs.push(`解除 ${removed} 台`);
+      toast({ title: '已更新', description: msgs.join('，') || '无变更' });
+    } catch (err) { console.error('操作失败:', err); toast({ title: '失败', description: '请重试', variant: 'destructive' }); }
   };
 
   // 设备 → 计划
@@ -886,19 +900,6 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       setShowLinkPlanModal(false); setEquipmentLinkingId(null); setPlanLinkIds(new Set());
       toast({ title: '关联成功', description: `已关联 ${n} 个计划` });
     } catch (err) { console.error('关联失败:', err); toast({ title: '失败', description: '请重试', variant: 'destructive' }); }
-  };
-
-  // 取消计划关联
-  const handleUnlinkPlanEquipment = async () => {
-    if (!unlinkingPlan || unlinkEquipmentIds.size === 0) return;
-    try {
-      const ids = unlinkingPlan.schedules.filter(s => unlinkEquipmentIds.has(s.equipment_id)).map(s => s.id);
-      if (ids.length === 0) return;
-      await supabase.from('maintenance_schedules').update({ is_active: false }).in('id', ids);
-      await refetchAllSchedules(); onEquipmentRefresh?.();
-      setShowUnlinkModal(false); setUnlinkingPlan(null); setUnlinkEquipmentIds(new Set());
-      toast({ title: '已取消关联', description: `已移除 ${ids.length} 台设备` });
-    } catch (err) { console.error('取消关联失败:', err); toast({ title: '失败', description: '请重试', variant: 'destructive' }); }
   };
 
   // ========== 维护计划管理功能 ==========
@@ -1839,15 +1840,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                   <Button size="sm" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
                                     onClick={(e) => { e.stopPropagation();
                                       setLinkingPlan(plan); setLinkDate(getEndOfCurrentMonth());
-                                      const unlinked = linkedEquipments.filter(eq => !plan.equipmentIds.includes(eq.id)).map(eq => eq.id);
-                                      setLinkEquipmentIds(new Set(unlinked)); setShowLinkEquipmentModal(true);
-                                    }} title="关联设备"><Link2 className="h-3.5 w-3.5" /></Button>
-                                  {plan.equipmentIds.length > 1 && (
-                                    <Button size="sm" className="h-7 w-7 p-0 bg-amber-500 hover:bg-amber-600 text-white"
-                                      onClick={(e) => { e.stopPropagation();
-                                        setUnlinkingPlan(plan); setUnlinkEquipmentIds(new Set()); setShowUnlinkModal(true);
-                                      }} title="取消关联"><Unlink className="h-3.5 w-3.5" /></Button>
-                                  )}
+                                      setLinkEquipmentIds(new Set(plan.equipmentIds)); setShowLinkEquipmentModal(true);
+                                    }} title="管理设备关联"><Link2 className="h-3.5 w-3.5" /></Button>
                                   {plan.schedules.length === 1 && (
                                     <>
                                       <Button size="sm" className="h-7 w-7 p-0 bg-orange-500 hover:bg-orange-600 text-white"
@@ -2028,42 +2022,31 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         </>
       )}
 
-      {/* 关联设备弹窗（计划→设备） */}
+      {/* 关联/取消关联 统一弹窗 — 勾选=关联，取消勾选=解除关联 */}
       <GlassModal open={showLinkEquipmentModal && !!linkingPlan} onClose={() => { setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set()); }}
-        title="关联设备到计划" description={`将 "${linkingPlan?.title}" 关联到更多设备`}>
-        <div className="space-y-2"><Label className="text-white/80">下次维护日期</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20"><Calendar className="mr-2 h-4 w-4" />{linkDate ? format(linkDate, 'yyyy-MM-dd') : '选择日期'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0 z-[200]" align="start"><CalendarComponent mode="single" selected={linkDate} onSelect={setLinkDate} initialFocus className="pointer-events-auto" /></PopoverContent></Popover></div>
-        <div className="space-y-2 mt-4">
-          <Label className="text-white/80">选择设备</Label>
-          <p className="text-xs text-white/60">已关联 {linkingPlan?.equipmentIds.length || 0} 台，可选 {linkedEquipments.filter(eq => linkingPlan && !linkingPlan.equipmentIds.includes(eq.id)).length} 台</p>
-          <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
-            {linkedEquipments.map(eq => { const already = linkingPlan?.equipmentIds.includes(eq.id); return (
-              <div key={eq.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/10 ${already ? 'opacity-50' : ''}`}>
-                <Checkbox id={`le-${eq.id}`} checked={linkEquipmentIds.has(eq.id)} disabled={already} onCheckedChange={c => { const s = new Set(linkEquipmentIds); c ? s.add(eq.id) : s.delete(eq.id); setLinkEquipmentIds(s); }} />
-                <Label htmlFor={`le-${eq.id}`} className="text-sm flex-1 cursor-pointer text-white"><span className="font-medium">{eq.name}</span><span className="text-white/60 ml-2 text-xs">{eq.id}</span>{already && <span className="text-green-400 ml-2 text-xs">(已关联)</span>}</Label>
+        title="管理设备关联" description={`"${linkingPlan?.title}" — 勾选=关联，取消勾选=解除关联`}>
+        <ScrollArea className="h-48 border border-white/20 rounded-md p-2">
+          {linkedEquipments.map(eq => {
+            const isLinked = linkingPlan?.equipmentIds.includes(eq.id);
+            const isSelected = linkEquipmentIds.has(eq.id);
+            return (
+              <div key={eq.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
+                <Checkbox id={`le-${eq.id}`} checked={isSelected}
+                  onCheckedChange={c => { const s = new Set(linkEquipmentIds); c ? s.add(eq.id) : s.delete(eq.id); setLinkEquipmentIds(s); }} />
+                <Label htmlFor={`le-${eq.id}`} className="text-sm flex-1 cursor-pointer text-white">
+                  <span className="font-medium">{eq.name}</span><span className="text-white/60 ml-2 text-xs">{eq.id}</span>
+                  {isLinked && !isSelected && <span className="text-red-400 ml-2 text-xs">(将解除)</span>}
+                  {!isLinked && isSelected && <span className="text-green-400 ml-2 text-xs">(将关联)</span>}
+                  {isLinked && isSelected && <span className="text-white/40 ml-2 text-xs">(保持)</span>}
+                </Label>
               </div>
-            );})}
-          </ScrollArea>
-        </div>
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6">
-          <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set()); }}>取消</Button>
-          <Button onClick={handleLinkPlanToEquipment} disabled={linkEquipmentIds.size === 0}>确认关联</Button>
-        </div>
-      </GlassModal>
-
-      {/* 取消关联弹窗 */}
-      <GlassModal open={showUnlinkModal && !!unlinkingPlan} onClose={() => { setShowUnlinkModal(false); setUnlinkingPlan(null); }}
-        title="取消关联" description={`从 "${unlinkingPlan?.title}" 中移除设备`}>
-        <ScrollArea className="h-40 border border-white/20 rounded-md p-2">
-          {unlinkingPlan?.equipmentIds.map(eid => { const eq = linkedEquipments.find(e => e.id === eid); return (
-            <div key={eid} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
-              <Checkbox id={`unlink-${eid}`} checked={unlinkEquipmentIds.has(eid)} onCheckedChange={c => { const s = new Set(unlinkEquipmentIds); c ? s.add(eid) : s.delete(eid); setUnlinkEquipmentIds(s); }} />
-              <Label htmlFor={`unlink-${eid}`} className="text-sm flex-1 cursor-pointer text-white"><span className="font-medium">{eq?.name || eid}</span><span className="text-white/60 ml-2 text-xs">{eid}</span></Label>
-            </div>
-          );})}
+            );
+          })}
         </ScrollArea>
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6">
-          <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowUnlinkModal(false); setUnlinkingPlan(null); }}>取消</Button>
-          <Button className="bg-red-500 hover:bg-red-600 text-white border-0" onClick={handleUnlinkPlanEquipment} disabled={unlinkEquipmentIds.size === 0}>确认移除</Button>
+        <p className="text-xs text-white/50 mt-2">已选中 {linkEquipmentIds.size} 台 · 当前关联 {linkingPlan?.equipmentIds.length || 0} 台</p>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
+          <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set()); }}>取消</Button>
+          <Button onClick={handleLinkPlanToEquipment}>应用更改</Button>
         </div>
       </GlassModal>
 
