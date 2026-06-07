@@ -33,10 +33,11 @@ const CalibrationReminder: React.FC = () => {
 
       if (error) throw error;
 
+      const activeEquipment = (equipment || []).filter((e: any) => e.status !== 'scrapped');
       const today = new Date();
       const calibrationAlerts: CalibrationAlert[] = [];
 
-      for (const eq of equipment || []) {
+      for (const eq of activeEquipment) {
         if (eq.next_calibration_date) {
           const calibrationDate = new Date(eq.next_calibration_date);
           const daysUntilCalibration = Math.ceil(

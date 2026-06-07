@@ -60,7 +60,7 @@ export default function AddEquipmentToGroupModal({
         .order('name');
 
       if (error) throw error;
-      setEquipment(data || []);
+      setEquipment((data || []).filter((e: any) => e.status !== 'scrapped'));
     } catch (error) {
       console.error('获取设备失败:', error);
       toast.error('获取设备列表失败');
