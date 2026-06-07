@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import MaintenancePlanCard from '@/components/MaintenancePlanCard';
+import GlassModal from '@/components/GlassModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -586,53 +587,46 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
 
       {/* 关联设备弹窗 */}
       <Dialog open={showLinkEquipModal} onOpenChange={setShowLinkEquipModal}>
-        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white !z-[9999] max-w-md">
-          <DialogHeader>
-            <DialogTitle>关联到其他设备</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-white/80">计划: {linkingSchedule?.title}</Label>
-            </div>
-            <div>
-              <Label className="text-white/80">下次维护日期</Label>
-              <Input type="date" value={linkEquipDate} onChange={e => setLinkEquipDate(e.target.value)}
-                className="bg-white/10 border-white/20 text-white mt-1" />
-            </div>
-            <p className="text-xs text-white/60">将在所选设备上创建同名维护计划</p>
-            <DialogFooter>
-              <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                onClick={() => setShowLinkEquipModal(false)}>取消</Button>
-              <Button onClick={async () => {
-                if (!linkingSchedule || !linkEquipDate) return;
-                try {
-                  const { data: eqData } = await supabase.from('equipment').select('id, name, responsible, responsible_email')
-                    .eq('type', (await supabase.from('equipment').select('type').eq('id', equipmentId).single()).data?.type)
-                    .neq('id', equipmentId).neq('is_scrapped', true);
-                  if (!eqData) return;
-                  let n = 0;
-                  for (const eq of eqData as any[]) {
-                    const { data: exist } = await supabase.from('maintenance_schedules').select('id')
-                      .eq('equipment_id', eq.id).eq('title', linkingSchedule.title).eq('is_active', true).limit(1);
-                    if (exist && exist.length > 0) continue;
-                    const { error } = await supabase.from('maintenance_schedules').insert({
-                      equipment_id: eq.id, title: linkingSchedule.title, description: linkingSchedule.description,
-                      frequency: linkingSchedule.frequency, next_due_date: linkEquipDate,
-                      reminder_days_before: linkingSchedule.reminder_days_before,
-                      assigned_name: eq.responsible || null, assigned_email: eq.responsible_email || null,
-                      is_active: true,
-                    });
-                    if (!error) n++;
-                  }
-                  toast.success(`已关联 ${n} 台设备`);
-                  setShowLinkEquipModal(false);
-                  fetchSchedules();
-                  onScheduleChange?.();
-                } catch (err) { console.error(err); toast.error('关联失败'); }
-              }}>确认关联</Button>
-            </DialogFooter>
+        <GlassModal open={showLinkEquipModal} onClose={() => setShowLinkEquipModal(false)}
+          title="关联到其他设备" description={`计划: ${linkingSchedule?.title}`}>
+          <div className="space-y-2">
+            <Label className="text-white/80">下次维护日期</Label>
+            <Input type="date" value={linkEquipDate} onChange={e => setLinkEquipDate(e.target.value)}
+              className="bg-white/10 border-white/20 text-white mt-1" />
           </div>
-        </DialogContent>
+          <p className="text-xs text-white/60 mt-2">将在所选设备上创建同名维护计划</p>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6">
+            <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              onClick={() => setShowLinkEquipModal(false)}>取消</Button>
+            <Button onClick={async () => {
+              if (!linkingSchedule || !linkEquipDate) return;
+              try {
+                const { data: eqData } = await supabase.from('equipment').select('id, name, responsible, responsible_email')
+                  .eq('type', (await supabase.from('equipment').select('type').eq('id', equipmentId).single()).data?.type)
+                  .neq('id', equipmentId).neq('is_scrapped', true);
+                if (!eqData) return;
+                let n = 0;
+                for (const eq of eqData as any[]) {
+                  const { data: exist } = await supabase.from('maintenance_schedules').select('id')
+                    .eq('equipment_id', eq.id).eq('title', linkingSchedule.title).eq('is_active', true).limit(1);
+                  if (exist && exist.length > 0) continue;
+                  const { error } = await supabase.from('maintenance_schedules').insert({
+                    equipment_id: eq.id, title: linkingSchedule.title, description: linkingSchedule.description,
+                    frequency: linkingSchedule.frequency, next_due_date: linkEquipDate,
+                    reminder_days_before: linkingSchedule.reminder_days_before,
+                    assigned_name: eq.responsible || null, assigned_email: eq.responsible_email || null,
+                    is_active: true,
+                  });
+                  if (!error) n++;
+                }
+                toast.success(`已关联 ${n} 台设备`);
+                setShowLinkEquipModal(false);
+                fetchSchedules();
+                onScheduleChange?.();
+              } catch (err) { console.error(err); toast.error('关联失败'); }
+            }}>确认关联</Button>
+          </div>
+        </GlassModal>
       </Dialog>
     </Card>
   );
