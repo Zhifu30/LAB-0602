@@ -25,7 +25,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 import { useEquipment } from '@/hooks/useEquipment';
-import { useSharedEquipment } from '@/contexts/EquipmentContext';
 import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
@@ -35,11 +34,7 @@ const Index = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
-  const { equipment: dbEquipment, loading: eqLoading, fetchEquipment } = useSharedEquipment();
-  const { tableSchema, addEquipment, updateEquipment, deleteEquipment, scrapEquipment: scrapEquipmentFn, importEquipment } = useEquipment(true);
-  // 合并共享数据用于显示（包含报废设备）
-  const equipment = dbEquipment;
-  const loading = eqLoading;
+  const { equipment, loading, tableSchema, addEquipment, updateEquipment, deleteEquipment, scrapEquipment: scrapEquipmentFn, importEquipment, fetchEquipment } = useEquipment(true);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
