@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { EmailSettingsPage } from './EmailSettingsPage';
 import EquipmentTypeManager from './EquipmentTypeManager';
-import { useSharedEquipment } from '@/contexts/EquipmentContext';
+import { useEquipment } from '@/hooks/useEquipment';
 import { IconContainer } from '@/components/ui/icon-container';
 
 const navItems = [
@@ -44,8 +44,7 @@ export function AppSidebar() {
   const [equipmentMenuOpen, setEquipmentMenuOpen] = useState(true);
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
   const [typeManagerOpen, setTypeManagerOpen] = useState(false);
-  const { equipment: allEquipment, fetchEquipment } = useSharedEquipment();
-  const equipment = useMemo(() => allEquipment.filter(e => (e as any).isScrapped !== true && e.status !== 'scrapped'), [allEquipment]);
+  const { equipment, fetchEquipment } = useEquipment();
 
   const isActive = (path: string) => location.pathname === path;
   const isAdminUser = profile?.role === 'admin';
