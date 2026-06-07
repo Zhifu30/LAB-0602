@@ -2,14 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Plus, User, Tags  } from 'lucide-react';
+import { Search, Plus, User, Tags } from 'lucide-react';
+import MaintenanceScheduleForm from '@/components/shared/MaintenanceScheduleForm';
+import { defaultScheduleFormData } from '@/types/maintenance';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { addMonths, addDays, format } from 'date-fns';
@@ -45,9 +45,7 @@ export default function AddEquipmentToGroupModal({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [createMaintenancePlan, setCreateMaintenancePlan] = useState(true);
-  const [maintenanceFrequency, setMaintenanceFrequency] = useState<string>('monthly');
-  const [maintenanceTitle, setMaintenanceTitle] = useState<string>('');
-  const [maintenanceDescription, setMaintenanceDescription] = useState<string>('');
+  const [planForm, setPlanForm] = useState(defaultScheduleFormData());
 
   // 获取所有设备
   const fetchEquipment = async () => {
@@ -75,9 +73,7 @@ export default function AddEquipmentToGroupModal({
       setSelectedIds(new Set());
       setSearchQuery('');
       setCreateMaintenancePlan(true);
-      setMaintenanceFrequency('monthly');
-      setMaintenanceTitle('');
-      setMaintenanceDescription('');
+      setPlanForm(defaultScheduleFormData());
     }
   }, [isOpen]);
 
@@ -148,9 +144,8 @@ export default function AddEquipmentToGroupModal({
         
         // 如果需要创建维护计划
         if (createMaintenancePlan) {
-          const nextDueDate = getNextDueDate(maintenanceFrequency);
+          const nextDueDate = getNextDueDate(planForm.frequency);
           for (const eq of selectedEquipmentList) {
-            // 检查是否已有维护计划
             const { data: existing } = await supabase
               .from('maintenance_schedules')
               .select('id')
@@ -159,22 +154,20 @@ export default function AddEquipmentToGroupModal({
               .limit(1);
             
             if (!existing || existing.length === 0) {
-              const scheduleTitle = maintenanceTitle.trim() || '月度维护';
-              const scheduleDescription = maintenanceDescription.trim() || `${eq.name} 的定期维护`;
+              const scheduleTitle = planForm.title.trim() || '月度维护';
+              const scheduleDescription = planForm.description.trim() || `${eq.name} 的定期维护`;
               
-              await supabase
-                .from('maintenance_schedules')
-                .insert({
-                  equipment_id: eq.id,
-                  title: scheduleTitle,
-                  description: scheduleDescription,
-                  frequency: maintenanceFrequency,
-                  next_due_date: nextDueDate,
-                  reminder_days_before: 7,
-                  assigned_name: groupName,
-                  assigned_email: groupEmail || null,
-                  is_active: true
-                });
+              await supabase.from('maintenance_schedules').insert({
+                equipment_id: eq.id,
+                title: scheduleTitle,
+                description: scheduleDescription,
+                frequency: planForm.frequency,
+                next_due_date: nextDueDate,
+                reminder_days_before: planForm.reminder_days_before,
+                assigned_name: groupName,
+                assigned_email: groupEmail || null,
+                is_active: true,
+              });
             }
           }
         }
@@ -204,9 +197,8 @@ export default function AddEquipmentToGroupModal({
         
         // 如果需要创建维护计划
         if (createMaintenancePlan) {
-          const nextDueDate = getNextDueDate(maintenanceFrequency);
+          const nextDueDate = getNextDueDate(planForm.frequency);
           for (const eq of selectedEquipmentList) {
-            // 检查是否已有维护计划
             const { data: existing } = await supabase
               .from('maintenance_schedules')
               .select('id')
@@ -215,22 +207,20 @@ export default function AddEquipmentToGroupModal({
               .limit(1);
             
             if (!existing || existing.length === 0) {
-              const scheduleTitle = maintenanceTitle.trim() || '月度维护';
-              const scheduleDescription = maintenanceDescription.trim() || `${eq.name} (${groupName}) 的定期维护`;
+              const scheduleTitle = planForm.title.trim() || '月度维护';
+              const scheduleDescription = planForm.description.trim() || `${eq.name} (${groupName}) 的定期维护`;
               
-              await supabase
-                .from('maintenance_schedules')
-                .insert({
-                  equipment_id: eq.id,
-                  title: scheduleTitle,
-                  description: scheduleDescription,
-                  frequency: maintenanceFrequency,
-                  next_due_date: nextDueDate,
-                  reminder_days_before: 7,
-                  assigned_name: eq.responsible || null,
-                  assigned_email: null,
-                  is_active: true
-                });
+              await supabase.from('maintenance_schedules').insert({
+                equipment_id: eq.id,
+                title: scheduleTitle,
+                description: scheduleDescription,
+                frequency: planForm.frequency,
+                next_due_date: nextDueDate,
+                reminder_days_before: planForm.reminder_days_before,
+                assigned_name: eq.responsible || null,
+                assigned_email: null,
+                is_active: true,
+              });
             }
           }
         }
@@ -307,41 +297,13 @@ export default function AddEquipmentToGroupModal({
             />
           </div>
           {createMaintenancePlan && (
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label className="text-sm text-muted-foreground">维护内容 (标题)</Label>
-                <Input
-                  value={maintenanceTitle}
-                  onChange={(e) => setMaintenanceTitle(e.target.value)}
-                  placeholder="月度维护"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-sm text-muted-foreground">维护描述</Label>
-                <Textarea
-                  value={maintenanceDescription}
-                  onChange={(e) => setMaintenanceDescription(e.target.value)}
-                  placeholder="详细描述维护工作内容..."
-                  className="text-sm min-h-[60px]"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground whitespace-nowrap">维护周期:</Label>
-                <Select value={maintenanceFrequency} onValueChange={setMaintenanceFrequency}>
-                  <SelectTrigger className="w-32 h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">每日</SelectItem>
-                    <SelectItem value="weekly">每周</SelectItem>
-                    <SelectItem value="monthly">每月</SelectItem>
-                    <SelectItem value="quarterly">每季度</SelectItem>
-                    <SelectItem value="yearly">每年</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <MaintenanceScheduleForm
+              data={planForm}
+              onChange={setPlanForm}
+              variant="light"
+              showDate={false}
+              showAssignee={false}
+            />
           )}
         </div>
 

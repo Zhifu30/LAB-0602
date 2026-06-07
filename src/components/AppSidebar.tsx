@@ -23,7 +23,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { EmailSettingsPage } from './EmailSettingsPage';
 import EquipmentTypeManager from './EquipmentTypeManager';
 import { useSharedEquipment } from '@/contexts/EquipmentContext';
-import { useMemo } from 'react';
 import { IconContainer } from '@/components/ui/icon-container';
 
 const navItems = [

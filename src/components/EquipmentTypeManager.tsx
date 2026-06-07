@@ -22,6 +22,10 @@ import { Equipment } from '@/types/equipment';
 import EquipmentDetailModal from '@/components/EquipmentDetailModal';
 import MaintenancePlanCard from '@/components/MaintenancePlanCard';
 import GlassModal from '@/components/GlassModal';
+import MaintenanceScheduleFormDialog from '@/components/shared/MaintenanceScheduleFormDialog';
+import MaintenancePlanFormDialog from '@/components/shared/MaintenancePlanFormDialog';
+import EquipmentPickerDialog from '@/components/shared/EquipmentPickerDialog';
+import { MaintenancePlanFormData, MaintenanceScheduleFormData } from '@/types/maintenance';
 import { supabase } from '@/integrations/supabase/client';
 import { format, endOfMonth } from 'date-fns';
 
@@ -99,7 +103,7 @@ const frequencyLabels: Record<string, string> = {
 // localStorage key for equipment types - 持久化存储
 const STORAGE_KEY = 'equipment-type-configs-v2';
 
-// Use an existing DB table (equipment_types) to persist type definitions.
+// Use equipment_templates table to persist type definitions.
 // Rows with model/manufacturer = '__TYPE__' are reserved for type definitions.
 const TYPE_SENTINEL = '__TYPE__';
 
@@ -206,7 +210,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
   const fetchTypesFromDb = useCallback(async (): Promise<EquipmentTypeConfig[]> => {
     const { data, error } = await supabase
-      .from('equipment_types')
+      .from('equipment_templates')
       .select('id, equipment_type, created_at, shared_image_url, shared_sop_files')
       .order('created_at', { ascending: true });
 
@@ -250,7 +254,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     }));
 
     const { error } = await supabase
-      .from('equipment_types')
+      .from('equipment_templates')
       .upsert(rows as any, {
         onConflict: 'equipment_type,model,manufacturer',
         ignoreDuplicates: true
@@ -432,7 +436,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
     try {
       const { data, error } = await supabase
-        .from('equipment_types')
+        .from('equipment_templates')
         .insert({ equipment_type: name } as any)
         .select('id')
         .single();
@@ -464,7 +468,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       // 从数据库删除类型定义
       try {
         await supabase
-          .from('equipment_types')
+          .from('equipment_templates')
           .delete()
           .eq('id', id);
       } catch (e) {
@@ -502,7 +506,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     try {
       if (editingTypeId) {
         const { error } = await supabase
-          .from('equipment_types')
+          .from('equipment_templates')
           .update({ equipment_type: nextName } as any)
           .eq('id', editingTypeId);
         if (error) throw error;
@@ -781,29 +785,34 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
   // ========== 维护计划管理功能 ==========
   // ========== 计划操作 ==========
-  const handleAddPlan = async () => {
-    if (!planFormData.title) { toast({ title: '错误', description: '请填写计划标题', variant: 'destructive' }); return; }
+  const handleAddPlan = async (form: MaintenancePlanFormData) => {
+    if (!form.title) { toast({ title: '错误', description: '请填写计划标题', variant: 'destructive' }); throw new Error('validation'); }
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const nextDueDate = format(getEndOfCurrentMonth(), 'yyyy-MM-dd');
       let createdCount = 0, skippedCount = 0;
       for (const eq of linkedEquipments) {
-        // 检查是否已存在相同标题的活跃计划
-        const { data: existing } = await supabase.from('maintenance_schedules').select('id').eq('equipment_id', eq.id).eq('title', planFormData.title).eq('is_active', true).limit(1);
+        const { data: existing } = await supabase.from('maintenance_schedules').select('id').eq('equipment_id', eq.id).eq('title', form.title).eq('is_active', true).limit(1);
         if (existing && existing.length > 0) { skippedCount++; continue; }
         const user = users.find(u => u.username === eq.responsible);
         const { error } = await supabase.from('maintenance_schedules').insert({
-          equipment_id: eq.id, title: planFormData.title, description: planFormData.description || null,
-          frequency: planFormData.frequency, next_due_date: nextDueDate, reminder_days_before: planFormData.reminder_days_before,
+          equipment_id: eq.id, title: form.title, description: form.description || null,
+          frequency: form.frequency, next_due_date: nextDueDate, reminder_days_before: form.reminder_days_before,
           assigned_name: eq.responsible || null, assigned_email: user?.email || eq.responsible_email || null,
           assigned_user_id: user?.user_id || null, is_active: true, created_by: session?.user?.id || null
         });
         if (!error) createdCount++;
       }
       await refetchAllSchedules(); onEquipmentRefresh?.();
-      setShowAddPlanModal(false); setPlanFormData({ title: '', description: '', frequency: 'monthly', reminder_days_before: 7 });
+      setPlanFormData({ title: '', description: '', frequency: 'monthly', reminder_days_before: 7 });
       toast({ title: '成功', description: `已创建 ${createdCount} 个计划${skippedCount > 0 ? `，跳过 ${skippedCount} 个已存在` : ''}` });
-    } catch (err) { console.error('添加失败:', err); toast({ title: '添加失败', description: '请重试', variant: 'destructive' }); }
+    } catch (err) {
+      if ((err as Error).message !== 'validation') {
+        console.error('添加失败:', err);
+        toast({ title: '添加失败', description: '请重试', variant: 'destructive' });
+      }
+      throw err;
+    }
   };
 
   const handleEditPlan = (plan: PlanGroup) => {
@@ -812,19 +821,25 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     setShowEditPlanModal(true);
   };
 
-  const handleUpdatePlan = async () => {
-    if (!editingPlan || !planFormData.title) { toast({ title: '错误', description: '请填写计划标题', variant: 'destructive' }); return; }
+  const handleUpdatePlan = async (form: MaintenancePlanFormData) => {
+    if (!editingPlan || !form.title) { toast({ title: '错误', description: '请填写计划标题', variant: 'destructive' }); throw new Error('validation'); }
     try {
       const ids = editingPlan.schedules.map(s => s.id);
       const { error } = await supabase.from('maintenance_schedules').update({
-        title: planFormData.title, description: planFormData.description || null,
-        frequency: planFormData.frequency, reminder_days_before: planFormData.reminder_days_before,
+        title: form.title, description: form.description || null,
+        frequency: form.frequency, reminder_days_before: form.reminder_days_before,
       }).in('id', ids);
       if (error) throw error;
       await refetchAllSchedules(); onEquipmentRefresh?.();
-      setShowEditPlanModal(false); setEditingPlan(null);
+      setEditingPlan(null);
       toast({ title: '成功', description: `已更新 ${ids.length} 条计划` });
-    } catch (err) { console.error('更新失败:', err); toast({ title: '更新失败', description: '请重试', variant: 'destructive' }); }
+    } catch (err) {
+      if ((err as Error).message !== 'validation') {
+        console.error('更新失败:', err);
+        toast({ title: '更新失败', description: '请重试', variant: 'destructive' });
+      }
+      throw err;
+    }
   };
 
   const handleDeletePlan = async (plan: PlanGroup) => {
@@ -914,30 +929,26 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     });
   };
 
-  const handleAddSchedule = async () => {
-    if (!selectedEquipmentId || !scheduleFormData.title || !scheduleFormData.next_due_date) {
-      toast({
-        title: '错误',
-        description: '请填写标题和下次维护日期',
-        variant: 'destructive'
-      });
-      return;
+  const handleAddSchedule = async (form: MaintenanceScheduleFormData) => {
+    if (!selectedEquipmentId || !form.title || !form.next_due_date) {
+      toast({ title: '错误', description: '请填写标题和下次维护日期', variant: 'destructive' });
+      throw new Error('validation');
     }
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const selectedUser = users.find(u => u.user_id === scheduleFormData.assigned_user_id);
+      const selectedUser = users.find(u => u.user_id === form.assigned_user_id);
       
       const { error } = await supabase
         .from('maintenance_schedules')
         .insert({
           equipment_id: selectedEquipmentId,
-          title: scheduleFormData.title,
-          description: scheduleFormData.description || null,
-          frequency: scheduleFormData.frequency,
-          next_due_date: scheduleFormData.next_due_date,
-          reminder_days_before: scheduleFormData.reminder_days_before,
-          assigned_user_id: scheduleFormData.assigned_user_id || null,
+          title: form.title,
+          description: form.description || null,
+          frequency: form.frequency,
+          next_due_date: form.next_due_date,
+          reminder_days_before: form.reminder_days_before,
+          assigned_user_id: form.assigned_user_id || null,
           assigned_name: selectedUser?.username || null,
           assigned_email: selectedUser?.email || null,
           created_by: session?.user?.id || null,
@@ -957,17 +968,15 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       }
 
       toast({ title: '成功', description: '维护计划已添加' });
-      setShowAddScheduleModal(false);
       resetScheduleForm();
       refetchAllSchedules();
       onEquipmentRefresh?.();
     } catch (error) {
-      console.error('添加维护计划失败:', error);
-      toast({
-        title: '添加失败',
-        description: '维护计划添加失败',
-        variant: 'destructive'
-      });
+      if ((error as Error).message !== 'validation') {
+        console.error('添加维护计划失败:', error);
+        toast({ title: '添加失败', description: '维护计划添加失败', variant: 'destructive' });
+      }
+      throw error;
     }
   };
 
@@ -984,28 +993,24 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     setShowEditScheduleModal(true);
   };
 
-  const handleUpdateSchedule = async () => {
-    if (!editingSchedule || !scheduleFormData.title || !scheduleFormData.next_due_date) {
-      toast({
-        title: '错误',
-        description: '请填写标题和下次维护日期',
-        variant: 'destructive'
-      });
-      return;
+  const handleUpdateSchedule = async (form: MaintenanceScheduleFormData) => {
+    if (!editingSchedule || !form.title || !form.next_due_date) {
+      toast({ title: '错误', description: '请填写标题和下次维护日期', variant: 'destructive' });
+      throw new Error('validation');
     }
 
     try {
-      const selectedUser = users.find(u => u.user_id === scheduleFormData.assigned_user_id);
+      const selectedUser = users.find(u => u.user_id === form.assigned_user_id);
       
       const { error } = await supabase
         .from('maintenance_schedules')
         .update({
-          title: scheduleFormData.title,
-          description: scheduleFormData.description || null,
-          frequency: scheduleFormData.frequency,
-          next_due_date: scheduleFormData.next_due_date,
-          reminder_days_before: scheduleFormData.reminder_days_before,
-          assigned_user_id: scheduleFormData.assigned_user_id || null,
+          title: form.title,
+          description: form.description || null,
+          frequency: form.frequency,
+          next_due_date: form.next_due_date,
+          reminder_days_before: form.reminder_days_before,
+          assigned_user_id: form.assigned_user_id || null,
           assigned_name: selectedUser?.username || null,
           assigned_email: selectedUser?.email || null,
           reminder_sent: false
@@ -1015,7 +1020,6 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       if (error) throw error;
 
       toast({ title: '成功', description: '维护计划已更新' });
-      setShowEditScheduleModal(false);
       setEditingSchedule(null);
       resetScheduleForm();
       if (selectedEquipmentId) {
@@ -1023,12 +1027,11 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       }
       onEquipmentRefresh?.();
     } catch (error) {
-      console.error('更新维护计划失败:', error);
-      toast({
-        title: '更新失败',
-        description: '维护计划更新失败',
-        variant: 'destructive'
-      });
+      if ((error as Error).message !== 'validation') {
+        console.error('更新维护计划失败:', error);
+        toast({ title: '更新失败', description: '维护计划更新失败', variant: 'destructive' });
+      }
+      throw error;
     }
   };
 
@@ -1181,121 +1184,6 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           setShowEditTemplateModal(false);
           setEditingTemplate(null);
           resetTemplateForm();
-        }}>
-          取消
-        </Button>
-        <Button onClick={onSubmit}>{submitLabel}</Button>
-      </DialogFooter>
-    </div>
-  );
-
-  // 维护计划表单组件
-  const ScheduleFormContent = ({ onSubmit, submitLabel }: { onSubmit: () => void; submitLabel: string }) => (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label className="text-white/80">维护标题 *</Label>
-        <Input
-          value={scheduleFormData.title}
-          onChange={(e) => setScheduleFormData(prev => ({ ...prev, title: e.target.value }))}
-          placeholder="输入维护标题"
-          className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label className="text-white/80">描述</Label>
-        <Textarea
-          value={scheduleFormData.description}
-          onChange={(e) => setScheduleFormData(prev => ({ ...prev, description: e.target.value }))}
-          placeholder="输入维护描述"
-          rows={2}
-          className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label className="text-white/80">维护周期</Label>
-          <Select
-            value={scheduleFormData.frequency}
-            onValueChange={(value) => setScheduleFormData(prev => ({ ...prev, frequency: value as typeof prev.frequency }))}
-          >
-            <SelectTrigger className="bg-white/10 border-white/20 text-white">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(frequencyLabels).map(([value, label]) => (
-                <SelectItem key={value} value={value}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label className="text-white/80">下次维护日期 *</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20">
-                <Calendar className="mr-2 h-4 w-4" />
-                {scheduleFormData.next_due_date || '选择日期'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-[200]" align="start">
-              <CalendarComponent
-                mode="single"
-                selected={scheduleFormData.next_due_date ? new Date(scheduleFormData.next_due_date) : undefined}
-                onSelect={(date) => date && setScheduleFormData(prev => ({ 
-                  ...prev, 
-                  next_due_date: format(date, 'yyyy-MM-dd') 
-                }))}
-                initialFocus
-                className="pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label className="text-white/80">提前提醒天数</Label>
-          <Input
-            type="number"
-            min={1}
-            max={30}
-            value={scheduleFormData.reminder_days_before}
-            onChange={(e) => setScheduleFormData(prev => ({
-              ...prev,
-              reminder_days_before: parseInt(e.target.value) || 7
-            }))}
-            className="bg-white/10 border-white/20 text-white"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-white/80">负责人</Label>
-          <Select
-            value={scheduleFormData.assigned_user_id || '__none__'}
-            onValueChange={(value) => setScheduleFormData(prev => ({
-              ...prev,
-              assigned_user_id: value === '__none__' ? '' : value
-            }))}
-          >
-            <SelectTrigger className="bg-white/10 border-white/20 text-white">
-              <SelectValue placeholder="选择负责人" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">不指定</SelectItem>
-              {users.map(user => (
-                <SelectItem key={user.user_id} value={user.user_id}>
-                  {user.username}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <DialogFooter>
-        <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => {
-          setShowAddScheduleModal(false);
-          setShowEditScheduleModal(false);
-          setEditingSchedule(null);
-          resetScheduleForm();
         }}>
           取消
         </Button>
@@ -1970,85 +1858,53 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         </DialogPrimitive.Content>
       </DialogPrimitive.Root>
 
-      {/* 添加维护计划弹窗 */}
-      {showAddPlanModal && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
-          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
-            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => setShowAddPlanModal(false)}><X className="h-4 w-4" /></button>
-            <DialogHeader>
-              <h2 className="text-lg font-semibold leading-none tracking-tight">添加维护计划</h2>
-              <p className="text-sm text-white/60">新计划将自动关联到{selectedType?.name}下所有设备</p>
-            </DialogHeader>
-            <div className="space-y-4 mt-2">
-              <div className="space-y-2"><Label className="text-white/80">计划标题 *</Label><Input value={planFormData.title} onChange={e => setPlanFormData(p => ({...p, title: e.target.value}))} placeholder="输入维护计划标题" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" /></div>
-              <div className="space-y-2"><Label className="text-white/80">描述</Label><Textarea value={planFormData.description} onChange={e => setPlanFormData(p => ({...p, description: e.target.value}))} placeholder="输入维护描述" rows={2} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label className="text-white/80">维护周期</Label><Select value={planFormData.frequency} onValueChange={v => setPlanFormData(p => ({...p, frequency: v as any}))}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(frequencyLabels).map(([v,l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-2"><Label className="text-white/80">提前提醒天数</Label><Input type="number" min={1} max={30} value={planFormData.reminder_days_before} onChange={e => setPlanFormData(p => ({...p, reminder_days_before: parseInt(e.target.value)||7}))} className="bg-white/10 border-white/20 text-white" /></div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => setShowAddPlanModal(false)}>取消</Button>
-                <Button onClick={handleAddPlan}>添加</Button>
-              </DialogFooter>
-            </div>
-          </div>
-        </>
-      )}
+      <MaintenancePlanFormDialog
+        open={showAddPlanModal}
+        onOpenChange={setShowAddPlanModal}
+        title="添加维护计划"
+        description={`新计划将自动关联到${selectedType?.name}下所有设备`}
+        onSubmit={handleAddPlan}
+        submitLabel="添加"
+      />
 
-      {/* 编辑维护计划弹窗 */}
-      {showEditPlanModal && editingPlan && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
-          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
-            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowEditPlanModal(false); setEditingPlan(null); }}><X className="h-4 w-4" /></button>
-            <DialogHeader>
-              <h2 className="text-lg font-semibold leading-none tracking-tight">编辑维护计划</h2>
-              <p className="text-sm text-white/60">修改 "{editingPlan?.title}"（影响 {editingPlan?.equipmentIds.length} 台设备）</p>
-            </DialogHeader>
-            <div className="space-y-4 mt-2">
-              <div className="space-y-2"><Label className="text-white/80">计划标题 *</Label><Input value={planFormData.title} onChange={e => setPlanFormData(p => ({...p, title: e.target.value}))} placeholder="输入维护计划标题" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" /></div>
-              <div className="space-y-2"><Label className="text-white/80">描述</Label><Textarea value={planFormData.description} onChange={e => setPlanFormData(p => ({...p, description: e.target.value}))} placeholder="输入维护描述" rows={2} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label className="text-white/80">维护周期</Label><Select value={planFormData.frequency} onValueChange={v => setPlanFormData(p => ({...p, frequency: v as any}))}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(frequencyLabels).map(([v,l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-2"><Label className="text-white/80">提前提醒天数</Label><Input type="number" min={1} max={30} value={planFormData.reminder_days_before} onChange={e => setPlanFormData(p => ({...p, reminder_days_before: parseInt(e.target.value)||7}))} className="bg-white/10 border-white/20 text-white" /></div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowEditPlanModal(false); setEditingPlan(null); }}>取消</Button>
-                <Button onClick={handleUpdatePlan}>保存</Button>
-              </DialogFooter>
-            </div>
-          </div>
-        </>
-      )}
+      <MaintenancePlanFormDialog
+        open={showEditPlanModal}
+        onOpenChange={(open) => { setShowEditPlanModal(open); if (!open) setEditingPlan(null); }}
+        title="编辑维护计划"
+        description={editingPlan ? `修改 "${editingPlan.title}"（影响 ${editingPlan.equipmentIds.length} 台设备）` : undefined}
+        initialData={editingPlan ? {
+          title: editingPlan.title,
+          description: editingPlan.description || '',
+          frequency: editingPlan.frequency,
+          reminder_days_before: editingPlan.reminder_days_before,
+        } : planFormData}
+        onSubmit={handleUpdatePlan}
+        submitLabel="保存"
+      />
 
-      {/* 关联/取消关联 统一弹窗 — 勾选=关联，取消勾选=解除关联 */}
-      <GlassModal open={showLinkEquipmentModal && !!linkingPlan} onClose={() => { setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set()); }}
-        title="管理设备关联" description={`"${linkingPlan?.title}" — 勾选=关联，取消勾选=解除关联`}>
-        <ScrollArea className="h-48 border border-white/20 rounded-md p-2">
-          {linkedEquipments.map(eq => {
-            const isLinked = linkingPlan?.equipmentIds.includes(eq.id);
-            const isSelected = linkEquipmentIds.has(eq.id);
-            return (
-              <div key={eq.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
-                <Checkbox id={`le-${eq.id}`} checked={isSelected}
-                  onCheckedChange={c => { const s = new Set(linkEquipmentIds); c ? s.add(eq.id) : s.delete(eq.id); setLinkEquipmentIds(s); }} />
-                <Label htmlFor={`le-${eq.id}`} className="text-sm flex-1 cursor-pointer text-white">
-                  <span className="font-medium">{eq.name}</span><span className="text-white/60 ml-2 text-xs">{eq.id}</span>
-                  {isLinked && !isSelected && <span className="text-red-400 ml-2 text-xs">(将解除)</span>}
-                  {!isLinked && isSelected && <span className="text-green-400 ml-2 text-xs">(将关联)</span>}
-                  {isLinked && isSelected && <span className="text-white/40 ml-2 text-xs">(保持)</span>}
-                </Label>
-              </div>
-            );
-          })}
-        </ScrollArea>
-        <p className="text-xs text-white/50 mt-2">已选中 {linkEquipmentIds.size} 台 · 当前关联 {linkingPlan?.equipmentIds.length || 0} 台</p>
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
-          <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set()); }}>取消</Button>
-          <Button onClick={handleLinkPlanToEquipment}>应用更改</Button>
-        </div>
-      </GlassModal>
+      <EquipmentPickerDialog
+        open={showLinkEquipmentModal && !!linkingPlan}
+        onOpenChange={(open) => { if (!open) { setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set()); } }}
+        variant="glass"
+        title="管理设备关联"
+        description={`"${linkingPlan?.title}" — 勾选=关联，取消勾选=解除关联`}
+        items={linkedEquipments.map((eq) => {
+          const isLinked = linkingPlan?.equipmentIds.includes(eq.id);
+          const isSelected = linkEquipmentIds.has(eq.id);
+          let badge: string | undefined;
+          let badgeClassName: string | undefined;
+          if (isLinked && !isSelected) { badge = '(将解除)'; badgeClassName = 'text-red-400'; }
+          else if (!isLinked && isSelected) { badge = '(将关联)'; badgeClassName = 'text-green-400'; }
+          else if (isLinked && isSelected) { badge = '(保持)'; badgeClassName = 'text-white/40'; }
+          return { id: eq.id, name: eq.name, subtitle: eq.id, badge, badgeClassName };
+        })}
+        selectedIds={linkEquipmentIds}
+        onSelectionChange={setLinkEquipmentIds}
+        searchable={false}
+        confirmLabel="应用更改"
+        onConfirm={handleLinkPlanToEquipment}
+        footerExtra={<p className="text-xs text-white/50 mt-2">已选中 {linkEquipmentIds.size} 台 · 当前关联 {linkingPlan?.equipmentIds.length || 0} 台</p>}
+      />
 
       {/* 关联维护计划弹窗（设备→计划） */}
       <GlassModal open={showLinkPlanModal && !!equipmentLinkingId} onClose={() => { setShowLinkPlanModal(false); setEquipmentLinkingId(null); setPlanLinkIds(new Set()); }}
@@ -2071,35 +1927,34 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         </div>
       </GlassModal>
 
-      {/* 添加维护计划弹窗 */}
-      {showAddScheduleModal && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
-          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg">
-            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => setShowAddScheduleModal(false)}><X className="h-4 w-4" /></button>
-            <DialogHeader>
-              <h2 className="text-lg font-semibold leading-none tracking-tight">添加维护计划</h2>
-              <p className="text-sm text-white/60">为 {selectedEquipment?.name} 添加新的维护计划</p>
-            </DialogHeader>
-            <ScheduleFormContent onSubmit={handleAddSchedule} submitLabel="添加" />
-          </div>
-        </>
-      )}
+      <MaintenanceScheduleFormDialog
+        open={showAddScheduleModal}
+        onOpenChange={setShowAddScheduleModal}
+        title="添加维护计划"
+        description={`为 ${selectedEquipment?.name} 添加新的维护计划`}
+        users={users}
+        initialData={{ next_due_date: format(getEndOfCurrentMonth(), 'yyyy-MM-dd') }}
+        onSubmit={handleAddSchedule}
+        submitLabel="添加"
+      />
 
-      {/* 编辑维护计划弹窗 */}
-      {showEditScheduleModal && editingSchedule && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
-          <div className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full max-w-lg bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg" key={editingSchedule.id}>
-            <button className="absolute right-4 top-4 text-white/60 hover:text-white" onClick={() => { setShowEditScheduleModal(false); setEditingSchedule(null); resetScheduleForm(); }}><X className="h-4 w-4" /></button>
-            <DialogHeader>
-              <h2 className="text-lg font-semibold leading-none tracking-tight">编辑维护计划</h2>
-              <p className="text-sm text-white/60">修改 {editingSchedule.title} 的维护计划</p>
-            </DialogHeader>
-            <ScheduleFormContent onSubmit={handleUpdateSchedule} submitLabel="保存" />
-          </div>
-        </>
-      )}
+      <MaintenanceScheduleFormDialog
+        open={showEditScheduleModal}
+        onOpenChange={(open) => { setShowEditScheduleModal(open); if (!open) { setEditingSchedule(null); resetScheduleForm(); } }}
+        title="编辑维护计划"
+        description={editingSchedule ? `修改 ${editingSchedule.title} 的维护计划` : undefined}
+        users={users}
+        initialData={editingSchedule ? {
+          title: editingSchedule.title,
+          description: editingSchedule.description || '',
+          frequency: editingSchedule.frequency,
+          next_due_date: editingSchedule.next_due_date,
+          reminder_days_before: editingSchedule.reminder_days_before,
+          assigned_user_id: editingSchedule.assigned_user_id || '',
+        } : undefined}
+        onSubmit={handleUpdateSchedule}
+        submitLabel="保存"
+      />
 
       {/* 设备详情弹窗 — key 确保每次打开都是全新实例 */}
       {showEquipmentDetail && detailEquipment && (
@@ -2111,28 +1966,31 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           onDelete={handleDetailDelete}
         />
       )}
-      {/* 图片关联设备弹窗 */}
-      <GlassModal open={showImageEquipModal && editingImageIdx >= 0} onClose={() => { setShowImageEquipModal(false); setEditingImageIdx(-1); }}
-        title="选择关联设备" description="勾选要关联到此图片的设备">
-        <ScrollArea className="h-48 border border-white/20 rounded-md p-2">
-          {linkedEquipments.map(eq => (
-            <div key={eq.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/10">
-              <Checkbox id={`img-eq-${eq.id}`} checked={imageEquipSelected.has(eq.id)} onCheckedChange={c => { const s = new Set(imageEquipSelected); c ? s.add(eq.id) : s.delete(eq.id); setImageEquipSelected(s); }} />
-              <Label htmlFor={`img-eq-${eq.id}`} className="text-sm flex-1 cursor-pointer text-white"><span className="font-medium">{eq.name}</span><span className="text-white/60 ml-2 text-xs">{eq.id}</span></Label>
-            </div>
-          ))}
-        </ScrollArea>
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6">
-          <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowImageEquipModal(false); setEditingImageIdx(-1); }}>取消</Button>
-          <Button className="bg-blue-500 hover:bg-blue-600 text-white border-0" onClick={async () => {
-            const newMappings = [...imageMappings]; const imgUrl = newMappings[editingImageIdx].imageUrl;
-            newMappings[editingImageIdx] = { ...newMappings[editingImageIdx], equipmentIds: Array.from(imageEquipSelected) };
-            setImageMappings(newMappings);
-            for (const eid of Array.from(imageEquipSelected)) { await supabase.from('equipment').update({ image_url: imgUrl }).eq('id', eid); }
-            onEquipmentRefresh?.(); window.dispatchEvent(new Event('equipment-updated')); setShowImageEquipModal(false); setEditingImageIdx(-1);
-          }}>确认 ({imageEquipSelected.size})</Button>
-        </div>
-      </GlassModal>
+      <EquipmentPickerDialog
+        open={showImageEquipModal && editingImageIdx >= 0}
+        onOpenChange={(open) => { if (!open) { setShowImageEquipModal(false); setEditingImageIdx(-1); } }}
+        variant="glass"
+        title="选择关联设备"
+        description="勾选要关联到此图片的设备"
+        items={linkedEquipments.map((eq) => ({ id: eq.id, name: eq.name, subtitle: eq.id }))}
+        selectedIds={imageEquipSelected}
+        onSelectionChange={setImageEquipSelected}
+        searchable={false}
+        confirmLabel={`确认 (${imageEquipSelected.size})`}
+        onConfirm={async () => {
+          const newMappings = [...imageMappings];
+          const imgUrl = newMappings[editingImageIdx].imageUrl;
+          newMappings[editingImageIdx] = { ...newMappings[editingImageIdx], equipmentIds: Array.from(imageEquipSelected) };
+          setImageMappings(newMappings);
+          for (const eid of Array.from(imageEquipSelected)) {
+            await supabase.from('equipment').update({ image_url: imgUrl }).eq('id', eid);
+          }
+          onEquipmentRefresh?.();
+          window.dispatchEvent(new Event('equipment-updated'));
+          setShowImageEquipModal(false);
+          setEditingImageIdx(-1);
+        }}
+      />
     </>
   );
 };

@@ -70,7 +70,7 @@ const MaintenanceScheduleCard: React.FC<MaintenanceScheduleCardProps> = ({ sched
     const fetchTypeImage = async () => {
       const equipmentType = schedule.equipment?.type;
       if (!equipmentType) return;
-      const { data } = await supabase.from('equipment_types').select('shared_image_url')
+      const { data } = await supabase.from('equipment_templates').select('shared_image_url')
         .eq('equipment_type', equipmentType).eq('model', TYPE_SENTINEL).eq('manufacturer', TYPE_SENTINEL).maybeSingle();
       if (data?.shared_image_url) setTypeImage(data.shared_image_url);
     };

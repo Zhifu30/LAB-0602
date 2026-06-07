@@ -59,7 +59,7 @@ export async function fetchTypeResource(typeName: string): Promise<{
   sharedSopFiles: { url: string; name: string }[] | null;
 }> {
   const { data } = await supabase
-    .from('equipment_types')
+    .from('equipment_templates')
     .select('shared_image_url, shared_sop_files')
     .eq('equipment_type', typeName)
     .eq('model', '__TYPE__')

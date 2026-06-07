@@ -8,14 +8,13 @@ import { Input } from '@/components/ui/input';
 import { useEmpower } from '@/hooks/useEmpower';
 import { EmpowerProject, statusLabels, statusColors, CheckStatus } from '@/types/empower';
 import Header from '@/components/Header';
-import AddEmpowerModal from '@/components/AddEmpowerModal';
-import EditEmpowerModal from '@/components/EditEmpowerModal';
+import EmpowerProjectDialog from '@/components/EmpowerProjectDialog';
 
 const EmpowerManagement: React.FC = () => {
   const { projects, loading, addProject, updateProject, deleteProject } = useEmpower();
   const [searchTerm, setSearchTerm] = useState('');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
   const [selectedProject, setSelectedProject] = useState<EmpowerProject | null>(null);
 
   const filteredProjects = projects.filter(project => 
@@ -27,7 +26,7 @@ const EmpowerManagement: React.FC = () => {
   const handleAddProject = async (newProject: Omit<EmpowerProject, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       await addProject(newProject);
-      setIsAddModalOpen(false);
+      setDialogOpen(false);
     } catch (error) {
       console.error('Failed to add project:', error);
     }
@@ -36,7 +35,7 @@ const EmpowerManagement: React.FC = () => {
   const handleEditProject = async (updatedProject: EmpowerProject) => {
     try {
       await updateProject(updatedProject.id, updatedProject);
-      setIsEditModalOpen(false);
+      setDialogOpen(false);
       setSelectedProject(null);
     } catch (error) {
       console.error('Failed to update project:', error);
@@ -75,7 +74,6 @@ const EmpowerManagement: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <Header />
       <div className="container mx-auto px-4 py-8">
-        {/* 头部 */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-slate-800 mb-2">Empower项目管理</h1>
@@ -83,7 +81,6 @@ const EmpowerManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* 统计卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="p-6">
@@ -98,7 +95,6 @@ const EmpowerManagement: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -112,7 +108,6 @@ const EmpowerManagement: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -126,7 +121,6 @@ const EmpowerManagement: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -142,7 +136,6 @@ const EmpowerManagement: React.FC = () => {
           </Card>
         </div>
 
-        {/* 工具栏 */}
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
@@ -153,7 +146,7 @@ const EmpowerManagement: React.FC = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2">
+              <Button onClick={() => { setDialogMode('add'); setSelectedProject(null); setDialogOpen(true); }} className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 添加项目
               </Button>
@@ -161,7 +154,6 @@ const EmpowerManagement: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* 项目表格 */}
         <Card>
           <CardHeader>
             <CardTitle>项目列表</CardTitle>
@@ -208,7 +200,8 @@ const EmpowerManagement: React.FC = () => {
                             variant="ghost"
                             onClick={() => {
                               setSelectedProject(project);
-                              setIsEditModalOpen(true);
+                              setDialogMode('edit');
+                              setDialogOpen(true);
                             }}
                           >
                             <Edit className="h-4 w-4" />
@@ -236,21 +229,16 @@ const EmpowerManagement: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* 模态框 */}
-        <AddEmpowerModal
-          isOpen={isAddModalOpen}
-          onClose={() => setIsAddModalOpen(false)}
-          onAdd={handleAddProject}
-        />
-
-        <EditEmpowerModal
-          isOpen={isEditModalOpen}
-          onClose={() => {
-            setIsEditModalOpen(false);
-            setSelectedProject(null);
+        <EmpowerProjectDialog
+          open={dialogOpen}
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) setSelectedProject(null);
           }}
-          onUpdate={handleEditProject}
+          mode={dialogMode}
           project={selectedProject}
+          onAdd={handleAddProject}
+          onUpdate={handleEditProject}
         />
       </div>
     </div>

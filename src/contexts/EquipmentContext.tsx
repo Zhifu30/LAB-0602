@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Equipment, snakeToCamel } from '@/types/equipment';
+import { Equipment } from '@/types/equipment';
+import { mapEquipmentListFromDb } from '@/utils/equipmentMapper';
 
 interface EquipmentContextType {
   equipment: Equipment[];
@@ -21,14 +22,7 @@ export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       const { data, error } = await supabase.from('equipment').select('*').order('created_at', { ascending: false });
       if (error) throw error;
-      const formatted: Equipment[] = (data || []).map((item: any) => {
-        const mapped: any = {};
-        for (const dbKey of Object.keys(item)) mapped[snakeToCamel(dbKey)] = item[dbKey] ?? '';
-        if (!mapped.description) mapped.description = mapped.notes || '';
-        mapped.calibrationDate = mapped.nextCalibrationDate || mapped.calibrationDate || '';
-        return mapped as Equipment;
-      });
-      setEquipment(formatted);
+      setEquipment(mapEquipmentListFromDb(data || []));
     } catch (err) { console.error('获取设备数据失败:', err); }
     finally { setLoading(false); }
   }, []);

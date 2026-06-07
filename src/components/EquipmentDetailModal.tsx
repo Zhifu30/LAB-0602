@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Edit, Trash2, Download, QrCode, FileText, ExternalLink, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Equipment, EquipmentStatus, statusLabels, statusColors, statusIcons } from '@/types/equipment';
+import { Equipment, statusLabels, statusColors, statusIcons } from '@/types/equipment';
+import EquipmentForm from '@/components/shared/EquipmentForm';
 import QRCodeGenerator from '@/components/QRCodeGenerator';
-import ImageUploader from '@/components/ImageUploader';
-import MultipleFileUploader from '@/components/MultipleFileUploader';
 import StatusSelectModal from '@/components/StatusSelectModal';
 import FaultReportModal, { FaultReportData } from '@/components/FaultReportModal';
 import ScrapEquipmentModal from '@/components/ScrapEquipmentModal';
@@ -19,7 +15,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
-import { useProfiles } from '@/hooks/useProfiles';
 
 interface EquipmentTypeOption { id: string; name: string; }
 interface TypeResourceInfo { sharedImageUrl: string | null; sharedSopFiles: { url: string; name: string; }[] | null; }
@@ -61,7 +56,7 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
     if (!equipment.type) { setTypeResource(null); return; }
     try {
       const { data } = await supabase
-        .from('equipment_types').select('shared_image_url, shared_sop_files')
+        .from('equipment_templates').select('shared_image_url, shared_sop_files')
         .eq('equipment_type', equipment.type).eq('model', TYPE_SENTINEL).eq('manufacturer', TYPE_SENTINEL).maybeSingle();
       if (data) setTypeResource({ sharedImageUrl: data.shared_image_url, sharedSopFiles: data.shared_sop_files as { url: string; name: string; }[] | null });
     } catch (error) { console.error('Error fetching type resource:', error); }
@@ -175,7 +170,19 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
               </div>
             )}
             {isEditing && !readOnly ? (
-              <EditForm equipment={editedEquipment} onChange={handleChange} onSave={handleSave} onCancel={handleCancel} equipmentTypes={equipmentTypes} />
+              <EquipmentForm
+                equipment={editedEquipment}
+                onChange={handleChange}
+                mode="edit"
+                variant="glass"
+                equipmentTypes={equipmentTypes}
+                footer={
+                  <div className="flex justify-end gap-2">
+                    <Button onClick={handleSave} size="sm" className="bg-green-600 hover:bg-green-700 text-white">保存</Button>
+                    <Button onClick={handleCancel} size="sm" variant="outline" className="bg-white/20 hover:bg-white/30 text-white border-white/30">取消</Button>
+                  </div>
+                }
+              />
             ) : (
               <ViewForm equipment={equipment} onEdit={() => setIsEditing(true)} onDelete={handleDelete} equipmentTypes={equipmentTypes} readOnly={readOnly} />
             )}
@@ -234,43 +241,6 @@ const ViewForm: React.FC<{
         <div className="bg-white/5 rounded-lg p-2"><Label className="text-xs text-white/80">负责人</Label><p className="text-white text-base font-bold">{equipment.responsible}</p></div>
         <div className="bg-white/5 rounded-lg p-2"><Label className="text-xs text-white/80">下次校正日期</Label><p className={`text-base font-bold flex items-center gap-1 ${getDateUrgencyColor(equipment.nextCalibrationDate)}`}><Calendar className="h-3.5 w-3.5" />{equipment.nextCalibrationDate || '未设置'}</p></div>
       </div>
-    </div>
-  );
-};
-
-const EditForm: React.FC<{
-  equipment: Equipment; onChange: (field: keyof Equipment, value: string) => void; onSave: () => void; onCancel: () => void; equipmentTypes: EquipmentTypeOption[];
-}> = ({ equipment, onChange, onSave, onCancel, equipmentTypes }) => {
-  const { profiles: users, loading: loadingUsers } = useProfiles();
-
-  const handleResponsibleChange = (username: string) => {
-    const selectedUser = users.find(u => u.username === username);
-    if (selectedUser) { onChange('responsible', selectedUser.username); if (selectedUser.email) onChange('responsible_email', selectedUser.email); }
-  };
-
-  return (
-    <div className="space-y-6 bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-white">编辑仪器信息</h3>
-        <div className="flex gap-2">
-          <Button onClick={onSave} size="sm" className="bg-green-600 hover:bg-green-700 text-white">保存</Button>
-          <Button onClick={onCancel} size="sm" variant="outline" className="bg-white/20 hover:bg-white/30 text-white border-white/30">取消</Button>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white/5 rounded-lg p-2"><Label htmlFor="edit-name" className="text-xs text-white/80">仪器名称</Label><Input id="edit-name" value={equipment.name} onChange={(e) => onChange('name', e.target.value)} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" /></div>
-        <div className="bg-white/5 rounded-lg p-2"><Label htmlFor="edit-type" className="text-xs text-white/80">设备类型</Label><Select value={equipment.type || ''} onValueChange={(value: string) => onChange('type', value)}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue placeholder="选择设备类型" /></SelectTrigger><SelectContent className="z-[300] bg-popover">{equipmentTypes.length > 0 ? equipmentTypes.map((t) => (<SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)) : <SelectItem value="__empty__" disabled>请先在设备类型管理中添加类型</SelectItem>}</SelectContent></Select></div>
-        <div className="bg-white/5 rounded-lg p-2"><Label htmlFor="edit-model" className="text-xs text-white/80">型号</Label><Input id="edit-model" value={equipment.model} onChange={(e) => onChange('model', e.target.value)} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" /></div>
-        <div className="bg-white/5 rounded-lg p-2"><Label htmlFor="edit-manufacturer" className="text-xs text-white/80">厂商</Label><Input id="edit-manufacturer" value={equipment.manufacturer} onChange={(e) => onChange('manufacturer', e.target.value)} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" /></div>
-        <div className="bg-white/5 rounded-lg p-2"><Label htmlFor="edit-status" className="text-xs text-white/80">状态</Label><Select value={equipment.status} onValueChange={(value: EquipmentStatus) => onChange('status', value)}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger><SelectContent className="z-[300] bg-popover">{Object.entries(statusLabels).map(([key, label]) => (<SelectItem key={key} value={key}>{label}</SelectItem>))}</SelectContent></Select></div>
-        <div className="bg-white/5 rounded-lg p-2"><Label htmlFor="edit-location" className="text-xs text-white/80">位置</Label><Input id="edit-location" value={equipment.location} onChange={(e) => onChange('location', e.target.value)} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" /></div>
-        <div className="bg-white/5 rounded-lg p-2"><Label htmlFor="edit-responsible" className="text-xs text-white/80">负责人</Label><Select value={equipment.responsible} onValueChange={handleResponsibleChange} disabled={loadingUsers}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue placeholder={loadingUsers ? '加载中...' : '选择负责人'} /></SelectTrigger><SelectContent className="z-[300] bg-popover">{users.map((user) => (<SelectItem key={user.user_id} value={user.username}>{user.username}</SelectItem>))}</SelectContent></Select></div>
-        <div className="bg-white/5 rounded-lg p-2"><Label htmlFor="edit-nextCalibrationDate" className="text-xs text-white/80">下次校正日期</Label><Input id="edit-nextCalibrationDate" type="date" value={equipment.nextCalibrationDate || ''} onChange={(e) => onChange('nextCalibrationDate', e.target.value)} className="bg-white/10 border-white/20 text-white" /></div>
-        <div className="md:col-span-2 bg-white/5 rounded-lg p-2"><Label className="text-xs text-white/80">维护日期管理</Label><p className="mt-1 text-xs text-white/60 bg-white/5 p-2 rounded">维护日期通过下方的"维护计划管理"进行设置和管理，支持自动周期性更新。</p></div>
-      </div>
-      <div className="bg-white/5 rounded-lg p-2"><Label htmlFor="edit-description" className="text-xs text-white/80">描述</Label><Textarea id="edit-description" value={equipment.description} onChange={(e) => onChange('description', e.target.value)} rows={3} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" /></div>
-      <ImageUploader imageUrl={equipment.imageUrl} onImageChange={(imageUrl) => onChange('imageUrl', imageUrl)} equipmentModel={equipment.model} manufacturer={equipment.manufacturer} />
-      <MultipleFileUploader files={equipment.sopFiles ? JSON.parse(equipment.sopFiles) : []} onFilesChange={(files) => onChange('sopFiles', JSON.stringify(files))} bucketName="sop-files" label="SOP文件和附件" acceptedTypes=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png" maxFiles={10} />
     </div>
   );
 };

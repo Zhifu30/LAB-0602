@@ -1,35 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Bell, Check, Trash2, Edit, Clock, Link2, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Calendar, Bell, Check, Trash2, Edit, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import MaintenancePlanCard from '@/components/MaintenancePlanCard';
+import MaintenanceScheduleFormDialog from '@/components/shared/MaintenanceScheduleFormDialog';
 import GlassModal from '@/components/GlassModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useMaintenanceSchedules } from '@/hooks/useMaintenanceSchedules';
+import { MaintenanceSchedule, MaintenanceScheduleFormData } from '@/types/maintenance';
 import { toast } from 'sonner';
-
-interface MaintenanceSchedule {
-  id: string;
-  equipment_id: string;
-  title: string;
-  description: string | null;
-  frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
-  next_due_date: string;
-  reminder_days_before: number;
-  assigned_user_id: string | null;
-  assigned_name: string | null;
-  assigned_email: string | null;
-  last_completed_at: string | null;
-  reminder_sent: boolean;
-  is_active: boolean;
-  created_at: string;
-}
 
 interface MaintenanceScheduleManagerProps {
   equipmentId: string;
@@ -41,14 +23,6 @@ interface MaintenanceScheduleManagerProps {
   readOnly?: boolean;
 }
 
-const frequencyLabels: Record<string, string> = {
-  daily: '每日',
-  weekly: '每周',
-  monthly: '每月',
-  quarterly: '每季度',
-  yearly: '每年'
-};
-
 const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
   equipmentId,
   equipmentName,
@@ -59,6 +33,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
   readOnly = false
 }) => {
   const { isAdmin, profile } = useAuth();
+  const { fetchByEquipment, createSchedule, updateSchedule, deactivateSchedule } = useMaintenanceSchedules();
   const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -72,40 +47,6 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
   const [linkEquipIds, setLinkEquipIds] = useState<Set<string>>(new Set());
   const [linkEquipDate, setLinkEquipDate] = useState('');
 
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    frequency: 'monthly' as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly',
-    next_due_date: '',
-    reminder_days_before: 7,
-    assigned_user_id: ''
-  });
-
-  const schedTitleRef = useRef<HTMLInputElement>(null);
-  const schedDescRef = useRef<HTMLTextAreaElement>(null);
-  const schedFreqRef = useRef('monthly');
-  const schedDateRef = useRef<HTMLInputElement>(null);
-  const schedRemindRef = useRef<HTMLInputElement>(null);
-  const schedUserRef = useRef('');
-
-  const readSchedForm = () => ({
-    title: schedTitleRef.current?.value || '',
-    description: schedDescRef.current?.value || '',
-    frequency: schedFreqRef.current,
-    next_due_date: schedDateRef.current?.value || '',
-    reminder_days_before: parseInt(schedRemindRef.current?.value || '7') || 7,
-    assigned_user_id: schedUserRef.current,
-  });
-
-  const clearSchedForm = () => {
-    if (schedTitleRef.current) schedTitleRef.current.value = '';
-    if (schedDescRef.current) schedDescRef.current.value = '';
-    if (schedDateRef.current) schedDateRef.current.value = '';
-    if (schedRemindRef.current) schedRemindRef.current.value = '7';
-    schedFreqRef.current = 'monthly';
-    schedUserRef.current = '';
-  };
-
   useEffect(() => {
     fetchSchedules();
     fetchUsers();
@@ -113,15 +54,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
 
   const fetchSchedules = async () => {
     try {
-      const { data, error } = await supabase
-        .from('maintenance_schedules')
-        .select('*')
-        .eq('equipment_id', equipmentId)
-        .eq('is_active', true)
-        .order('next_due_date');
-
-      if (error) throw error;
-      const fetchedSchedules = (data || []) as MaintenanceSchedule[];
+      const fetchedSchedules = await fetchByEquipment(equipmentId);
       setSchedules(fetchedSchedules);
       // 查询相同计划关联的其他设备
       fetchRelatedEquipment(fetchedSchedules);
@@ -181,76 +114,56 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
     }
   };
 
-  const handleAddSchedule = async () => {
-    const form = readSchedForm();
-    if (!form.title || !form.next_due_date) { toast.error('请填写标题和下次维护日期'); return; }
+  const resolveAssignee = (form: MaintenanceScheduleFormData) => {
+    const selectedUser = users.find((u) => u.user_id === form.assigned_user_id);
+    return {
+      name: selectedUser?.username || null,
+      email: selectedUser?.email || null,
+    };
+  };
 
+  const withDescription = (form: MaintenanceScheduleFormData): MaintenanceScheduleFormData => ({
+    ...form,
+    description: form.description?.trim() || `${form.title} - ${equipmentName}`,
+  });
+
+  const handleAddSchedule = async (form: MaintenanceScheduleFormData) => {
+    if (!form.title || !form.next_due_date) {
+      toast.error('请填写标题和下次维护日期');
+      throw new Error('validation');
+    }
     try {
-      const selectedUser = users.find(u => u.user_id === form.assigned_user_id);
-      const scheduleDescription = form.description?.trim() || `${form.title} - ${equipmentName}`;
-
-      const { error } = await supabase
-        .from('maintenance_schedules')
-        .insert({
-          equipment_id: equipmentId,
-          title: form.title,
-          description: scheduleDescription,
-          frequency: form.frequency as any,
-          next_due_date: form.next_due_date,
-          reminder_days_before: form.reminder_days_before,
-          assigned_user_id: form.assigned_user_id || null,
-          assigned_name: selectedUser?.username || null,
-          assigned_email: selectedUser?.email || null,
-          created_by: profile?.user_id
-        });
-
-      if (error) throw error;
-
+      await createSchedule(equipmentId, withDescription(form), resolveAssignee(form), profile?.user_id);
       toast.success('维护计划已添加');
-      setShowAddModal(false);
-      resetForm();
       fetchSchedules();
       onScheduleChange?.();
     } catch (error) {
-      console.error('Error adding maintenance schedule:', error);
-      toast.error('添加维护计划失败');
+      if ((error as Error).message !== 'validation') {
+        console.error('Error adding maintenance schedule:', error);
+        toast.error('添加维护计划失败');
+      }
+      throw error;
     }
   };
 
-  const handleUpdateSchedule = async () => {
-    const form = readSchedForm();
-    if (!editingSchedule || !form.title || !form.next_due_date) { toast.error('请填写标题和下次维护日期'); return; }
-
+  const handleUpdateSchedule = async (form: MaintenanceScheduleFormData) => {
+    if (!editingSchedule || !form.title || !form.next_due_date) {
+      toast.error('请填写标题和下次维护日期');
+      throw new Error('validation');
+    }
     try {
-      const selectedUser = users.find(u => u.user_id === form.assigned_user_id);
-      const scheduleDescription = form.description?.trim() || `${form.title} - ${equipmentName}`;
-
-      const { error } = await supabase
-        .from('maintenance_schedules')
-        .update({
-          title: form.title,
-          description: scheduleDescription,
-          frequency: form.frequency as any,
-          next_due_date: form.next_due_date,
-          reminder_days_before: form.reminder_days_before,
-          assigned_user_id: form.assigned_user_id || null,
-          assigned_name: selectedUser?.username || null,
-          assigned_email: selectedUser?.email || null,
-          reminder_sent: false
-        })
-        .eq('id', editingSchedule.id);
-
-      if (error) throw error;
-
+      await updateSchedule(editingSchedule.id, withDescription(form), resolveAssignee(form));
+      await supabase.from('maintenance_schedules').update({ reminder_sent: false }).eq('id', editingSchedule.id);
       toast.success('维护计划已更新');
-      setShowEditModal(false);
       setEditingSchedule(null);
-      resetForm();
       fetchSchedules();
       onScheduleChange?.();
     } catch (error) {
-      console.error('Error updating maintenance schedule:', error);
-      toast.error('更新维护计划失败');
+      if ((error as Error).message !== 'validation') {
+        console.error('Error updating maintenance schedule:', error);
+        toast.error('更新维护计划失败');
+      }
+      throw error;
     }
   };
 
@@ -258,12 +171,7 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
     if (!window.confirm('确定要删除这个维护计划吗？')) return;
 
     try {
-      const { error } = await supabase
-        .from('maintenance_schedules')
-        .update({ is_active: false })
-        .eq('id', id);
-
-      if (error) throw error;
+      await deactivateSchedule(id);
 
       toast.success('维护计划已删除');
       fetchSchedules();
@@ -394,18 +302,8 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
     }
   };
 
-  const resetForm = () => { clearSchedForm(); };
-
   const openEditModal = (schedule: MaintenanceSchedule) => {
     setEditingSchedule(schedule);
-    setTimeout(() => {
-      if (schedTitleRef.current) schedTitleRef.current.value = schedule.title;
-      if (schedDescRef.current) schedDescRef.current.value = schedule.description || '';
-      if (schedDateRef.current) schedDateRef.current.value = schedule.next_due_date;
-      if (schedRemindRef.current) schedRemindRef.current.value = String(schedule.reminder_days_before);
-    }, 50);
-    schedFreqRef.current = schedule.frequency;
-    schedUserRef.current = schedule.assigned_user_id || '';
     setShowEditModal(true);
   };
 
@@ -487,134 +385,61 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
         )}
       </CardContent>
 
-      {/* Add Schedule Modal */}
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white !z-[9999] max-w-md">
-          <DialogHeader>
-            <DialogTitle>添加维护计划</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-white/80">维护标题 *</Label>
-              <Input ref={schedTitleRef} placeholder="例如: 月度保养、年度校正" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
-            </div>
-            <div>
-              <Label className="text-white/80">维护内容</Label>
-              <Textarea ref={schedDescRef as any} placeholder="详细描述维护内容..." rows={3} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-white/80">维护周期 *</Label>
-                <Select defaultValue="monthly" onValueChange={(v: any) => { schedFreqRef.current = v; }}>
-                  <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
-                  <SelectContent>{['daily','weekly','monthly','quarterly','yearly'].map(f => <SelectItem key={f} value={f}>{frequencyLabels[f]}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-white/80">下次维护日期 *</Label>
-                <Input type="date" ref={schedDateRef} className="bg-white/10 border-white/20 text-white" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-white/80">提前提醒天数</Label>
-                <Input type="number" ref={schedRemindRef} defaultValue={7} min={1} max={90} className="bg-white/10 border-white/20 text-white" />
-              </div>
-              <div>
-                <Label className="text-white/80">指定维护人</Label>
-                <Select defaultValue="" onValueChange={(v) => { schedUserRef.current = v; }}>
-                  <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue placeholder="选择维护人" /></SelectTrigger>
-                  <SelectContent>{users.map(user => <SelectItem key={user.user_id} value={user.user_id}>{user.username}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowAddModal(false); resetForm(); }}>取消</Button>
-            <Button onClick={handleAddSchedule}>添加</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MaintenanceScheduleFormDialog
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        title="添加维护计划"
+        users={users}
+        onSubmit={handleAddSchedule}
+        submitLabel="添加"
+      />
 
-      {/* Edit Schedule Modal */}
-      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent overlayClassName="bg-black/20 backdrop-blur-sm" className="bg-black/40 backdrop-blur-md border-white/20 text-white !z-[9999] max-w-md">
-          <DialogHeader>
-            <DialogTitle>编辑维护计划</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-white/80">维护标题 *</Label>
-              <Input ref={schedTitleRef} placeholder="例如: 月度保养、年度校正" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
-            </div>
-            <div>
-              <Label className="text-white/80">维护内容</Label>
-              <Textarea ref={schedDescRef as any} placeholder="详细描述维护内容..." rows={3} className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-white/80">维护周期 *</Label>
-                <Select defaultValue="monthly" onValueChange={(v: any) => { schedFreqRef.current = v; }}>
-                  <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
-                  <SelectContent>{['daily','weekly','monthly','quarterly','yearly'].map(f => <SelectItem key={f} value={f}>{frequencyLabels[f]}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-white/80">下次维护日期 *</Label>
-                <Input type="date" ref={schedDateRef} className="bg-white/10 border-white/20 text-white" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-white/80">提前提醒天数</Label>
-                <Input type="number" ref={schedRemindRef} defaultValue={7} min={1} max={90} className="bg-white/10 border-white/20 text-white" />
-              </div>
-              <div>
-                <Label className="text-white/80">指定维护人</Label>
-                <Select defaultValue="" onValueChange={(v) => { schedUserRef.current = v; }}>
-                  <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue placeholder="选择维护人" /></SelectTrigger>
-                  <SelectContent>{users.map(user => <SelectItem key={user.user_id} value={user.user_id}>{user.username}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => { setShowEditModal(false); setEditingSchedule(null); resetForm(); }}>取消</Button>
-            <Button onClick={handleUpdateSchedule}>保存</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MaintenanceScheduleFormDialog
+        open={showEditModal}
+        onOpenChange={(open) => { setShowEditModal(open); if (!open) setEditingSchedule(null); }}
+        title="编辑维护计划"
+        users={users}
+        initialData={editingSchedule ? {
+          title: editingSchedule.title,
+          description: editingSchedule.description || '',
+          frequency: editingSchedule.frequency,
+          next_due_date: editingSchedule.next_due_date,
+          reminder_days_before: editingSchedule.reminder_days_before,
+          assigned_user_id: editingSchedule.assigned_user_id || '',
+        } : undefined}
+        onSubmit={handleUpdateSchedule}
+        submitLabel="保存"
+      />
 
-      {/* 关联设备弹窗 */}
-      <Dialog open={showLinkEquipModal} onOpenChange={setShowLinkEquipModal}>
-        <GlassModal open={showLinkEquipModal} onClose={() => setShowLinkEquipModal(false)}
-          title="关联到其他设备" description={`计划: ${linkingSchedule?.title}`}>
-          <div className="space-y-2">
-            <Label className="text-white/80">下次维护日期</Label>
-            <Input type="date" value={linkEquipDate} onChange={e => setLinkEquipDate(e.target.value)}
-              className="bg-white/10 border-white/20 text-white mt-1" />
-          </div>
-          <p className="text-xs text-white/60 mt-2">将在所选设备上创建同名维护计划</p>
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6">
-            <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              onClick={() => setShowLinkEquipModal(false)}>取消</Button>
+      <GlassModal
+        open={showLinkEquipModal}
+        onClose={() => setShowLinkEquipModal(false)}
+        title="关联到其他设备"
+        description={`计划: ${linkingSchedule?.title}`}
+        footer={
+          <>
+            <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => setShowLinkEquipModal(false)}>取消</Button>
             <Button onClick={async () => {
               if (!linkingSchedule || !linkEquipDate) return;
               try {
                 const { data: eqData } = await supabase.from('equipment').select('id, name, responsible, responsible_email')
                   .eq('type', (await supabase.from('equipment').select('type').eq('id', equipmentId).single()).data?.type)
                   .neq('id', equipmentId).neq('is_scrapped', true);
-                const activeList = (eqData || []).filter((e: any) => e.status !== 'scrapped');
+                const activeList = (eqData || []).filter((e: { status?: string }) => e.status !== 'scrapped');
                 let n = 0;
                 for (const eq of activeList) {
                   const { data: exist } = await supabase.from('maintenance_schedules').select('id')
                     .eq('equipment_id', eq.id).eq('title', linkingSchedule.title).eq('is_active', true).limit(1);
                   if (exist && exist.length > 0) continue;
                   const { error } = await supabase.from('maintenance_schedules').insert({
-                    equipment_id: eq.id, title: linkingSchedule.title, description: linkingSchedule.description,
-                    frequency: linkingSchedule.frequency, next_due_date: linkEquipDate,
+                    equipment_id: eq.id,
+                    title: linkingSchedule.title,
+                    description: linkingSchedule.description,
+                    frequency: linkingSchedule.frequency,
+                    next_due_date: linkEquipDate,
                     reminder_days_before: linkingSchedule.reminder_days_before,
-                    assigned_name: eq.responsible || null, assigned_email: eq.responsible_email || null,
+                    assigned_name: eq.responsible || null,
+                    assigned_email: eq.responsible_email || null,
                     is_active: true,
                   });
                   if (!error) n++;
@@ -623,11 +448,20 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
                 setShowLinkEquipModal(false);
                 fetchSchedules();
                 onScheduleChange?.();
-              } catch (err) { console.error(err); toast.error('关联失败'); }
+              } catch (err) {
+                console.error(err);
+                toast.error('关联失败');
+              }
             }}>确认关联</Button>
-          </div>
-        </GlassModal>
-      </Dialog>
+          </>
+        }
+      >
+        <div className="space-y-2">
+          <Label className="text-white/80">下次维护日期</Label>
+          <Input type="date" value={linkEquipDate} onChange={(e) => setLinkEquipDate(e.target.value)} className="bg-white/10 border-white/20 text-white mt-1" />
+        </div>
+        <p className="text-xs text-white/60 mt-2">将在同类型设备上创建同名维护计划</p>
+      </GlassModal>
     </Card>
   );
 };

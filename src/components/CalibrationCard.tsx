@@ -41,7 +41,7 @@ export default function CalibrationCard({ equipment, onClick }: CalibrationCardP
   useEffect(() => {
     setEquipImg(equipment.image_url);
     if (equipment.type) {
-      supabase.from('equipment_types').select('shared_image_url')
+      supabase.from('equipment_templates').select('shared_image_url')
         .eq('equipment_type', equipment.type).maybeSingle()
         .then(({ data }) => { if (data?.shared_image_url) setTypeImage(data.shared_image_url); });
     }
