@@ -604,9 +604,9 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
                 const { data: eqData } = await supabase.from('equipment').select('id, name, responsible, responsible_email')
                   .eq('type', (await supabase.from('equipment').select('type').eq('id', equipmentId).single()).data?.type)
                   .neq('id', equipmentId).neq('is_scrapped', true);
-                if (!eqData) return;
+                const activeList = (eqData || []).filter((e: any) => e.status !== 'scrapped');
                 let n = 0;
-                for (const eq of eqData as any[]) {
+                for (const eq of activeList) {
                   const { data: exist } = await supabase.from('maintenance_schedules').select('id')
                     .eq('equipment_id', eq.id).eq('title', linkingSchedule.title).eq('is_active', true).limit(1);
                   if (exist && exist.length > 0) continue;

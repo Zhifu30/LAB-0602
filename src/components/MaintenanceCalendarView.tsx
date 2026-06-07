@@ -44,12 +44,13 @@ const MaintenanceCalendarView: React.FC<MaintenanceCalendarViewProps> = ({ onEve
         .from('equipment').select('id, name, next_calibration_date')
         .not('next_calibration_date', 'is', null).gte('next_calibration_date', start).lte('next_calibration_date', end).eq('is_scrapped', false);
       if (calibrationError) throw calibrationError;
+      const filteredCalData = (calibrationData || []).filter((e: any) => e.status !== 'scrapped' && e.is_scrapped !== true);
       const { data: maintenanceData, error: maintenanceError } = await supabase
         .from('maintenance_schedules').select('id, title, next_due_date, frequency, equipment_id, equipment:equipment_id(name)')
         .eq('is_active', true).gte('next_due_date', start).lte('next_due_date', end);
       if (maintenanceError) throw maintenanceError;
       const calendarEvents: CalendarEvent[] = [];
-      (calibrationData || []).forEach(eq => {
+      filteredCalData.forEach(eq => {
         if (eq.next_calibration_date) calendarEvents.push({ id: `cal-${eq.id}`, date: eq.next_calibration_date, title: '校正', type: 'calibration', equipmentId: eq.id, equipmentName: eq.name });
       });
       (maintenanceData || []).forEach(schedule => {
