@@ -36,6 +36,13 @@ const Index = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const { equipment, loading, tableSchema, addEquipment, updateEquipment, deleteEquipment, scrapEquipment: scrapEquipmentFn, importEquipment, fetchEquipment } = useEquipment(true);
 
+  // 监听全局设备更新事件
+  useEffect(() => {
+    const handler = () => fetchEquipment();
+    window.addEventListener('equipment-updated', handler);
+    return () => window.removeEventListener('equipment-updated', handler);
+  }, [fetchEquipment]);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
