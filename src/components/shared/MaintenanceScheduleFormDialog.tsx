@@ -27,6 +27,7 @@ interface MaintenanceScheduleFormDialogProps {
   showAssignee?: boolean;
   showDate?: boolean;
   useGlassModal?: boolean;
+  isTemplateLinked?: boolean; // ★ 模板锁定：为 true 时锁定 title/desc/freq
 }
 
 export const MaintenanceScheduleFormDialog: React.FC<MaintenanceScheduleFormDialogProps> = ({
@@ -42,6 +43,7 @@ export const MaintenanceScheduleFormDialog: React.FC<MaintenanceScheduleFormDial
   showAssignee = true,
   showDate = true,
   useGlassModal = false,
+  isTemplateLinked = false,
 }) => {
   const [formData, setFormData] = useState<MaintenanceScheduleFormData>(defaultScheduleFormData());
   const [submitting, setSubmitting] = useState(false);
@@ -70,6 +72,7 @@ export const MaintenanceScheduleFormDialog: React.FC<MaintenanceScheduleFormDial
       variant={variant}
       showAssignee={showAssignee}
       showDate={showDate}
+      isTemplateLinked={isTemplateLinked}
     />
   );
 

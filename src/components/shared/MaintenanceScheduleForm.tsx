@@ -27,6 +27,7 @@ interface MaintenanceScheduleFormProps {
   variant?: 'glass' | 'light';
   showAssignee?: boolean;
   showDate?: boolean;
+  isTemplateLinked?: boolean; // ★ 模板锁：true 时锁定 title/desc/freq
 }
 
 const glassInput = 'bg-white/10 border-white/20 text-white placeholder:text-white/50';
@@ -41,6 +42,7 @@ export const MaintenanceScheduleForm: React.FC<MaintenanceScheduleFormProps> = (
   variant = 'glass',
   showAssignee = true,
   showDate = true,
+  isTemplateLinked = false,
 }) => {
   const isGlass = variant === 'glass';
   const inputCls = isGlass ? glassInput : lightInput;
@@ -58,7 +60,13 @@ export const MaintenanceScheduleForm: React.FC<MaintenanceScheduleFormProps> = (
           onChange={(e) => patch({ title: e.target.value })}
           placeholder="例如: 月度保养、年度校正"
           className={inputCls}
+          disabled={isTemplateLinked}
         />
+        {isTemplateLinked && (
+          <span className="text-[10px] text-amber-400 flex items-center gap-1 mt-0.5">
+            🔗 继承自类型模板，不可在设备维度修改
+          </span>
+        )}
       </div>
       <div className="space-y-2">
         <Label className={labelCls}>维护内容</Label>
@@ -68,12 +76,13 @@ export const MaintenanceScheduleForm: React.FC<MaintenanceScheduleFormProps> = (
           placeholder="详细描述维护内容..."
           rows={3}
           className={inputCls}
+          disabled={isTemplateLinked}
         />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label className={labelCls}>维护周期 *</Label>
-          <Select value={data.frequency} onValueChange={(v) => patch({ frequency: v as MaintenanceScheduleFormData['frequency'] })}>
+          <Select value={data.frequency} onValueChange={(v) => patch({ frequency: v as MaintenanceScheduleFormData['frequency'] })} disabled={isTemplateLinked}>
             <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
             <SelectContent>
               {FREQUENCY_OPTIONS.map((f) => (
