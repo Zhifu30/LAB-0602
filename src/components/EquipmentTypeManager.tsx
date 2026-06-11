@@ -26,13 +26,14 @@ import MaintenanceScheduleFormDialog from '@/components/shared/MaintenanceSchedu
 import MaintenancePlanFormDialog from '@/components/shared/MaintenancePlanFormDialog';
 import EquipmentPickerDialog from '@/components/shared/EquipmentPickerDialog';
 import HierarchicalResponsibleColumn from '@/components/HierarchicalResponsibleColumn';
+import TypeImagePanel from '@/components/shared/TypeImagePanel';
 import { MaintenancePlanFormData, MaintenanceScheduleFormData } from '@/types/maintenance';
 import { supabase } from '@/integrations/supabase/client';
 import { format, endOfMonth } from 'date-fns';
 import {
   getEffectiveImageUrl, getImageRecommendations, getImageSourceType,
-  uploadTypeSharedImage, syncTypeSharedImage, scanTypeImageUsage,
-  cleanupOrphanImages, runImageSelfCheck, buildTypeImagePath
+  uploadTypeSharedImage, syncTypeSharedImage, syncTypeSharedImageToDevices,
+  scanTypeImageUsage, cleanupOrphanImages, runImageSelfCheck, buildTypeImagePath
 } from '@/utils/imageUtils';
 
 // 获取当月月底日期
@@ -195,6 +196,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const [selfCheckRunning, setSelfCheckRunning] = useState(false);
   const [imageRecs, setImageRecs] = useState<any>(null);
   const [selectedRecUrl, setSelectedRecUrl] = useState<string | null>(null); // 推荐面板当前高亮项
+  const [showSelectiveSync, setShowSelectiveSync] = useState(false);
+  const [selectedSyncDeviceIds, setSelectedSyncDeviceIds] = useState<Set<string>>(new Set());
 
   // 添加/编辑计划的表单
   const [showAddPlanModal, setShowAddPlanModal] = useState(false);
@@ -1463,8 +1466,9 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   };
 
   // 确认同步（从弹窗触发）
-  const handleConfirmSync = async () => {
-    if (!selectedType || !pendingSharedUrl || !selectedTypeId) return;
+  // ★ v2: 选择性同步（仅更新勾选的设备）
+  const handleSelectiveSyncConfirm = async () => {
+    if (!selectedType || !pendingSharedUrl || selectedSyncDeviceIds.size === 0) return;
     try {
       // 1. 写 shared_image_url
       const { error: tplErr } = await supabase
@@ -1472,39 +1476,25 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         .update({ shared_image_url: pendingSharedUrl })
         .eq('equipment_type', selectedType.name)
         .eq('model', TYPE_SENTINEL);
-
       if (tplErr) throw tplErr;
 
-      // 2. 调用 RPC 同步所有关联设备 (Phase 3 RPC)
+      const ids = Array.from(selectedSyncDeviceIds);
+      // 2. 尝试 RPC 选择性同步
       try {
-        const { data, error: rpcErr } = await supabase.rpc('sync_type_shared_image', {
-          p_type_name: selectedType.name,
-          p_shared_image_url: pendingSharedUrl,
-        });
-        if (rpcErr) {
-          console.warn('RPC 不可用，使用前端批量更新回退:', rpcErr.message);
-          // 回退：前端逐条更新
-          await supabase.from('equipment')
-            .update({ image_url: pendingSharedUrl })
-            .eq('type', selectedType.name)
-            .neq('status', 'scrapped');
-          toast({ title: '已保存', description: '共享图片已设置（RPC 未部署，使用前端更新）' });
-        } else {
-          const result = data as any;
-          toast({ title: '同步完成', description: `已更新 ${result?.updated_count ?? linkedEquipments.length} 台设备` });
-        }
+        const result = await syncTypeSharedImageToDevices(selectedType.name, pendingSharedUrl, ids);
+        toast({ title: '同步完成', description: `已更新 ${result.updatedCount} 台设备` });
       } catch {
         // RPC 回退
         await supabase.from('equipment')
           .update({ image_url: pendingSharedUrl })
-          .eq('type', selectedType.name)
-          .neq('status', 'scrapped');
-        toast({ title: '已保存', description: '共享图片已设置' });
+          .in('id', ids);
+        toast({ title: '已保存', description: `已更新 ${ids.length} 台设备` });
       }
 
-      setShowSyncConfirm(false);
+      setShowSelectiveSync(false);
       setPendingSharedUrl(null);
-      setSelectedRecUrl(null);  // 同步成功后清除高亮
+      setSelectedRecUrl(null);
+      setSelectedSyncDeviceIds(new Set());
       onEquipmentRefresh?.();
       refetchAllSchedules();
     } catch (err: any) {
@@ -2232,165 +2222,23 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
               )}
             </div>
 
-            {/* 第四列：共享图片管理（重写） */}
+            {/* 第四列：共享图片管理（重构为独立组件） */}
             {selectedType && (
-              <div className="flex flex-col overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
-                <div className="p-3 border-b border-white/20 bg-white/5">
-                  <h3 className="font-semibold text-sm text-white drop-shadow flex items-center gap-1.5">
-                    <ImageIcon className="h-4 w-4" />
-                    共享图片
-                  </h3>
-                  <p className="text-xs text-white/60">{selectedType.name} · {linkedEquipments.length}台设备</p>
-                </div>
-
-                <ScrollArea className="flex-1 p-3">
-                  <div className="space-y-3">
-
-                    {/* 当前共享图片预览 */}
-                    {selectedType.sharedImageUrl ? (
-                      <>
-                        <div className="rounded-lg overflow-hidden bg-white/5 border border-white/10">
-                          <div className="h-28 bg-cover bg-center"
-                            style={{ backgroundImage: `url(${selectedType.sharedImageUrl})` }} />
-                          <div className="p-2 flex items-center justify-between">
-                            <span className="text-[10px] text-white/50 font-mono truncate max-w-[140px]"
-                              title={selectedType.sharedImageUrl}>{selectedType.sharedImageUrl.split('/').pop()}</span>
-                            <Badge className="text-[9px] bg-green-500/20 text-green-300 border-green-500/30">
-                              已设置共享
-                            </Badge>
-                          </div>
-                        </div>
-
-                        {/* 操作按钮组 */}
-                        <div className="space-y-1.5">
-                          <p className="text-[10px] text-white/50 uppercase tracking-wider">更换图片</p>
-                          <div className="flex gap-1 flex-wrap">
-                            <Button size="sm" className="h-6 text-[10px] bg-blue-500 hover:bg-blue-600 text-white border-0"
-                              onClick={() => {
-                                if (imageRecs?.topUrl) handleSetSharedFromEquipment(imageRecs.topUrl);
-                              }}>
-                              <Link2 className="h-3 w-3 mr-1" />从设备选
-                            </Button>
-                            <Button size="sm" className="h-6 text-[10px] bg-green-500 hover:bg-green-600 text-white border-0"
-                              onClick={() => imageFileInputRef.current?.click()}
-                              disabled={imageUploading}>
-                              {imageUploading ? <RefreshCw className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
-                              上传新图
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* 同步到所有设备 */}
-                        <Button size="sm" className="w-full h-7 text-xs bg-purple-500 hover:bg-purple-600 text-white border-0"
-                          onClick={() => {
-                            setPendingSharedUrl(selectedType.sharedImageUrl!);
-                            setShowSyncConfirm(true);
-                          }}>
-                          <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                          同步到 {linkedEquipments.length} 台设备
-                        </Button>
-
-                        {/* 清理冗余 */}
-                        <Button size="sm" variant="outline"
-                          className="w-full h-7 text-xs bg-white/5 border-white/20 text-white/70 hover:bg-white/10"
-                          onClick={handleCleanupDryRun} disabled={cleanupDryRunLoading}>
-                          {cleanupDryRunLoading ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
-                          清理冗余图片
-                        </Button>
-                      </>
-                    ) : (
-                      /* 尚未设置共享图片 — 智能推荐 */
-                      <>
-                        {imageRecs && imageRecs.urlBreakdown.length > 0 ? (
-                          <>
-                            <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-2.5">
-                              <p className="text-[10px] text-blue-300">
-                                💡 该类型 {imageRecs.totalDevices} 台关联设备中使用了 {imageRecs.urlBreakdown.length} 张不同图片，选择一张设为共享图片
-                              </p>
-                            </div>
-
-                            <div className="space-y-2">
-                              <p className="text-[10px] text-white/50 uppercase tracking-wider">从关联设备中选</p>
-                              {imageRecs.urlBreakdown.map((item: any, i: number) => {
-                                const isSelected = selectedRecUrl === item.url;
-                                return (
-                                <button
-                                  key={i}
-                                  className={`w-full rounded-lg overflow-hidden transition-all text-left ${
-                                    isSelected
-                                      ? 'bg-blue-500/10 border border-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.3)]'
-                                      : 'bg-white/5 border border-white/10 hover:border-white/30'
-                                  }`}
-                                  onClick={() => handleSetSharedFromEquipment(item.url)}
-                                >
-                                  <div className="flex items-center gap-2 p-2.5">
-                                    <div className="h-12 w-12 rounded bg-cover bg-center shrink-0 border border-white/10"
-                                      style={{ backgroundImage: `url(${item.url})` }} />
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-1.5 mb-0.5">
-                                        <p className="text-[11px] text-white font-medium truncate">{item.url.split('/').pop()}</p>
-                                        {isSelected && <Check className="h-3.5 w-3.5 text-blue-400 shrink-0" />}
-                                      </div>
-                                      <p className="text-[10px] text-white/50">{item.count} 台设备 · {item.equipmentNames.slice(0, 3).join(', ')}{item.equipmentNames.length > 3 ? ` 等${item.equipmentNames.length}台` : ''}</p>
-                                    </div>
-                                    <div className="shrink-0 flex flex-col items-end gap-1">
-                                      <Badge className={`text-[9px] shrink-0 ${item.count === imageRecs.topCount ? 'bg-blue-500/20 text-blue-300' : 'bg-white/10 text-white/50'}`}>
-                                        {item.count === imageRecs.topCount ? '最多设备' : `${item.count}台`}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                  <div className={`px-2.5 py-1.5 border-t flex items-center justify-center ${
-                                    isSelected
-                                      ? 'bg-blue-500/20 border-blue-400/30'
-                                      : 'bg-white/[0.02] border-white/5'
-                                  }`}>
-                                    {isSelected ? (
-                                      <span className="text-[11px] text-blue-300 font-medium flex items-center gap-1">
-                                        <Check className="h-3.5 w-3.5" /> 已选为共享图片 — 请确认同步
-                                      </span>
-                                    ) : (
-                                      <span className="text-[11px] text-white/60 group-hover:text-white/90">
-                                        选为共享图片 →
-                                      </span>
-                                    )}
-                                  </div>
-                                </button>
-                              );})}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-center py-8 text-white/20">
-                            <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                            <p className="text-[10px]">关联设备暂无图片</p>
-                          </div>
-                        )}
-
-                        <Separator className="bg-white/10" />
-
-                        {/* 上传新图片 */}
-                        <div className="space-y-2">
-                          <p className="text-[10px] text-white/50 uppercase tracking-wider">或上传新图片</p>
-                          <Button size="sm" className="w-full h-7 text-xs bg-green-500 hover:bg-green-600 text-white border-0"
-                            onClick={() => imageFileInputRef.current?.click()}
-                            disabled={imageUploading}>
-                            {imageUploading ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
-                            上传共享图片
-                          </Button>
-                        </div>
-                      </>
-                    )}
-
-                    {/* 隐藏的文件输入 */}
-                    <input ref={imageFileInputRef} type="file" accept="image/*"
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadSharedImage(f); }}
-                      className="hidden" />
-
-                  </div>
-                </ScrollArea>
-              </div>
+              <TypeImagePanel
+                selectedType={selectedType}
+                linkedEquipments={linkedEquipments}
+                onRefresh={() => { onEquipmentRefresh?.(); refetchAllSchedules(); }}
+                onSyncStart={(url) => {
+                  setPendingSharedUrl(url);
+                  // 默认选中已使用该URL的设备
+                  const preSelected = linkedEquipments.filter(eq => eq.imageUrl === url).map(eq => eq.id);
+                  setSelectedSyncDeviceIds(new Set(preSelected));
+                  setShowSelectiveSync(true);
+                }}
+              />
             )}
 
-            {/* 第五列：维护负责人等级（新的分层级模式） */}
+            {/* 第五列：维护负责人等级 */}
             {selectedType && (
               <HierarchicalResponsibleColumn
                 linkedEquipments={linkedEquipments}
@@ -2566,109 +2414,45 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         }}
       />
 
-      {/* === 共享图片同步确认弹窗 === */}
-      <Dialog open={showSyncConfirm} onOpenChange={setShowSyncConfirm}>
-        <DialogContent className="sm:max-w-md bg-slate-900 border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-white">确认同步图片？</DialogTitle>
-            <DialogDescription className="text-white/60">
-              新的共享图片将写入类型模板，并可选择同步更新所有关联设备
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {/* 新旧图片对比 */}
+      {/* === 选择性同步设备选择器 (v2) === */}
+      <EquipmentPickerDialog
+        open={showSelectiveSync && !!pendingSharedUrl}
+        onOpenChange={(open) => { if (!open) { setShowSelectiveSync(false); setPendingSharedUrl(null); } }}
+        variant="glass"
+        title="选择要同步的设备"
+        description="勾选要使用此共享图片的设备，未勾选的设备将保持当前图片"
+        items={linkedEquipments.map((eq) => {
+          const isSelected = selectedSyncDeviceIds.has(eq.id);
+          const alreadyHas = eq.imageUrl === pendingSharedUrl;
+          let badge: string | undefined;
+          let badgeClassName: string | undefined;
+          if (alreadyHas) { badge = '已有此图'; badgeClassName = 'text-green-400'; }
+          else if (isSelected) { badge = '将同步'; badgeClassName = 'text-blue-400'; }
+          else { badge = '保持原样'; badgeClassName = 'text-white/40'; }
+          return { id: eq.id, name: eq.name, subtitle: eq.id, badge, badgeClassName };
+        })}
+        selectedIds={selectedSyncDeviceIds}
+        onSelectionChange={setSelectedSyncDeviceIds}
+        searchable
+        searchPlaceholder="搜索设备编号..."
+        confirmLabel={`同步 (${selectedSyncDeviceIds.size} 台)`}
+        onConfirm={handleSelectiveSyncConfirm}
+        footerExtra={
+          <div className="space-y-2">
             {pendingSharedUrl && (
-              <div className="flex items-center justify-center gap-3">
-                {selectedType?.sharedImageUrl && (
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="h-20 w-32 rounded-lg bg-cover bg-center border border-white/20"
-                      style={{ backgroundImage: `url(${selectedType.sharedImageUrl})` }} />
-                    <span className="text-[9px] text-white/40">当前</span>
-                  </div>
-                )}
-                {selectedType?.sharedImageUrl && <ChevronRight className="h-5 w-5 text-white/40" />}
-                <div className="flex flex-col items-center gap-1">
-                  <div className="h-20 w-32 rounded-lg bg-cover bg-center border border-blue-400"
-                    style={{ backgroundImage: `url(${pendingSharedUrl})` }} />
-                  <span className="text-[9px] text-blue-400">新图片</span>
-                </div>
+              <div className="flex items-center gap-2 p-2 rounded bg-white/5">
+                <div className="h-10 w-14 rounded bg-cover bg-center shrink-0"
+                  style={{ backgroundImage: `url(${pendingSharedUrl})` }} />
+                <span className="text-[10px] text-white/60">新共享图片: {pendingSharedUrl.split('/').pop()}</span>
               </div>
             )}
-            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
-              <p className="text-xs text-amber-300">
-                ⚠️ 建议同步到所有 {linkedEquipments.length} 台关联设备，以确保设备图片与类型共享图片一致
-              </p>
-            </div>
+            <p className="text-xs text-white/50">
+              已选 {selectedSyncDeviceIds.size} 台 · 共 {linkedEquipments.length} 台关联设备
+            </p>
           </div>
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" className="bg-white/10 border-white/20 text-white"
-              onClick={() => { setShowSyncConfirm(false); setPendingSharedUrl(null); }}>
-              取消
-            </Button>
-            <Button onClick={handleConfirmSync} className="bg-purple-500 hover:bg-purple-600">
-              确认同步 ({linkedEquipments.length} 台设备)
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* === 清理冗余图片抽屉 === */}
-      <Dialog open={showCleanupDrawer} onOpenChange={setShowCleanupDrawer}>
-        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-auto bg-slate-900 border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <Trash2 className="h-5 w-5" />
-              冗余图片清理
-            </DialogTitle>
-            <DialogDescription className="text-white/60">
-              以下文件完全未被任何设备或类型引用，可以安全删除
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="rounded-lg border border-white/10 overflow-hidden">
-              <div className="grid grid-cols-[2fr_1fr] gap-0 text-[10px] font-semibold text-white/70 bg-white/5 p-2 border-b border-white/10">
-                <span>文件名</span>
-                <span className="text-right">状态</span>
-              </div>
-              <div className="max-h-[200px] overflow-y-auto">
-                {cleanupPreview?.deleted.length === 0 ? (
-                  <p className="text-center text-xs text-white/40 py-8">🎉 没有冗余文件，所有图片均被引用</p>
-                ) : (
-                  cleanupPreview?.deleted.map((path, i) => (
-                    <div key={i} className="grid grid-cols-[2fr_1fr] gap-0 text-[10px] p-2 border-b border-white/5 last:border-0 items-center">
-                      <span className="text-white truncate">{path}</span>
-                      <span className="text-right text-amber-400">无引用</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-            {cleanupPreview && cleanupPreview.deleted.length > 0 && (
-              <p className="text-xs text-white/50">
-                共计 {cleanupPreview.deleted.length} 个文件
-              </p>
-            )}
-            {cleanupPreview && cleanupPreview.errors.length > 0 && (
-              <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-2">
-                {cleanupPreview.errors.map((err, i) => (
-                  <p key={i} className="text-[10px] text-red-400">{err}</p>
-                ))}
-              </div>
-            )}
-          </div>
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" className="bg-white/10 border-white/20 text-white"
-              onClick={() => { setShowCleanupDrawer(false); setCleanupPreview(null); }}>
-              取消
-            </Button>
-            {cleanupPreview && cleanupPreview.deleted.length > 0 && (
-              <Button onClick={handleCleanupConfirm} className="bg-red-500 hover:bg-red-600 text-white">
-                确认安全释放空间 ({cleanupPreview.deleted.length} 个文件)
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        }
+      />
+      {/* 清理冗余抽屉已迁移到 TypeImagePanel 组件内部处理 */}
 
       {/* === 图片健康度自检面板（开发模式） */}
       {import.meta.env.DEV && selectedType && (

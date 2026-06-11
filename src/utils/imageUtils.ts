@@ -55,6 +55,54 @@ export interface SyncResult {
 }
 
 // ============================================================
+// ⓪ 缓存层：防 N+1 查询 + Storage 安全扫描
+// ============================================================
+
+const typeTemplateCache = new Map<string, { data: any; ts: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 分钟
+const pendingRequests = new Map<string, Promise<any>>(); // 并发去重
+
+/**
+ * 带缓存的类型模板查询。30 个组件并发调用 → 仅 1 次网络请求。
+ */
+export async function fetchTypeTemplateCached(typeName: string): Promise<any> {
+  const cached = typeTemplateCache.get(typeName);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
+  if (pendingRequests.has(typeName)) return pendingRequests.get(typeName)!;
+  const promise = (async () => {
+    const { data } = await supabase
+      .from('equipment_templates')
+      .select('shared_image_url, shared_sop_files')
+      .eq('equipment_type', typeName).eq('model', '__TYPE__').maybeSingle();
+    typeTemplateCache.set(typeName, { data, ts: Date.now() });
+    pendingRequests.delete(typeName);
+    return data;
+  })();
+  pendingRequests.set(typeName, promise);
+  return promise;
+}
+
+/** 兼容别名 */
+export const fetchTypeTemplate = fetchTypeTemplateCached;
+
+/**
+ * ★ 用服务器端 search 参数按前缀筛选，修复 .list() 100 条截断问题。
+ */
+export async function listTypeStorageFiles(typeName: string) {
+  const prefix = sanitizeFileName(typeName);
+  const { data } = await supabase.storage
+    .from('equipment-images')
+    .list('types', {
+      search: prefix,   // ★ 服务器端按前缀过滤
+      limit: 500,       // ★ 单类型安全上限
+    });
+  return (data || []).map((f: any) => ({
+    ...f,
+    publicUrl: supabase.storage.from('equipment-images').getPublicUrl(`types/${f.name}`).data.publicUrl,
+  }));
+}
+
+// ============================================================
 // ① 统一级联显示
 // ============================================================
 
@@ -101,7 +149,7 @@ export function getImageSourceType(
  */
 export function sanitizeFileName(typeName: string): string {
   return typeName
-    .replace(/[^a-zA-Z0-9一-鿿_-]/g, '_') // 保留中英数下划线
+    .replace(/[^a-zA-Z0-9一-龥_-]/g, '_') // ★ 标准闭包范围，兼容所有浏览器
     .replace(/\s+/g, '_')
     .replace(/_+/g, '_')
     .substring(0, 50);
@@ -439,25 +487,30 @@ export async function syncTypeSharedImage(
   };
 }
 
-// ============================================================
-// 获取类型模板（包含 shared_image_url）
-// ============================================================
-
 /**
- * 从 equipment_templates 查询类型的共享图片 URL
+ * ★ RPC 选择性同步：只更新指定设备 ID 列表。
  */
-export async function fetchTypeTemplate(typeName: string): Promise<{
-  shared_image_url: string | null;
-  shared_sop_files: any[] | null;
-} | null> {
-  const { data } = await supabase
-    .from('equipment_templates')
-    .select('shared_image_url, shared_sop_files')
-    .eq('equipment_type', typeName)
-    .eq('model', '__TYPE__')
-    .maybeSingle();
-
-  return data as any;
+export async function syncTypeSharedImageToDevices(
+  typeName: string,
+  sharedImageUrl: string,
+  equipmentIds: string[]
+): Promise<SyncResult> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.rpc as any)('sync_type_shared_image_to_devices', {
+    p_type_name: typeName,
+    p_shared_image_url: sharedImageUrl,
+    p_equipment_ids: equipmentIds,
+  });
+  if (error) {
+    return { success: false, updatedCount: 0, typeName, error: error.message };
+  }
+  const result = data as unknown as { success: boolean; updated_count: number; type_name: string; error?: string };
+  return {
+    success: result?.success ?? false,
+    updatedCount: result?.updated_count ?? 0,
+    typeName: result?.type_name ?? typeName,
+    error: result?.error,
+  };
 }
 
 // ============================================================
