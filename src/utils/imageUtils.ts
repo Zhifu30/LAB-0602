@@ -338,7 +338,7 @@ export async function cleanupOrphanImages(
 }
 
 /**
- * ★ 检查类型是否已全量同步（所有设备都用共享图片）
+ * ★ 检查类型是否已全量同步（所有设备 image_url 都在画廊中）
  */
 export async function checkFullSyncStatus(typeName: string): Promise<{
   fullySynced: boolean;
@@ -348,18 +348,18 @@ export async function checkFullSyncStatus(typeName: string): Promise<{
   unsyncedDevices: { id: string; name: string }[];
 }> {
   const images = await getTypeImages(typeName);
-  const defaultUrl = getDefaultTypeImageUrl(images);
+  const galleryUrls = new Set(images.map(img => img.url));
   const { data: eqs } = await supabase
     .from('equipment')
     .select('id, name, image_url')
     .eq('type', typeName)
     .neq('status', 'scrapped');
 
-  const synced = (eqs || []).filter(e => e.image_url === defaultUrl);
-  const unsynced = (eqs || []).filter(e => e.image_url !== defaultUrl);
+  const synced = (eqs || []).filter(e => galleryUrls.has(e.image_url));
+  const unsynced = (eqs || []).filter(e => !galleryUrls.has(e.image_url));
 
   return {
-    fullySynced: defaultUrl ? unsynced.length === 0 && (eqs || []).length > 0 : false,
+    fullySynced: galleryUrls.size > 0 ? unsynced.length === 0 && (eqs || []).length > 0 : false,
     totalDevices: (eqs || []).length,
     syncedCount: synced.length,
     unsyncedCount: unsynced.length,
