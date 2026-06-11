@@ -466,6 +466,12 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     finally { setSchedulesLoading(false); }
   }, [selectedTypeId, linkedEquipments, groupSchedulesIntoPlans]);
 
+  // ★ 冗余2 修复：统一全局刷新（消除散落代码）
+  const syncGlobalState = useCallback(async () => {
+    if (selectedEquipmentId) await refetchAllSchedules();
+    onEquipmentRefresh?.();
+  }, [selectedEquipmentId, refetchAllSchedules, onEquipmentRefresh]);
+
   // 当类型变化时刷新
   useEffect(() => { refetchAllSchedules(); }, [selectedTypeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -475,9 +481,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     if (selectedTypeId) {
       // 1. 从关联设备中提取所有已存在的图片 URL（排除报废设备）
       const eqImagesMap = new Map<string, Set<string>>();
+      // linkedEquipments 已由 activeEquipments 排除报废设备，无需重复检查
       linkedEquipments.forEach(eq => {
-        // 双重检查：确保报废设备不会出现在图片映射中
-        if ((eq as any).isScrapped === true || eq.status === 'scrapped') return;
         const url = eq.imageUrl?.trim();
         if (url) {
           if (!eqImagesMap.has(url)) eqImagesMap.set(url, new Set());
@@ -918,7 +923,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         });
         if (!error) createdCount++;
       }
-      await refetchAllSchedules(); onEquipmentRefresh?.();
+      await syncGlobalState();
       setPlanFormData({ title: '', description: '', frequency: 'monthly', reminder_days_before: 7 });
       toast({ title: '成功', description: `已创建 ${createdCount} 个计划${skippedCount > 0 ? `，跳过 ${skippedCount} 个已存在` : ''}` });
     } catch (err) {
@@ -945,7 +950,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         frequency: form.frequency, reminder_days_before: form.reminder_days_before,
       }).in('id', ids);
       if (error) throw error;
-      await refetchAllSchedules(); onEquipmentRefresh?.();
+      await syncGlobalState();
       setEditingPlan(null);
       toast({ title: '成功', description: `已更新 ${ids.length} 条计划` });
     } catch (err) {
@@ -963,7 +968,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       const ids = plan.schedules.map(s => s.id);
       const { error } = await supabase.from('maintenance_schedules').update({ is_active: false }).in('id', ids);
       if (error) throw error;
-      await refetchAllSchedules(); onEquipmentRefresh?.();
+      await syncGlobalState();
       toast({ title: '已删除', description: `已删除"${plan.title}"` });
     } catch (err) { console.error('删除失败:', err); toast({ title: '删除失败', description: '请重试', variant: 'destructive' }); }
   };
@@ -1000,7 +1005,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           if (!error) removed++;
         }
       }
-      await refetchAllSchedules(); onEquipmentRefresh?.();
+      await syncGlobalState();
       setShowLinkEquipmentModal(false); setLinkingPlan(null); setLinkEquipmentIds(new Set());
       const msgs = [];
       if (added > 0) msgs.push(`关联 ${added} 台`);
@@ -1026,7 +1031,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         });
         if (!error) n++;
       }
-      await refetchAllSchedules(); onEquipmentRefresh?.();
+      await syncGlobalState();
       setShowLinkPlanModal(false); setEquipmentLinkingId(null); setPlanLinkIds(new Set());
       toast({ title: '关联成功', description: `已关联 ${n} 个计划` });
     } catch (err) { console.error('关联失败:', err); toast({ title: '失败', description: '请重试', variant: 'destructive' }); }
@@ -2237,7 +2242,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                 key={selectedType.id}
                 selectedType={selectedType}
                 linkedEquipments={linkedEquipments}
-                onRefresh={() => { onEquipmentRefresh?.(); refetchAllSchedules(); }}
+                onRefresh={syncGlobalState}
                 onSyncStart={(url) => {
                   setPendingSharedUrl(url);
                   // 默认全选 → 用户可以取消不需要的设备
