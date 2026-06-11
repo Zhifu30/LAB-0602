@@ -203,7 +203,7 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
           <ImageIcon className="h-4 w-4" />
           类型图片库
         </h3>
-        <p className="text-xs text-white/60">{selectedType.name} · {gallery.length} 张图 · {linkedEquipments.length}台设备</p>
+        <p className="text-xs text-white/60">{selectedType.name} · {galleryWithCounts.length} 张图 · {linkedEquipments.length}台设备</p>
       </div>
 
       <ScrollArea className="flex-1 p-3">
@@ -214,7 +214,7 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
             <div className="text-center py-8">
               <RefreshCw className="h-6 w-6 mx-auto animate-spin text-white/30" />
             </div>
-          ) : gallery.length > 0 ? (
+          ) : galleryWithCounts.length > 0 ? (
             <div className="space-y-2">
               {galleryWithCounts.map((img, i) => (
                 <div key={i} className={cn(
@@ -245,18 +245,22 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs text-white truncate flex-1">{img.label}</span>
                       <div className="flex items-center gap-1 shrink-0">
-                        {!img.is_default && (
-                          <Button size="sm" variant="ghost"
-                            className="h-6 text-[10px] text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
-                            onClick={() => handleSetDefault(img.url)}>
-                            <Star className="h-3 w-3 mr-0.5" />默认
-                          </Button>
+                        {!(img as any)._virtual && (
+                          <>
+                            {!img.is_default && (
+                              <Button size="sm" variant="ghost"
+                                className="h-6 text-[10px] text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                                onClick={() => handleSetDefault(img.url)}>
+                                <Star className="h-3 w-3 mr-0.5" />默认
+                              </Button>
+                            )}
+                            <Button size="sm" variant="ghost"
+                              className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                              onClick={() => handleRemove(img.url)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
                         )}
-                        <Button size="sm" variant="ghost"
-                          className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                          onClick={() => handleRemove(img.url)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
                       </div>
                     </div>
                     {/* 每张图都可以选择性同步 */}
