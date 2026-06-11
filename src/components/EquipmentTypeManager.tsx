@@ -113,7 +113,7 @@ const frequencyLabels: Record<string, string> = {
 const STORAGE_KEY = 'equipment-type-configs-v2';
 
 // Use equipment_templates table to persist type definitions.
-// Rows with model/manufacturer = '__TYPE__' are reserved for type definitions.
+// Rows with model = '__TYPE__' are reserved for type definitions.
 const TYPE_SENTINEL = '__TYPE__';
 
 const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
@@ -299,9 +299,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     // Best-effort upsert into DB so types survive across browsers/devices.
     const rows = valid.map(t => ({
       equipment_type: String(t.name).trim(),
-      model: TYPE_SENTINEL,
-      manufacturer: TYPE_SENTINEL
-    }));
+      model: TYPE_SENTINEL    }));
 
     const { error } = await supabase
       .from('equipment_templates')

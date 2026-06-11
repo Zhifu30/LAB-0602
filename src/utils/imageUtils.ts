@@ -452,8 +452,8 @@ export async function addTypeImage(typeName: string, url: string, label: string)
   if (images.some(img => img.url === url)) return;
   images.push({ url, label, is_default: images.length === 0 });
   await supabase.from('equipment_templates').upsert({
-    equipment_type: typeName, model: '__TYPE__', manufacturer: '__TYPE__', type_images: images as any,
-  }, { onConflict: 'equipment_type,model,manufacturer' } as any);
+    equipment_type: typeName, model: '__TYPE__', type_images: images as any,
+  } as any, { onConflict: 'equipment_type,model' });
   typeTemplateCache.delete(typeName);
 }
 
@@ -463,8 +463,8 @@ export async function removeTypeImage(typeName: string, url: string): Promise<vo
   images = images.filter(img => img.url !== url);
   if (removed?.is_default && images.length > 0) images[0].is_default = true;
   await supabase.from('equipment_templates').upsert({
-    equipment_type: typeName, model: '__TYPE__', manufacturer: '__TYPE__', type_images: images as any,
-  }, { onConflict: 'equipment_type,model,manufacturer' } as any);
+    equipment_type: typeName, model: '__TYPE__', type_images: images as any,
+  } as any, { onConflict: 'equipment_type,model' });
   typeTemplateCache.delete(typeName);
 }
 
@@ -472,8 +472,8 @@ export async function setDefaultTypeImage(typeName: string, url: string): Promis
   const images = await getTypeImages(typeName);
   const updated = images.map(img => ({ ...img, is_default: img.url === url }));
   await supabase.from('equipment_templates').upsert({
-    equipment_type: typeName, model: '__TYPE__', manufacturer: '__TYPE__', type_images: updated as any,
-  }, { onConflict: 'equipment_type,model,manufacturer' } as any);
+    equipment_type: typeName, model: '__TYPE__', type_images: updated as any,
+  } as any, { onConflict: 'equipment_type,model' });
   typeTemplateCache.delete(typeName);
 }
 

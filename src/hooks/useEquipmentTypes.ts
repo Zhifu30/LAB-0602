@@ -15,7 +15,7 @@ const TYPE_SENTINEL = '__TYPE__';
 
 /**
  * 获取所有设备类型。
- * 以 equipment_templates 表中 model/manufacturer = '__TYPE__' 的行为主数据源（设备类型管理），
+ * 以 equipment_templates 表中 model = '__TYPE__' 的行为主数据源（设备类型管理），
  * 同时合并 equipment 表中实际使用的类型作为补充。
  */
 export function useEquipmentTypes() {
@@ -30,7 +30,6 @@ export function useEquipmentTypes() {
         .from('equipment_templates')
         .select('equipment_type')
         .eq('model', TYPE_SENTINEL)
-        .eq('manufacturer', TYPE_SENTINEL)
         .order('equipment_type');
 
       if (templateError) throw templateError;

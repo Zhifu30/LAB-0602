@@ -58,7 +58,7 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
     try {
       const { data } = await supabase
         .from('equipment_templates').select('type_images, shared_sop_files')
-        .eq('equipment_type', equipment.type).eq('model', TYPE_SENTINEL).eq('manufacturer', TYPE_SENTINEL).maybeSingle();
+        .eq('equipment_type', equipment.type).eq('model', TYPE_SENTINEL).maybeSingle();
       if (data) setTypeResource({ typeImages: (data as any).type_images, sharedSopFiles: data.shared_sop_files as { url: string; name: string; }[] | null });
     } catch (error) { console.error('Error fetching type resource:', error); }
   }, [equipment.type]);
