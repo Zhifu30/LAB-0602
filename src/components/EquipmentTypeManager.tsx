@@ -194,6 +194,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const [selfCheckResults, setSelfCheckResults] = useState<any[] | null>(null);
   const [selfCheckRunning, setSelfCheckRunning] = useState(false);
   const [imageRecs, setImageRecs] = useState<any>(null);
+  const [selectedRecUrl, setSelectedRecUrl] = useState<string | null>(null); // 推荐面板当前高亮项
 
   // 添加/编辑计划的表单
   const [showAddPlanModal, setShowAddPlanModal] = useState(false);
@@ -1438,9 +1439,10 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     }
   }, [selectedType, linkedEquipments]);
 
-  // 从关联设备中选择图片作为共享图片
+  // 从关联设备中选择图片作为共享图片（先高亮，再弹窗）
   const handleSetSharedFromEquipment = async (url: string) => {
     if (!selectedType || !selectedTypeId) return;
+    setSelectedRecUrl(url);       // 高亮当前选择
     setPendingSharedUrl(url);
     setShowSyncConfirm(true);
   };
@@ -1502,6 +1504,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
       setShowSyncConfirm(false);
       setPendingSharedUrl(null);
+      setSelectedRecUrl(null);  // 同步成功后清除高亮
       onEquipmentRefresh?.();
       refetchAllSchedules();
     } catch (err: any) {
@@ -2301,30 +2304,58 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                         {imageRecs && imageRecs.urlBreakdown.length > 0 ? (
                           <>
                             <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-2.5">
-                              <p className="text-[10px] text-blue-300 mb-2">
-                                💡 {imageRecs.totalDevices} 台关联设备中，"{imageRecs.topUrl?.split('/').pop()}" 被 {imageRecs.topCount} 台使用，可一键设为共享图片
+                              <p className="text-[10px] text-blue-300">
+                                💡 该类型 {imageRecs.totalDevices} 台关联设备中使用了 {imageRecs.urlBreakdown.length} 张不同图片，选择一张设为共享图片
                               </p>
                             </div>
 
                             <div className="space-y-2">
                               <p className="text-[10px] text-white/50 uppercase tracking-wider">从关联设备中选</p>
-                              {imageRecs.urlBreakdown.map((item: any, i: number) => (
+                              {imageRecs.urlBreakdown.map((item: any, i: number) => {
+                                const isSelected = selectedRecUrl === item.url;
+                                return (
                                 <button
                                   key={i}
-                                  className="w-full rounded-lg overflow-hidden bg-white/5 border border-white/10 hover:border-white/30 transition-all text-left"
+                                  className={`w-full rounded-lg overflow-hidden transition-all text-left ${
+                                    isSelected
+                                      ? 'bg-blue-500/10 border border-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.3)]'
+                                      : 'bg-white/5 border border-white/10 hover:border-white/30'
+                                  }`}
                                   onClick={() => handleSetSharedFromEquipment(item.url)}
                                 >
-                                  <div className="flex items-center gap-2 p-2">
-                                    <div className="h-10 w-10 rounded bg-cover bg-center shrink-0"
+                                  <div className="flex items-center gap-2 p-2.5">
+                                    <div className="h-12 w-12 rounded bg-cover bg-center shrink-0 border border-white/10"
                                       style={{ backgroundImage: `url(${item.url})` }} />
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-[10px] text-white truncate">{item.url.split('/').pop()}</p>
-                                      <p className="text-[9px] text-white/50">{item.count} 台设备 · {item.equipmentNames.slice(0, 2).join(', ')}{item.equipmentNames.length > 2 ? '...' : ''}</p>
+                                      <div className="flex items-center gap-1.5 mb-0.5">
+                                        <p className="text-[11px] text-white font-medium truncate">{item.url.split('/').pop()}</p>
+                                        {isSelected && <Check className="h-3.5 w-3.5 text-blue-400 shrink-0" />}
+                                      </div>
+                                      <p className="text-[10px] text-white/50">{item.count} 台设备 · {item.equipmentNames.slice(0, 3).join(', ')}{item.equipmentNames.length > 3 ? ` 等${item.equipmentNames.length}台` : ''}</p>
                                     </div>
-                                    <Badge className="text-[9px] bg-blue-500/20 text-blue-300 shrink-0">{item.count === imageRecs.topCount ? '推荐' : '备选'}</Badge>
+                                    <div className="shrink-0 flex flex-col items-end gap-1">
+                                      <Badge className={`text-[9px] shrink-0 ${item.count === imageRecs.topCount ? 'bg-blue-500/20 text-blue-300' : 'bg-white/10 text-white/50'}`}>
+                                        {item.count === imageRecs.topCount ? '最多设备' : `${item.count}台`}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                  <div className={`px-2.5 py-1.5 border-t flex items-center justify-center ${
+                                    isSelected
+                                      ? 'bg-blue-500/20 border-blue-400/30'
+                                      : 'bg-white/[0.02] border-white/5'
+                                  }`}>
+                                    {isSelected ? (
+                                      <span className="text-[11px] text-blue-300 font-medium flex items-center gap-1">
+                                        <Check className="h-3.5 w-3.5" /> 已选为共享图片 — 请确认同步
+                                      </span>
+                                    ) : (
+                                      <span className="text-[11px] text-white/60 group-hover:text-white/90">
+                                        选为共享图片 →
+                                      </span>
+                                    )}
                                   </div>
                                 </button>
-                              ))}
+                              );})}
                             </div>
                           </>
                         ) : (
