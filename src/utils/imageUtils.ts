@@ -628,15 +628,35 @@ export interface TypeImage {
 
 /**
  * 获取某类型的所有图片库
+ * ★ 兼容回退：如果 type_images 列不存在或为空，用 shared_image_url 构造单图列表
  */
 export async function getTypeImages(typeName: string): Promise<TypeImage[]> {
-  const { data } = await supabase
-    .from('equipment_templates')
-    .select('type_images')
-    .eq('equipment_type', typeName)
-    .eq('model', '__TYPE__')
-    .maybeSingle();
-  return ((data as any)?.type_images as TypeImage[]) || [];
+  try {
+    const { data } = await supabase
+      .from('equipment_templates')
+      .select('type_images, shared_image_url')
+      .eq('equipment_type', typeName)
+      .eq('model', '__TYPE__')
+      .maybeSingle();
+    const images = ((data as any)?.type_images as TypeImage[]) || [];
+    if (images.length > 0) return images;
+    // 回退：用旧的 shared_image_url
+    const sharedUrl = (data as any)?.shared_image_url as string | null;
+    if (sharedUrl) {
+      return [{ url: sharedUrl, label: '默认', is_default: true }];
+    }
+    return [];
+  } catch {
+    // 极端情况：type_images 列不存在，完全回退到 shared_image_url
+    const { data } = await supabase
+      .from('equipment_templates')
+      .select('shared_image_url')
+      .eq('equipment_type', typeName)
+      .eq('model', '__TYPE__')
+      .maybeSingle();
+    const url = data?.shared_image_url;
+    return url ? [{ url, label: '默认', is_default: true }] : [];
+  }
 }
 
 /**
@@ -644,13 +664,16 @@ export async function getTypeImages(typeName: string): Promise<TypeImage[]> {
  */
 export async function addTypeImage(typeName: string, url: string, label: string): Promise<void> {
   const images = await getTypeImages(typeName);
-  if (images.some(img => img.url === url)) return; // 已存在
-  images.push({ url, label, is_default: images.length === 0 }); // 首个自动设为默认
-  await supabase
-    .from('equipment_templates')
-    .update({ type_images: images as any } as any)
-    .eq('equipment_type', typeName).eq('model', '__TYPE__');
-  // 同步 shared_image_url
+  if (images.some(img => img.url === url)) return;
+  images.push({ url, label, is_default: images.length === 0 });
+  try {
+    await supabase
+      .from('equipment_templates')
+      .update({ type_images: images as any } as any)
+      .eq('equipment_type', typeName).eq('model', '__TYPE__');
+  } catch {
+    // type_images 列不存在 → 仅更新 shared_image_url
+  }
   if (images.length === 1) {
     await supabase
       .from('equipment_templates')
@@ -674,10 +697,12 @@ export async function removeTypeImage(typeName: string, url: string): Promise<vo
       .update({ shared_image_url: images[0].url })
       .eq('equipment_type', typeName).eq('model', '__TYPE__');
   }
-  await supabase
-    .from('equipment_templates')
-    .update({ type_images: images as any } as any)
-    .eq('equipment_type', typeName).eq('model', '__TYPE__');
+  try {
+    await supabase
+      .from('equipment_templates')
+      .update({ type_images: images as any } as any)
+      .eq('equipment_type', typeName).eq('model', '__TYPE__');
+  } catch { /* type_images 列不存在 */ }
   // 如果全部删完，清空 shared_image_url
   if (images.length === 0) {
     await supabase
@@ -693,13 +718,21 @@ export async function removeTypeImage(typeName: string, url: string): Promise<vo
 export async function setDefaultTypeImage(typeName: string, url: string): Promise<void> {
   const images = await getTypeImages(typeName);
   const updated = images.map(img => ({ ...img, is_default: img.url === url }));
-  await supabase
-    .from('equipment_templates')
-    .update({
-      type_images: updated as any,
-      shared_image_url: url,
-    } as any)
-    .eq('equipment_type', typeName).eq('model', '__TYPE__');
+  try {
+    await supabase
+      .from('equipment_templates')
+      .update({
+        type_images: updated as any,
+        shared_image_url: url,
+      } as any)
+      .eq('equipment_type', typeName).eq('model', '__TYPE__');
+  } catch {
+    // type_images 列不存在 → 仅更新 shared_image_url
+    await supabase
+      .from('equipment_templates')
+      .update({ shared_image_url: url })
+      .eq('equipment_type', typeName).eq('model', '__TYPE__');
+  }
 }
 
 /**
