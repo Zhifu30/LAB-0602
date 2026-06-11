@@ -262,14 +262,20 @@ export async function scanTypeImageUsage(typeName: string): Promise<ImageUsageRe
       continue;
     }
 
-    // 检查是否有该类型外的其他设备引用
+    // ★ Bug2 修复：检查 equipment 表 + equipment_templates 表，防止误删其他类型的共享图片
     const { count } = await supabase
       .from('equipment')
       .select('*', { count: 'exact', head: true })
       .eq('image_url', url)
       .or(`type.neq.${typeName},type.is.null`);
 
-    if ((count ?? 0) > 0) {
+    // 额外检查：是否被其他类型设置为 shared_image_url
+    const { count: tplCount } = await supabase
+      .from('equipment_templates')
+      .select('*', { count: 'exact', head: true })
+      .eq('shared_image_url', url);
+
+    if ((count ?? 0) > 0 || (tplCount ?? 0) > 0) {
       healthyUrls.push(url);
     } else {
       orphanUrls.push(url);

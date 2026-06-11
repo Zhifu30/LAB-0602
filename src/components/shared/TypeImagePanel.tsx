@@ -11,7 +11,7 @@
  * - aspect-[4/3] + object-cover 防变形
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
   Upload, Link2, Trash2, Check, Image as ImageIcon,
   RefreshCw, Search, ChevronRight,
@@ -53,7 +53,8 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [imageRecs] = useState(() => getImageRecommendations(linkedEquipments));
+  // ★ Bug1 修复：useMemo 替代 useState，linkEquipments 变化时自动重算
+  const imageRecs = useMemo(() => getImageRecommendations(linkedEquipments), [linkedEquipments]);
   const [selectedRecUrl, setSelectedRecUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false);
@@ -171,18 +172,20 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
                   <Command className="bg-transparent">
                     <CommandInput placeholder="搜索设备编号或名称..." className="text-white placeholder:text-white/40" />
                     <CommandEmpty className="text-white/50 text-xs py-4 text-center">无匹配设备</CommandEmpty>
-                    <CommandGroup>
-                      {equipmentOptions.map((eq) => (
-                        <CommandItem key={eq.id}
-                          className="flex items-center gap-2 cursor-pointer text-white aria-selected:bg-white/10"
-                          onSelect={() => handleSelectRec(eq.imageUrl)}>
-                          <div className="h-6 w-6 rounded bg-cover bg-center shrink-0"
-                            style={{ backgroundImage: `url(${eq.imageUrl})` }} />
-                          <span className="text-xs truncate">{eq.name}</span>
-                          {eq.imageUrl === selectedRecUrl && <Check className="h-3.5 w-3.5 text-blue-400 ml-auto" />}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
+                    {equipmentOptions.length > 0 && (
+                      <CommandGroup>
+                        {equipmentOptions.map((eq) => (
+                          <CommandItem key={eq.id}
+                            className="flex items-center gap-2 cursor-pointer text-white aria-selected:bg-white/10"
+                            onSelect={() => handleSelectRec(eq.imageUrl)}>
+                            <div className="h-6 w-6 rounded bg-cover bg-center shrink-0"
+                              style={{ backgroundImage: `url(${eq.imageUrl})` }} />
+                            <span className="text-xs truncate">{eq.name}</span>
+                            {eq.imageUrl === selectedRecUrl && <Check className="h-3.5 w-3.5 text-blue-400 ml-auto" />}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
                   </Command>
                 </PopoverContent>
               </Popover>
