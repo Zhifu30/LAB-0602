@@ -70,6 +70,17 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
         countMap.set(item.url, { count: item.count, names: item.equipmentNames });
       }
     }
+    // ★ 如果 DB 画廊为空但设备有图片，用设备图片作为虚拟画廊
+    if (gallery.length === 0 && imageRecs && imageRecs.urlBreakdown.length > 0) {
+      return imageRecs.urlBreakdown.map((item: any) => ({
+        url: item.url,
+        label: item.equipmentNames[0] || item.url.split('/').pop() || '设备图片',
+        is_default: false,
+        count: item.count,
+        names: item.equipmentNames,
+        _virtual: true, // 标记为虚拟（需要导入）
+      }));
+    }
     return gallery.map(img => ({
       ...img,
       count: countMap.get(img.url)?.count ?? 0,
@@ -246,11 +257,19 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
                       </div>
                     </div>
                     {/* 每张图都可以选择性同步 */}
-                    <Button size="sm" variant="outline"
-                      className="w-full h-6 text-[10px] bg-white/5 border-white/10 text-white/60 hover:bg-blue-500/20 hover:text-blue-300 hover:border-blue-400/30"
-                      onClick={() => onSyncStart?.(img.url)}>
-                      选择设备同步此图 →
-                    </Button>
+                    {(img as any)._virtual ? (
+                      <Button size="sm"
+                        className="w-full h-6 text-[10px] bg-green-500 hover:bg-green-600 text-white border-0"
+                        onClick={() => handleImport(img.url, img.label)}>
+                        <Download className="h-3 w-3 mr-1" />导入到类型库
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline"
+                        className="w-full h-6 text-[10px] bg-white/5 border-white/10 text-white/60 hover:bg-blue-500/20 hover:text-blue-300 hover:border-blue-400/30"
+                        onClick={() => onSyncStart?.(img.url)}>
+                        选择设备同步此图 →
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -258,8 +277,12 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
           ) : (
             <div className="text-center py-8 text-white/20">
               <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-20" />
-              <p className="text-[10px]">暂无类型图片</p>
-              <p className="text-[9px] mt-1 opacity-50">上传或从设备导入</p>
+              <p className="text-[10px]">
+                {importableImages.length > 0 ? '设备有图片可导入' : '暂无类型图片'}
+              </p>
+              <p className="text-[9px] mt-1 opacity-50">
+                {importableImages.length > 0 ? `点击下方"从设备导入"或上传` : '上传或从设备导入'}
+              </p>
             </div>
           )}
 
