@@ -225,7 +225,7 @@ const Index = () => {
   }, []);
 
   const statusStats = {
-    total: equipment?.length || 0,
+    total: equipment?.filter(eq => eq?.status !== 'scrapped').length || 0,
     available: equipment?.filter(eq => eq?.status === 'available').length || 0,
     'in-use': equipment?.filter(eq => eq?.status === 'in-use').length || 0,
     calibration: equipment?.filter(eq => eq?.status === 'calibration').length || 0,
