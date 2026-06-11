@@ -35,7 +35,7 @@ const getDefaultImage = (type?: string | null) => {
 };
 
 export default function CalibrationCard({ equipment, onClick }: CalibrationCardProps) {
-  const [typeTemplate, setTypeTemplate] = useState<{ shared_image_url: string | null } | null>(null);
+  const [typeTemplate, setTypeTemplate] = useState<{ type_images: { url: string; is_default?: boolean }[] } | null>(null);
 
   useEffect(() => {
     if (equipment.type) {

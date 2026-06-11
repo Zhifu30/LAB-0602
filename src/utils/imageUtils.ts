@@ -25,7 +25,7 @@ export interface ImageMapping {
 }
 
 export interface ImageUsageReport {
-  sharedUrl: string | null;
+  defaultUrl: string | null;
   allUrls: string[];
   healthyUrls: string[];
   orphanUrls: string[];
@@ -72,7 +72,7 @@ export async function fetchTypeTemplateCached(typeName: string): Promise<any> {
   const promise = (async () => {
     const { data } = await supabase
       .from('equipment_templates')
-      .select('shared_image_url, shared_sop_files')
+      .select('type_images, shared_sop_files')
       .eq('equipment_type', typeName).eq('model', '__TYPE__').maybeSingle();
     typeTemplateCache.set(typeName, { data, ts: Date.now() });
     pendingRequests.delete(typeName);
@@ -107,16 +107,24 @@ export async function listTypeStorageFiles(typeName: string) {
 // ============================================================
 
 /**
+ * ★ v3: 从 type_images 数组中提取默认图片 URL
+ */
+export function getDefaultTypeImageUrl(typeImages?: { url: string; is_default?: boolean }[] | null): string | null {
+  if (!typeImages || typeImages.length === 0) return null;
+  const def = typeImages.find(img => img.is_default);
+  return def?.url || typeImages[0]?.url || null;
+}
+
+/**
  * 获取设备最终展示图片 URL
- * 优先级：设备独有 image_url > 类型共享 shared_image_url > null（调用方用默认图兜底）
+ * 优先级：设备独有 image_url > 类型默认图(type_images) > null
  */
 export function getEffectiveImageUrl(
   equipment: { imageUrl?: string | null },
-  typeTemplate?: { shared_image_url?: string | null } | null
+  typeTemplate?: { type_images?: { url: string; is_default?: boolean }[] | null } | null
 ): string | null {
   if (equipment.imageUrl?.trim()) return equipment.imageUrl.trim();
-  if (typeTemplate?.shared_image_url?.trim()) return typeTemplate.shared_image_url.trim();
-  return null;
+  return typeTemplate ? getDefaultTypeImageUrl(typeTemplate.type_images) : null;
 }
 
 // ============================================================
@@ -124,18 +132,15 @@ export function getEffectiveImageUrl(
 // ============================================================
 
 /**
- * 判断设备图片是"共享"还是"独有"还是"无"
- * 用于 EquipmentCard 上的徽章显示
+ * 判断设备图片是"共享"还是"独有"
  */
 export function getImageSourceType(
   equipment: { imageUrl?: string | null },
-  typeTemplate?: { shared_image_url?: string | null } | null
+  typeTemplate?: { type_images?: { url: string; is_default?: boolean }[] | null } | null
 ): 'shared' | 'unique' | 'none' {
   if (!equipment.imageUrl?.trim()) return 'none';
-  if (typeTemplate?.shared_image_url?.trim() &&
-      typeTemplate.shared_image_url.trim() === equipment.imageUrl.trim()) {
-    return 'shared';
-  }
+  const defaultUrl = typeTemplate ? getDefaultTypeImageUrl(typeTemplate.type_images) : null;
+  if (defaultUrl && defaultUrl === equipment.imageUrl.trim()) return 'shared';
   return 'unique';
 }
 
@@ -223,15 +228,15 @@ export function getImageRecommendations(
  * 扫描指定类型的所有图片使用情况
  */
 export async function scanTypeImageUsage(typeName: string): Promise<ImageUsageReport> {
-  // 1. 查类型共享图片
+  // 1. 查类型图片库
   const { data: template } = await supabase
     .from('equipment_templates')
-    .select('shared_image_url')
+    .select('type_images')
     .eq('equipment_type', typeName)
     .eq('model', '__TYPE__')
     .maybeSingle();
-
-  const sharedUrl = template?.shared_image_url?.trim() || null;
+  const typeImages = ((template as any)?.type_images as TypeImage[]) || [];
+  const defaultUrl = getDefaultTypeImageUrl(typeImages);
 
   // 2. 查该类型所有非报废设备的 image_url
   const { data: eqs } = await supabase
@@ -246,9 +251,9 @@ export async function scanTypeImageUsage(typeName: string): Promise<ImageUsageRe
   const allUrls = [...new Set(equipmentList.map(e => e.image_url).filter(Boolean))] as string[];
 
   // 4. 与共享图片不一致的设备
-  const mismatchedEquipment = sharedUrl
+  const mismatchedEquipment = defaultUrl
     ? equipmentList
-        .filter(e => e.image_url?.trim() !== sharedUrl)
+        .filter(e => e.image_url?.trim() !== defaultUrl)
         .map(e => ({ id: e.id, name: e.name, currentUrl: e.image_url }))
     : [];
 
@@ -257,32 +262,36 @@ export async function scanTypeImageUsage(typeName: string): Promise<ImageUsageRe
   const orphanUrls: string[] = [];
 
   for (const url of allUrls) {
-    if (url === sharedUrl) {
+    if (url === defaultUrl) {
       healthyUrls.push(url);
       continue;
     }
 
-    // ★ Bug2 修复：检查 equipment 表 + equipment_templates 表，防止误删其他类型的共享图片
+    // ★ 检查 equipment 表 + equipment_templates 表的引用
     const { count } = await supabase
       .from('equipment')
       .select('*', { count: 'exact', head: true })
       .eq('image_url', url)
       .or(`type.neq.${typeName},type.is.null`);
 
-    // 额外检查：是否被其他类型设置为 shared_image_url
-    const { count: tplCount } = await supabase
+    // 额外检查：是否被其他类型的 type_images 引用
+    const { data: allTemplates } = await supabase
       .from('equipment_templates')
-      .select('*', { count: 'exact', head: true })
-      .eq('shared_image_url', url);
+      .select('type_images')
+      .neq('equipment_type', typeName);
+    const otherTypeHasUrl = (allTemplates || []).some((t: any) => {
+      const images = (t.type_images as TypeImage[]) || [];
+      return images.some(img => img.url === url);
+    });
 
-    if ((count ?? 0) > 0 || (tplCount ?? 0) > 0) {
+    if ((count ?? 0) > 0 || otherTypeHasUrl) {
       healthyUrls.push(url);
     } else {
       orphanUrls.push(url);
     }
   }
 
-  return { sharedUrl, allUrls, healthyUrls, orphanUrls, mismatchedEquipment };
+  return { defaultUrl, allUrls, healthyUrls, orphanUrls, mismatchedEquipment };
 }
 
 // ============================================================
@@ -331,24 +340,26 @@ export async function cleanupOrphanImages(
 /**
  * ★ 检查类型是否已全量同步（所有设备都用共享图片）
  */
-export async function checkFullSyncStatus(typeName: string, sharedImageUrl: string): Promise<{
+export async function checkFullSyncStatus(typeName: string): Promise<{
   fullySynced: boolean;
   totalDevices: number;
   syncedCount: number;
   unsyncedCount: number;
   unsyncedDevices: { id: string; name: string }[];
 }> {
+  const images = await getTypeImages(typeName);
+  const defaultUrl = getDefaultTypeImageUrl(images);
   const { data: eqs } = await supabase
     .from('equipment')
     .select('id, name, image_url')
     .eq('type', typeName)
     .neq('status', 'scrapped');
 
-  const synced = (eqs || []).filter(e => e.image_url === sharedImageUrl);
-  const unsynced = (eqs || []).filter(e => e.image_url !== sharedImageUrl);
+  const synced = (eqs || []).filter(e => e.image_url === defaultUrl);
+  const unsynced = (eqs || []).filter(e => e.image_url !== defaultUrl);
 
   return {
-    fullySynced: unsynced.length === 0 && (eqs || []).length > 0,
+    fullySynced: defaultUrl ? unsynced.length === 0 && (eqs || []).length > 0 : false,
     totalDevices: (eqs || []).length,
     syncedCount: synced.length,
     unsyncedCount: unsynced.length,
@@ -362,18 +373,20 @@ export async function checkFullSyncStatus(typeName: string, sharedImageUrl: stri
  */
 export async function cleanupNonSharedTypeFiles(
   typeName: string,
-  sharedImageUrl: string,
   dryRun: boolean = true
 ): Promise<{ deleted: string[]; errors: string[] }> {
   const deleted: string[] = [];
   const errors: string[] = [];
+  const images = await getTypeImages(typeName);
+  const defaultUrl = getDefaultTypeImageUrl(images);
+  if (!defaultUrl) return { deleted: [], errors: ['无默认图片，无法清理'] };
 
   // 1. 扫描 types/ 目录下该类型的所有文件
   const typeFiles = await listTypeStorageFiles(typeName);
 
-  // 2. 排除共享图片文件
+  // 2. 排除默认图片文件
   const filesToDelete = typeFiles.filter((f: any) => {
-    return f.publicUrl !== sharedImageUrl;
+    return f.publicUrl !== defaultUrl;
   });
 
   if (filesToDelete.length === 0) return { deleted: [], errors: [] };
@@ -405,24 +418,18 @@ export async function cleanupNonSharedTypeFiles(
 export async function runImageSelfCheck(typeName: string): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
 
-  // --- 检查 1：设备图片与共享图片是否一致 ---
-  const { data: template } = await supabase
-    .from('equipment_templates')
-    .select('shared_image_url')
-    .eq('equipment_type', typeName)
-    .eq('model', '__TYPE__')
-    .maybeSingle();
+  // --- 检查 1：设备图片与默认图片是否一致 ---
+  const images = await getTypeImages(typeName);
+  const defaultUrl = getDefaultTypeImageUrl(images);
 
-  const sharedUrl = template?.shared_image_url?.trim();
-
-  if (sharedUrl) {
+  if (defaultUrl) {
     const { data: eqs } = await supabase
       .from('equipment')
       .select('id, name, image_url')
       .eq('type', typeName)
       .neq('status', 'scrapped');
 
-    const mismatched = (eqs || []).filter(e => e.image_url !== sharedUrl);
+    const mismatched = (eqs || []).filter(e => e.image_url !== defaultUrl);
     results.push({
       name: '设备图片与共享图片一致性',
       pass: mismatched.length === 0,
@@ -432,7 +439,7 @@ export async function runImageSelfCheck(typeName: string): Promise<CheckResult[]
       severity: mismatched.length > 0 ? 'warning' : 'ok',
       fix: mismatched.length > 0 ? async () => {
         await supabase.from('equipment')
-          .update({ image_url: sharedUrl })
+          .update({ image_url: defaultUrl })
           .in('id', mismatched.map(e => e.id));
       } : undefined,
     });
@@ -493,8 +500,8 @@ export async function runImageSelfCheck(typeName: string): Promise<CheckResult[]
   });
 
   // --- 检查 5：共享图片 Storage 文件存在性 ---
-  if (sharedUrl) {
-    const path = extractStoragePath(sharedUrl);
+  if (defaultUrl) {
+    const path = extractStoragePath(defaultUrl);
     if (path) {
       try {
         // 用 list 检查文件存在
@@ -532,57 +539,21 @@ export async function runImageSelfCheck(typeName: string): Promise<CheckResult[]
 // ============================================================
 
 /**
- * 调用 Supabase RPC 函数，在单个事务中：
- * 1. 更新 equipment_templates.shared_image_url
- * 2. 批量同步所有关联设备的 image_url
- */
-export async function syncTypeSharedImage(
-  typeName: string,
-  sharedImageUrl: string
-): Promise<SyncResult> {
-  const { data, error } = await supabase.rpc('sync_type_shared_image', {
-    p_type_name: typeName,
-    p_shared_image_url: sharedImageUrl,
-  });
-
-  if (error) {
-    return { success: false, updatedCount: 0, typeName, error: error.message };
-  }
-
-  // RPC 返回 JSONB: { success, updated_count, type_name }
-  const result = data as { success: boolean; updated_count: number; type_name: string; error?: string };
-  return {
-    success: result?.success ?? false,
-    updatedCount: result?.updated_count ?? 0,
-    typeName: result?.type_name ?? typeName,
-    error: result?.error,
-  };
-}
-
-/**
- * ★ RPC 选择性同步：只更新指定设备 ID 列表。
+ * 批量同步：将指定设备的 image_url 更新为给定 URL
  */
 export async function syncTypeSharedImageToDevices(
   typeName: string,
-  sharedImageUrl: string,
+  imageUrl: string,
   equipmentIds: string[]
 ): Promise<SyncResult> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.rpc as any)('sync_type_shared_image_to_devices', {
-    p_type_name: typeName,
-    p_shared_image_url: sharedImageUrl,
-    p_equipment_ids: equipmentIds,
-  });
+  const { error } = await supabase
+    .from('equipment')
+    .update({ image_url: imageUrl })
+    .in('id', equipmentIds);
   if (error) {
     return { success: false, updatedCount: 0, typeName, error: error.message };
   }
-  const result = data as unknown as { success: boolean; updated_count: number; type_name: string; error?: string };
-  return {
-    success: result?.success ?? false,
-    updatedCount: result?.updated_count ?? 0,
-    typeName: result?.type_name ?? typeName,
-    error: result?.error,
-  };
+  return { success: true, updatedCount: equipmentIds.length, typeName };
 }
 
 // ============================================================
@@ -628,35 +599,15 @@ export interface TypeImage {
 
 /**
  * 获取某类型的所有图片库
- * ★ 兼容回退：如果 type_images 列不存在或为空，用 shared_image_url 构造单图列表
  */
 export async function getTypeImages(typeName: string): Promise<TypeImage[]> {
-  try {
-    const { data } = await supabase
-      .from('equipment_templates')
-      .select('type_images, shared_image_url')
-      .eq('equipment_type', typeName)
-      .eq('model', '__TYPE__')
-      .maybeSingle();
-    const images = ((data as any)?.type_images as TypeImage[]) || [];
-    if (images.length > 0) return images;
-    // 回退：用旧的 shared_image_url
-    const sharedUrl = (data as any)?.shared_image_url as string | null;
-    if (sharedUrl) {
-      return [{ url: sharedUrl, label: '默认', is_default: true }];
-    }
-    return [];
-  } catch {
-    // 极端情况：type_images 列不存在，完全回退到 shared_image_url
-    const { data } = await supabase
-      .from('equipment_templates')
-      .select('shared_image_url')
-      .eq('equipment_type', typeName)
-      .eq('model', '__TYPE__')
-      .maybeSingle();
-    const url = data?.shared_image_url;
-    return url ? [{ url, label: '默认', is_default: true }] : [];
-  }
+  const { data } = await supabase
+    .from('equipment_templates')
+    .select('type_images')
+    .eq('equipment_type', typeName)
+    .eq('model', '__TYPE__')
+    .maybeSingle();
+  return ((data as any)?.type_images as TypeImage[]) || [];
 }
 
 /**
@@ -666,22 +617,10 @@ export async function addTypeImage(typeName: string, url: string, label: string)
   const images = await getTypeImages(typeName);
   if (images.some(img => img.url === url)) return;
   images.push({ url, label, is_default: images.length === 0 });
-  let columnExists = true;
-  try {
-    await supabase
-      .from('equipment_templates')
-      .update({ type_images: images as any } as any)
-      .eq('equipment_type', typeName).eq('model', '__TYPE__');
-  } catch {
-    columnExists = false;
-  }
-  // 更新 shared_image_url：首次添加 或 列为空时直接写入
-  if (images.length === 1 || !columnExists) {
-    await supabase
-      .from('equipment_templates')
-      .update({ shared_image_url: url })
-      .eq('equipment_type', typeName).eq('model', '__TYPE__');
-  }
+  await supabase
+    .from('equipment_templates')
+    .update({ type_images: images as any } as any)
+    .eq('equipment_type', typeName).eq('model', '__TYPE__');
 }
 
 /**
@@ -691,50 +630,25 @@ export async function removeTypeImage(typeName: string, url: string): Promise<vo
   let images = await getTypeImages(typeName);
   const removed = images.find(img => img.url === url);
   images = images.filter(img => img.url !== url);
-  // 如果删除的是默认图，将第一个设为默认
   if (removed?.is_default && images.length > 0) {
     images[0].is_default = true;
-    await supabase
-      .from('equipment_templates')
-      .update({ shared_image_url: images[0].url })
-      .eq('equipment_type', typeName).eq('model', '__TYPE__');
   }
-  try {
-    await supabase
-      .from('equipment_templates')
-      .update({ type_images: images as any } as any)
-      .eq('equipment_type', typeName).eq('model', '__TYPE__');
-  } catch { /* type_images 列不存在 */ }
-  // 如果全部删完，清空 shared_image_url
-  if (images.length === 0) {
-    await supabase
-      .from('equipment_templates')
-      .update({ shared_image_url: null })
-      .eq('equipment_type', typeName).eq('model', '__TYPE__');
-  }
+  await supabase
+    .from('equipment_templates')
+    .update({ type_images: images as any } as any)
+    .eq('equipment_type', typeName).eq('model', '__TYPE__');
 }
 
 /**
- * 设置默认图片（同步更新 shared_image_url）
+ * 设置默认图片
  */
 export async function setDefaultTypeImage(typeName: string, url: string): Promise<void> {
   const images = await getTypeImages(typeName);
   const updated = images.map(img => ({ ...img, is_default: img.url === url }));
-  try {
-    await supabase
-      .from('equipment_templates')
-      .update({
-        type_images: updated as any,
-        shared_image_url: url,
-      } as any)
-      .eq('equipment_type', typeName).eq('model', '__TYPE__');
-  } catch {
-    // type_images 列不存在 → 仅更新 shared_image_url
-    await supabase
-      .from('equipment_templates')
-      .update({ shared_image_url: url })
-      .eq('equipment_type', typeName).eq('model', '__TYPE__');
-  }
+  await supabase
+    .from('equipment_templates')
+    .update({ type_images: updated as any } as any)
+    .eq('equipment_type', typeName).eq('model', '__TYPE__');
 }
 
 /**

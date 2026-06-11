@@ -38,7 +38,7 @@ interface TypeImagePanelProps {
   selectedType: {
     id: string;
     name: string;
-    sharedImageUrl?: string | null;
+    typeImages?: { url: string; label?: string; is_default?: boolean }[] | null;
   };
   linkedEquipments: any[];
   onRefresh: () => void;
@@ -160,33 +160,33 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
 
   // 清理
   const handleCheckCleanup = useCallback(async () => {
-    if (!selectedType.sharedImageUrl) return;
+    if (!(gallery.find(g => g.is_default)?.url || gallery[0]?.url || null)) return;
     setCleanupLoading(true);
     try {
-      const status = await checkFullSyncStatus(selectedType.name, selectedType.sharedImageUrl);
+      const status = await checkFullSyncStatus(selectedType.name, (gallery.find(g => g.is_default)?.url || gallery[0]?.url || null));
       setSyncStatus(status);
       if (status.fullySynced) {
-        const preview = await cleanupNonSharedTypeFiles(selectedType.name, selectedType.sharedImageUrl, true);
+        const preview = await cleanupNonSharedTypeFiles(selectedType.name, (gallery.find(g => g.is_default)?.url || gallery[0]?.url || null), true);
         setCleanupPreview(preview);
       }
     } catch (err: any) {
       toast({ title: '检查失败', description: err?.message, variant: 'destructive' });
     } finally { setCleanupLoading(false); }
-  }, [selectedType.name, selectedType.sharedImageUrl, toast]);
+  }, [selectedType.name, (gallery.find(g => g.is_default)?.url || gallery[0]?.url || null), toast]);
 
   const handleConfirmCleanup = useCallback(async () => {
-    if (!selectedType.sharedImageUrl) return;
+    if (!(gallery.find(g => g.is_default)?.url || gallery[0]?.url || null)) return;
     try {
-      const result = await cleanupNonSharedTypeFiles(selectedType.name, selectedType.sharedImageUrl, false);
+      const result = await cleanupNonSharedTypeFiles(selectedType.name, (gallery.find(g => g.is_default)?.url || gallery[0]?.url || null), false);
       toast({ title: '清理完成', description: `已删除 ${result.deleted.length} 个文件` });
       setCleanupPreview(null); setSyncStatus(null);
     } catch (err: any) {
       toast({ title: '清理失败', description: err?.message, variant: 'destructive' });
     }
-  }, [selectedType.name, selectedType.sharedImageUrl, toast]);
+  }, [selectedType.name, (gallery.find(g => g.is_default)?.url || gallery[0]?.url || null), toast]);
 
-  const mismatchedCount = selectedType.sharedImageUrl
-    ? linkedEquipments.filter((eq: any) => eq.imageUrl !== selectedType.sharedImageUrl).length : 0;
+  const mismatchedCount = (gallery.find(g => g.is_default)?.url || gallery[0]?.url || null)
+    ? linkedEquipments.filter((eq: any) => eq.imageUrl !== (gallery.find(g => g.is_default)?.url || gallery[0]?.url || null)).length : 0;
 
   // 设备 Combobox 选项
   const equipmentOptions = linkedEquipments
@@ -357,57 +357,24 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
             </div>
           )}
 
-          {/* === 从设备同步 === */}
+          {/* === 同步状态 === */}
           {gallery.length > 0 && (
             <>
               <Separator className="bg-white/10" />
-              <div className="space-y-2">
-                <p className="text-[10px] text-white/50 uppercase tracking-wider">同步设备</p>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button size="sm" variant="outline"
-                      className="w-full h-7 text-xs justify-start bg-white/5 border-white/20 text-white/70 hover:bg-white/10">
-                      <Search className="h-3.5 w-3.5 mr-1" />
-                      从设备中选择图片...
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-72 p-0 bg-slate-900/95 border-white/20 backdrop-blur-xl" align="start">
-                    <Command className="bg-transparent">
-                      <CommandInput placeholder="搜索设备..." className="text-white placeholder:text-white/40" />
-                      <CommandList>
-                        <CommandEmpty className="text-white/50 text-xs py-4 text-center">无匹配</CommandEmpty>
-                        <CommandGroup>
-                          {equipmentOptions.map((eq: any) => (
-                            <CommandItem key={eq.id}
-                              className="flex items-center gap-2 cursor-pointer text-white aria-selected:bg-white/10"
-                              onSelect={() => onSyncStart?.(eq.imageUrl)}>
-                              <div className="h-6 w-6 rounded bg-cover bg-center shrink-0"
-                                style={{ backgroundImage: `url(${eq.imageUrl})` }} />
-                              <span className="text-xs truncate">{eq.name}</span>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-
+              <div className="text-center">
                 {mismatchedCount > 0 ? (
-                  <Button size="sm" className="w-full h-7 text-xs bg-purple-500 hover:bg-purple-600 text-white border-0"
-                    onClick={() => {
-                      if (selectedType.sharedImageUrl) onSyncStart?.(selectedType.sharedImageUrl);
-                    }}>
-                    ⚡ 同步 ({mismatchedCount} 台不一致)
-                  </Button>
+                  <p className="text-xs text-amber-300">
+                    {mismatchedCount} 台设备未使用默认图片 — 点击上方图片的同步按钮选择设备
+                  </p>
                 ) : (
-                  <p className="text-xs text-green-400 text-center py-1">✅ 已全量同步</p>
+                  <p className="text-xs text-green-400">✅ 已全量同步</p>
                 )}
               </div>
             </>
           )}
 
           {/* === 清理 === */}
-          {selectedType.sharedImageUrl && (
+          {(gallery.find(g => g.is_default)?.url || gallery[0]?.url || null) && (
             <>
               <Separator className="bg-white/10" />
               <div className="space-y-1">

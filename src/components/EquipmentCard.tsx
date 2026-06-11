@@ -43,7 +43,7 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onClick, onSta
   const [maintenanceInfo, setMaintenanceInfo] = useState<MaintenanceInfo | null>(null);
 
   const isScrapped = equipment.status === 'scrapped' || (equipment as any).isScrapped === true;
-  const [typeTemplate, setTypeTemplate] = useState<{ shared_image_url: string | null } | null>(null);
+  const [typeTemplate, setTypeTemplate] = useState<{ type_images: { url: string; is_default?: boolean }[] } | null>(null);
 
   useEffect(() => {
     if (equipment.type) {

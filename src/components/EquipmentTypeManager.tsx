@@ -45,7 +45,7 @@ export interface EquipmentTypeConfig {
   maintenanceContent: string;
   equipmentIds: string[];
   sharedSopFiles?: { url: string; name: string }[] | null;
-  sharedImageUrl?: string | null;
+  typeImages?: { url: string; label?: string; is_default?: boolean }[] | null;
 }
 
 // 维护计划模板接口
@@ -237,7 +237,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     // 1. 从 equipment_templates 获取类型定义（主数据源）
     const { data: templateData, error: templateError } = await supabase
       .from('equipment_templates')
-      .select('id, equipment_type, created_at, shared_sop_files, shared_image_url')
+      .select('id, equipment_type, created_at, shared_sop_files, type_images')
       .order('created_at', { ascending: true });
 
     if (templateError) throw templateError;
@@ -258,7 +258,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       maintenanceContent: '',
       equipmentIds: [],
       sharedSopFiles: row.shared_sop_files || null,
-      sharedImageUrl: row.shared_image_url || null,
+      typeImages: (row as any).type_images || null,
     }));
 
     const templateNames = new Set(dbTypes.map(t => t.name));
@@ -741,8 +741,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         }
 
         // 如果类型已有共享图片，自动同步到待关联设备
-        if (selectedType.sharedImageUrl) {
-          updateData.image_url = selectedType.sharedImageUrl;
+        if ((selectedType.typeImages?.[0]?.url || null)) {
+          updateData.image_url = (selectedType.typeImages?.[0]?.url || null);
         }
         
         await supabase
@@ -1470,13 +1470,16 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const handleSelectiveSyncConfirm = async () => {
     if (!selectedType || !pendingSharedUrl || selectedSyncDeviceIds.size === 0) return;
     try {
-      // 1. 写 shared_image_url
-      const { error: tplErr } = await supabase
+      // 1. 更新 type_images（添加新 URL 或保持现有）
+      const images = [...(selectedType.typeImages || [])];
+      if (!images.some(img => img.url === pendingSharedUrl)) {
+        images.push({ url: pendingSharedUrl!, label: images.length === 0 ? '默认' : '', is_default: images.length === 0 });
+      }
+      await supabase
         .from('equipment_templates')
-        .update({ shared_image_url: pendingSharedUrl })
+        .update({ type_images: images as any } as any)
         .eq('equipment_type', selectedType.name)
         .eq('model', TYPE_SENTINEL);
-      if (tplErr) throw tplErr;
 
       const ids = Array.from(selectedSyncDeviceIds);
       // 2. 尝试 RPC 选择性同步
@@ -1549,7 +1552,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   // 生成共享图片预览（用于列 4）
   const sharedPreviewUrl = useMemo(() => {
     if (!selectedType) return null;
-    return selectedType.sharedImageUrl || imageRecs?.topUrl || null;
+    return (selectedType.typeImages?.[0]?.url || null) || imageRecs?.topUrl || null;
   }, [selectedType, imageRecs]);
 
   return (
@@ -1563,7 +1566,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           "w-[95vw] max-w-[1400px] max-h-[88vh] overflow-hidden flex flex-col border-0 rounded-xl p-6",
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         )} style={{
-            backgroundImage: selectedType?.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.imageUrl ? `url(${linkedEquipments[0].imageUrl})` : undefined,
+            backgroundImage: selectedType?.typeImages?.[0]?.url ? `url(${selectedType.typeImages[0].url})` : linkedEquipments[0]?.imageUrl ? `url(${linkedEquipments[0].imageUrl})` : undefined,
             backgroundSize: 'cover', backgroundPosition: 'center',
           }}>
             <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black/80 pointer-events-none rounded-lg" />

@@ -18,7 +18,7 @@ import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 import { getEffectiveImageUrl } from '@/utils/imageUtils';
 
 interface EquipmentTypeOption { id: string; name: string; }
-interface TypeResourceInfo { sharedImageUrl: string | null; sharedSopFiles: { url: string; name: string; }[] | null; }
+interface TypeResourceInfo { typeImages: { url: string; is_default?: boolean }[] | null; sharedSopFiles: { url: string; name: string; }[] | null; }
 const TYPE_SENTINEL = '__TYPE__';
 
 interface MaintenanceSchedule {
@@ -57,9 +57,9 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
     if (!equipment.type) { setTypeResource(null); return; }
     try {
       const { data } = await supabase
-        .from('equipment_templates').select('shared_image_url, shared_sop_files')
+        .from('equipment_templates').select('type_images, shared_sop_files')
         .eq('equipment_type', equipment.type).eq('model', TYPE_SENTINEL).eq('manufacturer', TYPE_SENTINEL).maybeSingle();
-      if (data) setTypeResource({ sharedImageUrl: data.shared_image_url, sharedSopFiles: data.shared_sop_files as { url: string; name: string; }[] | null });
+      if (data) setTypeResource({ typeImages: (data as any).type_images, sharedSopFiles: data.shared_sop_files as { url: string; name: string; }[] | null });
     } catch (error) { console.error('Error fetching type resource:', error); }
   }, [equipment.type]);
 
@@ -115,7 +115,7 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
     } catch (error) { console.error('Error updating calibration date:', error); toast.error('更新校正日期失败'); }
   };
 
-  const backgroundImageUrl = getEffectiveImageUrl(equipment, typeResource ? { shared_image_url: typeResource.sharedImageUrl } : null);
+  const backgroundImageUrl = getEffectiveImageUrl(equipment, typeResource ? { type_images: typeResource.typeImages } : null);
 
   const DetailContent = () => (
     <div className="flex flex-col h-full overflow-hidden rounded-lg relative bg-slate-900">

@@ -72,19 +72,19 @@ export function useEquipmentTypes() {
  * templates 表只用来存这些资源
  */
 export async function fetchTypeResource(typeName: string): Promise<{
-  sharedImageUrl: string | null;
+  typeImages: { url: string; is_default?: boolean }[] | null;
   sharedSopFiles: { url: string; name: string }[] | null;
 }> {
   const { data } = await supabase
     .from('equipment_templates')
-    .select('shared_image_url, shared_sop_files')
+    .select('type_images, shared_sop_files')
     .eq('equipment_type', typeName)
     .eq('model', '__TYPE__')
     .eq('manufacturer', '__TYPE__')
     .maybeSingle();
 
   return {
-    sharedImageUrl: data?.shared_image_url || null,
+    typeImages: (data as any)?.type_images || null,
     sharedSopFiles: (data?.shared_sop_files as any) || null,
   };
 }

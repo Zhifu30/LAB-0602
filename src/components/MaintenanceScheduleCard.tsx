@@ -54,7 +54,7 @@ const getDefaultImage = (type?: string | null) => {
 
 const MaintenanceScheduleCard: React.FC<MaintenanceScheduleCardProps> = ({ schedule, showResponsible = false, onClick }) => {
   const [equipmentImg, setEquipmentImg] = useState<string | null>(null);
-  const [typeTemplate, setTypeTemplate] = useState<{ shared_image_url: string | null } | null>(null);
+  const [typeTemplate, setTypeTemplate] = useState<{ type_images: { url: string; is_default?: boolean }[] } | null>(null);
 
   useEffect(() => {
     if (!schedule.equipment_id) return;
