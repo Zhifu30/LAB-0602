@@ -25,7 +25,7 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem,
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from '@/components/ui/command';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -172,8 +172,8 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
                 <PopoverContent className="w-72 p-0 bg-slate-900/95 border-white/20 backdrop-blur-xl" align="start">
                   <Command className="bg-transparent">
                     <CommandInput placeholder="搜索设备编号或名称..." className="text-white placeholder:text-white/40" />
-                    <CommandEmpty className="text-white/50 text-xs py-4 text-center">无匹配设备</CommandEmpty>
-                    {equipmentOptions.length > 0 && (
+                    <CommandList>
+                      <CommandEmpty className="text-white/50 text-xs py-4 text-center">无匹配设备</CommandEmpty>
                       <CommandGroup>
                         {equipmentOptions.map((eq) => (
                           <CommandItem key={eq.id}
@@ -186,7 +186,7 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
                           </CommandItem>
                         ))}
                       </CommandGroup>
-                    )}
+                    </CommandList>
                   </Command>
                 </PopoverContent>
               </Popover>
