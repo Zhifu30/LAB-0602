@@ -204,7 +204,6 @@ export async function scanTypeImageUsage(typeName: string): Promise<ImageUsageRe
     .from('equipment_templates')
     .select('type_images')
     .eq('equipment_type', typeName)
-    .eq('model', '__TYPE__')
     .maybeSingle();
   const typeImages = ((template as any)?.type_images as TypeImage[]) || [];
   const defaultUrl = getDefaultTypeImageUrl(typeImages);
@@ -452,8 +451,8 @@ export async function addTypeImage(typeName: string, url: string, label: string)
   if (images.some(img => img.url === url)) return;
   images.push({ url, label, is_default: images.length === 0 });
   await supabase.from('equipment_templates').upsert({
-    equipment_type: typeName, model: '__TYPE__', type_images: images as any,
-  } as any, { onConflict: 'equipment_type,model' });
+    equipment_type: typeName, type_images: images as any,
+  } as any, { onConflict: 'equipment_type' });
   typeTemplateCache.delete(typeName);
 }
 
@@ -463,8 +462,8 @@ export async function removeTypeImage(typeName: string, url: string): Promise<vo
   images = images.filter(img => img.url !== url);
   if (removed?.is_default && images.length > 0) images[0].is_default = true;
   await supabase.from('equipment_templates').upsert({
-    equipment_type: typeName, model: '__TYPE__', type_images: images as any,
-  } as any, { onConflict: 'equipment_type,model' });
+    equipment_type: typeName, type_images: images as any,
+  } as any, { onConflict: 'equipment_type' });
   typeTemplateCache.delete(typeName);
 }
 
@@ -472,8 +471,8 @@ export async function setDefaultTypeImage(typeName: string, url: string): Promis
   const images = await getTypeImages(typeName);
   const updated = images.map(img => ({ ...img, is_default: img.url === url }));
   await supabase.from('equipment_templates').upsert({
-    equipment_type: typeName, model: '__TYPE__', type_images: updated as any,
-  } as any, { onConflict: 'equipment_type,model' });
+    equipment_type: typeName, type_images: updated as any,
+  } as any, { onConflict: 'equipment_type' });
   typeTemplateCache.delete(typeName);
 }
 

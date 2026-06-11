@@ -29,7 +29,6 @@ export function useEquipmentTypes() {
       const { data: templateTypes, error: templateError } = await supabase
         .from('equipment_templates')
         .select('equipment_type')
-        .eq('model', TYPE_SENTINEL)
         .order('equipment_type');
 
       if (templateError) throw templateError;

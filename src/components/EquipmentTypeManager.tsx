@@ -299,12 +299,12 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     // Best-effort upsert into DB so types survive across browsers/devices.
     const rows = valid.map(t => ({
       equipment_type: String(t.name).trim(),
-      model: TYPE_SENTINEL    }));
+	    }));
 
     const { error } = await supabase
       .from('equipment_templates')
       .upsert(rows as any, {
-        onConflict: 'equipment_type,model,manufacturer',
+        onConflict: 'equipment_type',
         ignoreDuplicates: true
       });
 
@@ -619,8 +619,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           .from('equipment_templates')
           .insert({
             equipment_type: nextName,
-            model: TYPE_SENTINEL,
-            manufacturer: TYPE_SENTINEL
+                        manufacturer: TYPE_SENTINEL
           } as any);
         if (error) throw error;
       }
@@ -1482,10 +1481,9 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         .from('equipment_templates')
         .upsert({
           equipment_type: selectedType.name,
-          model: TYPE_SENTINEL,
-          manufacturer: TYPE_SENTINEL,
+                    manufacturer: TYPE_SENTINEL,
           type_images: images as any,
-        }, { onConflict: 'equipment_type,model,manufacturer' } as any);
+        }, { onConflict: 'equipment_type' } as any);
 
       const ids = Array.from(selectedSyncDeviceIds);
       // 2. 尝试 RPC 选择性同步

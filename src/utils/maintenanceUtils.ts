@@ -26,7 +26,6 @@ export async function getTypeMaintenancePlans(typeName: string): Promise<Mainten
       .from('equipment_templates')
       .select('maintenance_plans')
       .eq('equipment_type', typeName)
-      .eq('model', '__TYPE__')
       .maybeSingle();
     return (data?.maintenance_plans as MaintenancePlan[]) || [];
   } catch (err) {

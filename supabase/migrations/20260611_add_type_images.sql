@@ -13,17 +13,14 @@ WHERE shared_image_url IS NOT NULL
   AND shared_image_url != ''
   AND (type_images IS NULL OR type_images = '[]'::jsonb);
 
--- 3. 删除冗余 manufacturer 列
---    先重建唯一约束为 (equipment_type, model)
---    再删除 manufacturer 列
+-- 3. 删除冗余 manufacturer 列 + model 列，简化为仅 equipment_type 唯一
 DO $$
 BEGIN
-  -- 删除旧约束
   ALTER TABLE equipment_templates DROP CONSTRAINT IF EXISTS equipment_templates_equipment_type_model_manufacturer_key;
-  -- 重建为只依赖 (equipment_type, model)
-  ALTER TABLE equipment_templates ADD CONSTRAINT equipment_templates_equipment_type_model_key UNIQUE (equipment_type, model);
-  -- 删除 manufacturer 列
+  ALTER TABLE equipment_templates DROP CONSTRAINT IF EXISTS equipment_templates_equipment_type_model_key;
   ALTER TABLE equipment_templates DROP COLUMN IF EXISTS manufacturer;
+  ALTER TABLE equipment_templates DROP COLUMN IF EXISTS model;
+  ALTER TABLE equipment_templates ADD CONSTRAINT equipment_templates_equipment_type_key UNIQUE (equipment_type);
 EXCEPTION WHEN OTHERS THEN
-  RAISE NOTICE 'Migration partial, may already be applied: %', SQLERRM;
+  RAISE NOTICE 'Migration partial: %', SQLERRM;
 END $$;
