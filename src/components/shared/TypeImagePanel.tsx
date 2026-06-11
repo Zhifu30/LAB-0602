@@ -1,20 +1,18 @@
 /**
- * 设备类型共享图片管理面板 (v2.1)
+ * 设备类型图片库面板 v3 — 竖向列表画廊模式
  *
  * 功能：
- * - 已设置：图片预览 + Combobox 选图 + 上传 + 选择性同步 + 渐进式清理
- * - 未设置：智能推荐列表 + 点击选中高亮 + 上传
- *
- * 技术亮点：
- * - 拖拽上传微交互 (dragOver 状态联动)
- * - 渐进式按钮 (仅脏数据/孤儿文件时显示)
- * - aspect-[4/3] + object-cover 防变形
+ * - 画廊列表：显示类型下所有图片（竖向排列，每张图可设默认/删除）
+ * - 上传：添加到类型库
+ * - 导入：从关联设备图片导入到类型库
+ * - 同步：选择性分配图片到设备
+ * - 清理：全量同步后清理冗余
  */
 
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
-  Upload, Link2, Trash2, Check, Image as ImageIcon,
-  RefreshCw, Search, ChevronRight,
+  Upload, Trash2, Star, Download, Image as ImageIcon,
+  RefreshCw, Search, Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,13 +26,13 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from '@/components/ui/command';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { Equipment } from '@/types/equipment';
-import {
-  uploadTypeSharedImage, syncTypeSharedImageToDevices,
-  cleanupNonSharedTypeFiles, checkFullSyncStatus, getImageRecommendations,
-} from '@/utils/imageUtils';
 import { cn } from '@/lib/utils';
+import {
+  TypeImage, getTypeImages, addTypeImage, removeTypeImage,
+  setDefaultTypeImage, importTypeImageFromEquipment,
+  uploadTypeSharedImage, getImageRecommendations,
+  checkFullSyncStatus, cleanupNonSharedTypeFiles,
+} from '@/utils/imageUtils';
 
 interface TypeImagePanelProps {
   selectedType: {
@@ -42,9 +40,9 @@ interface TypeImagePanelProps {
     name: string;
     sharedImageUrl?: string | null;
   };
-  linkedEquipments: Equipment[];
+  linkedEquipments: any[];
   onRefresh: () => void;
-  onSyncStart?: (url: string) => void;   // 打开外部设备选择器
+  onSyncStart?: (url: string) => void;
 }
 
 const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
@@ -52,50 +50,89 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
 }) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const labelInputRef = useRef<HTMLInputElement>(null);
+  const [gallery, setGallery] = useState<TypeImage[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  // ★ Bug1 修复：useMemo 替代 useState，linkEquipments 变化时自动重算
-  const imageRecs = useMemo(() => getImageRecommendations(linkedEquipments), [linkedEquipments]);
-  const [selectedRecUrl, setSelectedRecUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [showUploadInput, setShowUploadInput] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<{ fullySynced: boolean; totalDevices: number; syncedCount: number; unsyncedCount: number } | null>(null);
+  const [syncStatus, setSyncStatus] = useState<any>(null);
   const [cleanupPreview, setCleanupPreview] = useState<any>(null);
 
-  // 统计不一致设备数
-  const mismatchedCount = selectedType.sharedImageUrl
-    ? linkedEquipments.filter(eq => eq.imageUrl !== selectedType.sharedImageUrl).length
-    : 0;
+  const imageRecs = useMemo(() => getImageRecommendations(linkedEquipments), [linkedEquipments]);
 
-  // 上传新共享图片
+  // 加载画廊
+  const loadGallery = useCallback(async () => {
+    setGalleryLoading(true);
+    try {
+      const images = await getTypeImages(selectedType.name);
+      setGallery(images);
+    } catch { setGallery([]); }
+    finally { setGalleryLoading(false); }
+  }, [selectedType.name]);
+
+  useEffect(() => { loadGallery(); }, [loadGallery]);
+
+  // 画廊中未包含的设备图片（可导入）
+  const importableImages = useMemo(() => {
+    if (!imageRecs) return [];
+    return imageRecs.urlBreakdown.filter(
+      (item: any) => !gallery.some(g => g.url === item.url)
+    );
+  }, [imageRecs, gallery]);
+
+  // 上传 → 添加到画廊
   const handleUpload = useCallback(async (file: File) => {
     setUploading(true);
     try {
       const url = await uploadTypeSharedImage(file, selectedType.name);
-      setSelectedRecUrl(url);
-      onSyncStart?.(url);
+      const label = labelInputRef.current?.value?.trim() || file.name.split('.')[0];
+      await addTypeImage(selectedType.name, url, label);
+      await loadGallery();
+      setShowUploadInput(false);
+      toast({ title: '已添加', description: label });
     } catch (err: any) {
-      toast({ title: '上传失败', description: err?.message || '请重试', variant: 'destructive' });
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      toast({ title: '上传失败', description: err?.message, variant: 'destructive' });
+    } finally { setUploading(false); }
+  }, [selectedType.name, loadGallery, toast]);
+
+  // 从设备导入
+  const handleImport = useCallback(async (url: string, label: string) => {
+    try {
+      await importTypeImageFromEquipment(selectedType.name, url, label);
+      await loadGallery();
+      toast({ title: '已导入', description: label });
+    } catch (err: any) {
+      toast({ title: '导入失败', description: err?.message, variant: 'destructive' });
     }
-  }, [selectedType.name, onSyncStart, toast]);
+  }, [selectedType.name, loadGallery, toast]);
 
-  // 从推荐选择
-  const handleSelectRec = useCallback((url: string) => {
-    setSelectedRecUrl(url);
-    onSyncStart?.(url);
-  }, [onSyncStart]);
-
-  // 打开同步选择器
-  const handleOpenSync = useCallback(() => {
-    if (selectedType.sharedImageUrl) {
-      setSelectedRecUrl(selectedType.sharedImageUrl);
-      onSyncStart?.(selectedType.sharedImageUrl);
+  // 删除
+  const handleRemove = useCallback(async (url: string) => {
+    if (!window.confirm('确定要从类型库中移除此图片吗？（不会删除 Storage 文件）')) return;
+    try {
+      await removeTypeImage(selectedType.name, url);
+      await loadGallery();
+      toast({ title: '已移除' });
+    } catch (err: any) {
+      toast({ title: '移除失败', description: err?.message, variant: 'destructive' });
     }
-  }, [selectedType.sharedImageUrl, onSyncStart]);
+  }, [selectedType.name, loadGallery, toast]);
 
-  // ★ 全量同步后清理：检查同步状态 + 清理非共享图片文件
+  // 设默认
+  const handleSetDefault = useCallback(async (url: string) => {
+    try {
+      await setDefaultTypeImage(selectedType.name, url);
+      await loadGallery();
+      onRefresh();
+      toast({ title: '已设为默认' });
+    } catch (err: any) {
+      toast({ title: '设置失败', description: err?.message, variant: 'destructive' });
+    }
+  }, [selectedType.name, loadGallery, onRefresh, toast]);
+
+  // 清理
   const handleCheckCleanup = useCallback(async () => {
     if (!selectedType.sharedImageUrl) return;
     setCleanupLoading(true);
@@ -108,246 +145,258 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
       }
     } catch (err: any) {
       toast({ title: '检查失败', description: err?.message, variant: 'destructive' });
-    } finally {
-      setCleanupLoading(false);
-    }
+    } finally { setCleanupLoading(false); }
   }, [selectedType.name, selectedType.sharedImageUrl, toast]);
 
   const handleConfirmCleanup = useCallback(async () => {
     if (!selectedType.sharedImageUrl) return;
     try {
       const result = await cleanupNonSharedTypeFiles(selectedType.name, selectedType.sharedImageUrl, false);
-      toast({ title: '清理完成', description: `已删除 ${result.deleted.length} 个冗余文件` });
-      setCleanupPreview(null);
-      setSyncStatus(null);
-      onRefresh();
+      toast({ title: '清理完成', description: `已删除 ${result.deleted.length} 个文件` });
+      setCleanupPreview(null); setSyncStatus(null);
     } catch (err: any) {
       toast({ title: '清理失败', description: err?.message, variant: 'destructive' });
     }
-  }, [selectedType.name, selectedType.sharedImageUrl, onRefresh, toast]);
+  }, [selectedType.name, selectedType.sharedImageUrl, toast]);
+
+  const mismatchedCount = selectedType.sharedImageUrl
+    ? linkedEquipments.filter((eq: any) => eq.imageUrl !== selectedType.sharedImageUrl).length : 0;
 
   // 设备 Combobox 选项
   const equipmentOptions = linkedEquipments
-    .filter(eq => eq.imageUrl)
-    .map(eq => ({ id: eq.id, name: eq.name, imageUrl: eq.imageUrl!, }));
+    .filter((eq: any) => eq.imageUrl)
+    .map((eq: any) => ({ id: eq.id, name: eq.name, imageUrl: eq.imageUrl }));
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
       <div className="p-3 border-b border-white/20 bg-white/5">
         <h3 className="font-semibold text-sm text-white drop-shadow flex items-center gap-1.5">
           <ImageIcon className="h-4 w-4" />
-          共享图片
+          类型图片库
         </h3>
-        <p className="text-xs text-white/60">{selectedType.name} · {linkedEquipments.length}台设备</p>
+        <p className="text-xs text-white/60">{selectedType.name} · {gallery.length} 张图 · {linkedEquipments.length}台设备</p>
       </div>
 
       <ScrollArea className="flex-1 p-3">
         <div className="space-y-3">
 
-          {/* === 已设置共享图片 === */}
-          {selectedType.sharedImageUrl ? (
-            <>
-              {/* 预览 */}
-              <div className="rounded-lg overflow-hidden bg-white/5 border border-white/10">
-                <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
-                  <img src={selectedType.sharedImageUrl} alt=""
-                    className="h-full w-full object-cover object-center" />
-                </div>
-                <div className="p-2 flex items-center justify-between">
-                  <span className="text-[10px] text-white/50 font-mono truncate max-w-[140px]"
-                    title={selectedType.sharedImageUrl}>{selectedType.sharedImageUrl.split('/').pop()}</span>
-                  <Badge className="text-[9px] bg-green-500/20 text-green-300 border-green-500/30">共享中</Badge>
-                </div>
-              </div>
-
-              {/* Combobox 选设备图片更换 */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button size="sm" variant="outline"
-                    className="w-full h-7 text-xs justify-start bg-white/5 border-white/20 text-white/70 hover:bg-white/10">
-                    <Search className="h-3.5 w-3.5 mr-1" />
-                    从设备中选择图片...
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-72 p-0 bg-slate-900/95 border-white/20 backdrop-blur-xl" align="start">
-                  <Command className="bg-transparent">
-                    <CommandInput placeholder="搜索设备编号或名称..." className="text-white placeholder:text-white/40" />
-                    <CommandList>
-                      <CommandEmpty className="text-white/50 text-xs py-4 text-center">无匹配设备</CommandEmpty>
-                      <CommandGroup>
-                        {equipmentOptions.map((eq) => (
-                          <CommandItem key={eq.id}
-                            className="flex items-center gap-2 cursor-pointer text-white aria-selected:bg-white/10"
-                            onSelect={() => handleSelectRec(eq.imageUrl)}>
-                            <div className="h-6 w-6 rounded bg-cover bg-center shrink-0"
-                              style={{ backgroundImage: `url(${eq.imageUrl})` }} />
-                            <span className="text-xs truncate">{eq.name}</span>
-                            {eq.imageUrl === selectedRecUrl && <Check className="h-3.5 w-3.5 text-blue-400 ml-auto" />}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-
-              {/* 上传 */}
-              <Button size="sm" className="w-full h-7 text-xs bg-green-500 hover:bg-green-600 text-white border-0"
-                onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                {uploading ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
-                上传新图片
-              </Button>
-
-              {/* 渐进式：仅不一致时显示同步 */}
-              {mismatchedCount > 0 ? (
-                <Button size="sm" className="w-full h-7 text-xs bg-purple-500 hover:bg-purple-600 text-white border-0"
-                  onClick={handleOpenSync}>
-                  ⚡ 同步到这 {linkedEquipments.length} 台设备 ({mismatchedCount} 台不一致)
-                </Button>
-              ) : (
-                <p className="text-xs text-green-400 text-center py-1">✅ 已全量同步</p>
-              )}
-
-              {/* ★ 全量同步后清理 */}
-              {syncStatus ? (
-                syncStatus.fullySynced ? (
-                  <>
-                    <p className="text-xs text-green-400 text-center">✅ 全部 {syncStatus.totalDevices} 台设备已同步</p>
-                    {cleanupPreview && cleanupPreview.deleted.length > 0 ? (
-                      <>
-                        <Button size="sm" variant="destructive" className="w-full h-7 text-xs"
-                          onClick={handleConfirmCleanup}>
-                          🗑️ 清理冗余文件 ({cleanupPreview.deleted.length} 个)
-                        </Button>
-                        <div className="space-y-0.5 max-h-24 overflow-y-auto">
-                          {cleanupPreview.deleted.map((f: string, i: number) => (
-                            <p key={i} className="text-[9px] text-red-400/60 truncate">{f}</p>
-                          ))}
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-xs text-green-400 text-center">🎉 无冗余文件，存储已整洁</p>
+          {/* === 画廊列表 === */}
+          {galleryLoading ? (
+            <div className="text-center py-8">
+              <RefreshCw className="h-6 w-6 mx-auto animate-spin text-white/30" />
+            </div>
+          ) : gallery.length > 0 ? (
+            <div className="space-y-2">
+              {gallery.map((img, i) => (
+                <div key={i} className={cn(
+                  "rounded-lg overflow-hidden border transition-all",
+                  img.is_default
+                    ? "border-amber-400/50 bg-amber-500/5"
+                    : "border-white/10 bg-white/5"
+                )}>
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+                    <img src={img.url} alt={img.label}
+                      className="h-full w-full object-cover object-center" />
+                    {img.is_default && (
+                      <div className="absolute top-2 left-2">
+                        <Badge className="text-[9px] bg-amber-500 text-white border-0">
+                          <Star className="h-3 w-3 mr-0.5 fill-white" />默认
+                        </Badge>
+                      </div>
                     )}
-                  </>
-                ) : (
-                  <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2 text-center">
-                    <p className="text-[10px] text-amber-300">
-                      同步进度: {syncStatus.syncedCount}/{syncStatus.totalDevices} 台已同步
-                    </p>
-                    <p className="text-[9px] text-amber-400/60">
-                      全部同步完成后才能清理冗余
-                    </p>
                   </div>
-                )
-              ) : (
-                <Button size="sm" variant="outline"
-                  className="w-full h-7 text-xs bg-white/5 border-white/20 text-white/50 hover:bg-white/10"
-                  onClick={handleCheckCleanup} disabled={cleanupLoading}>
-                  {cleanupLoading ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
-                  {selectedType.sharedImageUrl ? '检查清理状态' : '扫描冗余文件'}
-                </Button>
-              )}
-            </>
+                  <div className="p-2 flex items-center justify-between gap-2">
+                    <span className="text-xs text-white truncate flex-1">{img.label}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {!img.is_default && (
+                        <Button size="sm" variant="ghost"
+                          className="h-6 text-[10px] text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                          onClick={() => handleSetDefault(img.url)}>
+                          <Star className="h-3 w-3 mr-0.5" />默认
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost"
+                        className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        onClick={() => handleRemove(img.url)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
-            /* === 未设置共享图片 — 智能推荐 === */
-            <>
-              {imageRecs && imageRecs.urlBreakdown.length > 0 ? (
-                <>
-                  <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-2.5">
-                    <p className="text-[10px] text-blue-300">
-                      💡 该类型 {imageRecs.totalDevices} 台设备使用了 {imageRecs.urlBreakdown.length} 张不同图片
-                    </p>
-                  </div>
+            <div className="text-center py-8 text-white/20">
+              <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-20" />
+              <p className="text-[10px]">暂无类型图片</p>
+              <p className="text-[9px] mt-1 opacity-50">上传或从设备导入</p>
+            </div>
+          )}
 
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] text-white/50 uppercase tracking-wider">从关联设备中选</p>
-                    {imageRecs.urlBreakdown.map((item: any, i: number) => {
-                      const isSelected = selectedRecUrl === item.url;
-                      return (
-                        <button key={i}
-                          className={cn(
-                            "w-full rounded-lg overflow-hidden transition-all text-left",
-                            isSelected
-                              ? "bg-blue-500/10 border border-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.3)]"
-                              : "bg-white/5 border border-white/10 hover:border-white/30"
-                          )}
-                          onClick={() => handleSelectRec(item.url)}>
-                          <div className="flex items-center gap-2 p-2.5">
-                            <div className="h-10 w-10 rounded bg-cover bg-center shrink-0 border border-white/10"
+          {/* === 添加图片 === */}
+          <div className="flex gap-1">
+            <Button size="sm" className="flex-1 h-7 text-xs bg-green-500 hover:bg-green-600 text-white border-0"
+              onClick={() => setShowUploadInput(!showUploadInput)}>
+              <Plus className="h-3.5 w-3.5 mr-1" />上传图片
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="outline"
+                  className="flex-1 h-7 text-xs bg-white/5 border-white/20 text-white/70 hover:bg-white/10"
+                  disabled={importableImages.length === 0}>
+                  <Download className="h-3.5 w-3.5 mr-1" />从设备导入
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-0 bg-slate-900/95 border-white/20 backdrop-blur-xl" align="start">
+                <Command className="bg-transparent">
+                  <CommandInput placeholder="搜索..." className="text-white placeholder:text-white/40" />
+                  <CommandList>
+                    <CommandEmpty className="text-white/50 text-xs py-4 text-center">无匹配</CommandEmpty>
+                    <CommandGroup>
+                      {importableImages.map((item: any, i: number) => {
+                        const label = item.equipmentNames[0] || item.url.split('/').pop();
+                        return (
+                          <CommandItem key={i}
+                            className="flex items-center gap-2 cursor-pointer text-white aria-selected:bg-white/10"
+                            onSelect={() => handleImport(item.url, label)}>
+                            <div className="h-6 w-6 rounded bg-cover bg-center shrink-0"
                               style={{ backgroundImage: `url(${item.url})` }} />
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <p className="text-[11px] text-white font-medium truncate">{item.url.split('/').pop()}</p>
-                                {isSelected && <Check className="h-3.5 w-3.5 text-blue-400 shrink-0" />}
-                              </div>
-                              <p className="text-[10px] text-white/50">
-                                {item.count} 台 · {item.equipmentNames.slice(0, 3).join(', ')}
-                                {item.equipmentNames.length > 3 ? ` 等${item.equipmentNames.length}台` : ''}
-                              </p>
+                              <span className="text-xs">{label}</span>
+                              <span className="text-[9px] text-white/50 ml-1">({item.count}台)</span>
                             </div>
-                            <Badge className={cn("text-[9px] shrink-0",
-                              item.count === imageRecs.topCount ? 'bg-blue-500/20 text-blue-300' : 'bg-white/10 text-white/50'
-                            )}>{item.count === imageRecs.topCount ? '最多' : `${item.count}台`}</Badge>
-                          </div>
-                          <div className={cn("px-2.5 py-1.5 border-t flex items-center justify-center",
-                            isSelected ? 'bg-blue-500/20 border-blue-400/30' : 'bg-white/[0.02] border-white/5'
-                          )}>
-                            {isSelected ? (
-                              <span className="text-[11px] text-blue-300 font-medium flex items-center gap-1">
-                                <Check className="h-3.5 w-3.5" /> 已选 — 请选择同步设备
-                              </span>
-                            ) : (
-                              <span className="text-[11px] text-white/60">选为共享图片 →</span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-8 text-white/20">
-                  <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                  <p className="text-[10px]">关联设备暂无图片</p>
-                </div>
-              )}
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
 
-              <Separator className="bg-white/10" />
-
-              {/* 拖拽上传区 */}
+          {/* 上传输入区 */}
+          {showUploadInput && (
+            <div className="space-y-2 p-2 rounded bg-white/5 border border-white/10">
+              <Input ref={labelInputRef} placeholder="图片标签（如：分析天平）"
+                className="h-7 text-xs bg-white/10 border-white/20 text-white placeholder:text-white/40" />
               <div
                 className={cn(
-                  "relative border-2 border-dashed rounded-lg p-4 text-center transition-all duration-200 cursor-pointer",
-                  dragOver
-                    ? "border-blue-400 bg-blue-500/10"
-                    : "border-white/20 bg-white/5 hover:border-white/30"
+                  "relative border-2 border-dashed rounded-lg p-3 text-center transition-all duration-200 cursor-pointer",
+                  dragOver ? "border-blue-400 bg-blue-500/10" : "border-white/20 bg-white/5 hover:border-white/30"
                 )}
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={(e) => {
-                  e.preventDefault();
-                  setDragOver(false);
+                  e.preventDefault(); setDragOver(false);
                   const file = e.dataTransfer.files?.[0];
                   if (file?.type.startsWith('image/')) handleUpload(file);
-                  else toast({ title: '请上传图片文件', variant: 'destructive' });
                 }}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className={cn(
-                  "h-6 w-6 mx-auto mb-2 transition-all duration-200",
-                  dragOver ? "text-blue-400 -translate-y-0.5" : "text-white/40"
-                )} />
-                <p className="text-[10px] text-white/60">
-                  {uploading ? '上传中...' : '拖拽图片到此处，或点击上传'}
-                </p>
+                <Upload className={cn("h-5 w-5 mx-auto mb-1 transition-all duration-200",
+                  dragOver ? "text-blue-400 -translate-y-0.5" : "text-white/40")} />
+                <p className="text-[10px] text-white/60">{uploading ? '上传中...' : '点击或拖拽上传'}</p>
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/*"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
+                className="hidden" />
+            </div>
+          )}
+
+          {/* === 从设备同步 === */}
+          {gallery.length > 0 && (
+            <>
+              <Separator className="bg-white/10" />
+              <div className="space-y-2">
+                <p className="text-[10px] text-white/50 uppercase tracking-wider">同步设备</p>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="outline"
+                      className="w-full h-7 text-xs justify-start bg-white/5 border-white/20 text-white/70 hover:bg-white/10">
+                      <Search className="h-3.5 w-3.5 mr-1" />
+                      从设备中选择图片...
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-0 bg-slate-900/95 border-white/20 backdrop-blur-xl" align="start">
+                    <Command className="bg-transparent">
+                      <CommandInput placeholder="搜索设备..." className="text-white placeholder:text-white/40" />
+                      <CommandList>
+                        <CommandEmpty className="text-white/50 text-xs py-4 text-center">无匹配</CommandEmpty>
+                        <CommandGroup>
+                          {equipmentOptions.map((eq: any) => (
+                            <CommandItem key={eq.id}
+                              className="flex items-center gap-2 cursor-pointer text-white aria-selected:bg-white/10"
+                              onSelect={() => onSyncStart?.(eq.imageUrl)}>
+                              <div className="h-6 w-6 rounded bg-cover bg-center shrink-0"
+                                style={{ backgroundImage: `url(${eq.imageUrl})` }} />
+                              <span className="text-xs truncate">{eq.name}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+                {mismatchedCount > 0 ? (
+                  <Button size="sm" className="w-full h-7 text-xs bg-purple-500 hover:bg-purple-600 text-white border-0"
+                    onClick={() => {
+                      if (selectedType.sharedImageUrl) onSyncStart?.(selectedType.sharedImageUrl);
+                    }}>
+                    ⚡ 同步 ({mismatchedCount} 台不一致)
+                  </Button>
+                ) : (
+                  <p className="text-xs text-green-400 text-center py-1">✅ 已全量同步</p>
+                )}
               </div>
             </>
           )}
 
-          {/* 隐藏文件输入 */}
-          <input ref={fileInputRef} type="file" accept="image/*"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
-            className="hidden" />
+          {/* === 清理 === */}
+          {selectedType.sharedImageUrl && (
+            <>
+              <Separator className="bg-white/10" />
+              <div className="space-y-1">
+                {syncStatus ? (
+                  syncStatus.fullySynced ? (
+                    <>
+                      <p className="text-xs text-green-400 text-center">全部 {syncStatus.totalDevices} 台已同步</p>
+                      {cleanupPreview && cleanupPreview.deleted.length > 0 ? (
+                        <>
+                          <Button size="sm" variant="destructive" className="w-full h-7 text-xs"
+                            onClick={handleConfirmCleanup}>
+                            🗑️ 清理 {cleanupPreview.deleted.length} 个冗余文件
+                          </Button>
+                          <div className="max-h-16 overflow-y-auto">
+                            {cleanupPreview.deleted.map((f: string, i: number) => (
+                              <p key={i} className="text-[9px] text-red-400/60 truncate">{f}</p>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-xs text-green-400 text-center">🎉 无冗余</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2 text-center">
+                      <p className="text-[10px] text-amber-300">
+                        同步进度: {syncStatus.syncedCount}/{syncStatus.totalDevices}
+                      </p>
+                    </div>
+                  )
+                ) : (
+                  <Button size="sm" variant="outline"
+                    className="w-full h-7 text-xs bg-white/5 border-white/20 text-white/50 hover:bg-white/10"
+                    onClick={handleCheckCleanup} disabled={cleanupLoading}>
+                    {cleanupLoading ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+                    检查清理状态
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+
         </div>
       </ScrollArea>
     </div>

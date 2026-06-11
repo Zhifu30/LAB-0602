@@ -615,3 +615,98 @@ export async function uploadTypeSharedImage(
 
   return urlData.publicUrl;
 }
+
+// ============================================================
+// ⑩ v3 类型图片库管理（type_images JSONB 列）
+// ============================================================
+
+export interface TypeImage {
+  url: string;
+  label: string;
+  is_default: boolean;
+}
+
+/**
+ * 获取某类型的所有图片库
+ */
+export async function getTypeImages(typeName: string): Promise<TypeImage[]> {
+  const { data } = await supabase
+    .from('equipment_templates')
+    .select('type_images')
+    .eq('equipment_type', typeName)
+    .eq('model', '__TYPE__')
+    .maybeSingle();
+  return ((data as any)?.type_images as TypeImage[]) || [];
+}
+
+/**
+ * 添加图片到类型库
+ */
+export async function addTypeImage(typeName: string, url: string, label: string): Promise<void> {
+  const images = await getTypeImages(typeName);
+  if (images.some(img => img.url === url)) return; // 已存在
+  images.push({ url, label, is_default: images.length === 0 }); // 首个自动设为默认
+  await supabase
+    .from('equipment_templates')
+    .update({ type_images: images as any } as any)
+    .eq('equipment_type', typeName).eq('model', '__TYPE__');
+  // 同步 shared_image_url
+  if (images.length === 1) {
+    await supabase
+      .from('equipment_templates')
+      .update({ shared_image_url: url })
+      .eq('equipment_type', typeName).eq('model', '__TYPE__');
+  }
+}
+
+/**
+ * 删除类型库中的图片
+ */
+export async function removeTypeImage(typeName: string, url: string): Promise<void> {
+  let images = await getTypeImages(typeName);
+  const removed = images.find(img => img.url === url);
+  images = images.filter(img => img.url !== url);
+  // 如果删除的是默认图，将第一个设为默认
+  if (removed?.is_default && images.length > 0) {
+    images[0].is_default = true;
+    await supabase
+      .from('equipment_templates')
+      .update({ shared_image_url: images[0].url })
+      .eq('equipment_type', typeName).eq('model', '__TYPE__');
+  }
+  await supabase
+    .from('equipment_templates')
+    .update({ type_images: images as any } as any)
+    .eq('equipment_type', typeName).eq('model', '__TYPE__');
+  // 如果全部删完，清空 shared_image_url
+  if (images.length === 0) {
+    await supabase
+      .from('equipment_templates')
+      .update({ shared_image_url: null })
+      .eq('equipment_type', typeName).eq('model', '__TYPE__');
+  }
+}
+
+/**
+ * 设置默认图片（同步更新 shared_image_url）
+ */
+export async function setDefaultTypeImage(typeName: string, url: string): Promise<void> {
+  const images = await getTypeImages(typeName);
+  const updated = images.map(img => ({ ...img, is_default: img.url === url }));
+  await supabase
+    .from('equipment_templates')
+    .update({
+      type_images: updated as any,
+      shared_image_url: url,
+    } as any)
+    .eq('equipment_type', typeName).eq('model', '__TYPE__');
+}
+
+/**
+ * 从设备图片导入到类型库
+ */
+export async function importTypeImageFromEquipment(
+  typeName: string, url: string, label: string
+): Promise<void> {
+  await addTypeImage(typeName, url, label);
+}
