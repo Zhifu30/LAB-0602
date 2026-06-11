@@ -1495,8 +1495,11 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       setPendingSharedUrl(null);
       setSelectedRecUrl(null);
       setSelectedSyncDeviceIds(new Set());
+      // 强制刷新：触发设备列表重载 + 维护计划重载
       onEquipmentRefresh?.();
       refetchAllSchedules();
+      // 通知全局设备数据变更
+      window.dispatchEvent(new Event('equipment-updated'));
     } catch (err: any) {
       toast({ title: '保存失败', description: err?.message || '请重试', variant: 'destructive' });
     }
@@ -2438,18 +2441,10 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         confirmLabel={`同步 (${selectedSyncDeviceIds.size} 台)`}
         onConfirm={handleSelectiveSyncConfirm}
         footerExtra={
-          <div className="space-y-2">
-            {pendingSharedUrl && (
-              <div className="flex items-center gap-2 p-2 rounded bg-white/5">
-                <div className="h-10 w-14 rounded bg-cover bg-center shrink-0"
-                  style={{ backgroundImage: `url(${pendingSharedUrl})` }} />
-                <span className="text-[10px] text-white/60">新共享图片: {pendingSharedUrl.split('/').pop()}</span>
-              </div>
-            )}
-            <p className="text-xs text-white/50">
-              已选 {selectedSyncDeviceIds.size} 台 · 共 {linkedEquipments.length} 台关联设备
-            </p>
-          </div>
+          <p className="text-xs text-white/50 pt-2 border-t border-white/10">
+            已选 {selectedSyncDeviceIds.size} 台 · 共 {linkedEquipments.length} 台关联设备
+            {pendingSharedUrl && <span className="ml-2 text-white/30">| 图片: {pendingSharedUrl.split('/').pop()}</span>}
+          </p>
         }
       />
       {/* 清理冗余抽屉已迁移到 TypeImagePanel 组件内部处理 */}
