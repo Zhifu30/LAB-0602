@@ -666,15 +666,17 @@ export async function addTypeImage(typeName: string, url: string, label: string)
   const images = await getTypeImages(typeName);
   if (images.some(img => img.url === url)) return;
   images.push({ url, label, is_default: images.length === 0 });
+  let columnExists = true;
   try {
     await supabase
       .from('equipment_templates')
       .update({ type_images: images as any } as any)
       .eq('equipment_type', typeName).eq('model', '__TYPE__');
   } catch {
-    // type_images 列不存在 → 仅更新 shared_image_url
+    columnExists = false;
   }
-  if (images.length === 1) {
+  // 更新 shared_image_url：首次添加 或 列为空时直接写入
+  if (images.length === 1 || !columnExists) {
     await supabase
       .from('equipment_templates')
       .update({ shared_image_url: url })
