@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
+import { getEffectiveImageUrl } from '@/utils/imageUtils';
 
 interface EquipmentTypeOption { id: string; name: string; }
 interface TypeResourceInfo { sharedImageUrl: string | null; sharedSopFiles: { url: string; name: string; }[] | null; }
@@ -114,9 +115,7 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
     } catch (error) { console.error('Error updating calibration date:', error); toast.error('更新校正日期失败'); }
   };
 
-  const backgroundImageUrl = (equipment.imageUrl && equipment.imageUrl.trim() !== '') 
-    ? equipment.imageUrl 
-    : null;
+  const backgroundImageUrl = getEffectiveImageUrl(equipment, typeResource ? { shared_image_url: typeResource.sharedImageUrl } : null);
 
   const DetailContent = () => (
     <div className="flex flex-col h-full overflow-hidden rounded-lg relative bg-slate-900">

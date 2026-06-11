@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, MapPin, User, QrCode, Microscope, RotateCcw, FlaskConical, ScanLine, Thermometer, Flame, Scale, Package, FileText, Trash2, Wrench } from 'lucide-react';
+import { Calendar, MapPin, User, QrCode, Microscope, RotateCcw, FlaskConical, ScanLine, Thermometer, Flame, Scale, Package, FileText, Trash2, Wrench, Link2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Equipment, statusLabels, statusIcons, equipmentTypeLabels, equipmentTypeIcons } from '@/types/equipment';
 import { supabase } from '@/integrations/supabase/client';
+import { getEffectiveImageUrl, getImageSourceType, fetchTypeTemplate } from '@/utils/imageUtils';
+import { Badge } from '@/components/ui/badge';
 
 interface MaintenanceInfo {
   next_due_date: string;
@@ -41,6 +43,13 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onClick, onSta
   const [maintenanceInfo, setMaintenanceInfo] = useState<MaintenanceInfo | null>(null);
 
   const isScrapped = equipment.status === 'scrapped' || (equipment as any).isScrapped === true;
+  const [typeTemplate, setTypeTemplate] = useState<{ shared_image_url: string | null } | null>(null);
+
+  useEffect(() => {
+    if (equipment.type) {
+      fetchTypeTemplate(equipment.type).then(setTypeTemplate).catch(() => {});
+    }
+  }, [equipment.type]);
 
   useEffect(() => {
     // 报废设备不获取维护信息 - 报废设备不参与任何管理活动
@@ -103,9 +112,8 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onClick, onSta
   const handleStatusClick = (e: React.MouseEvent) => { e.stopPropagation(); onStatusChange?.(equipment.id, equipment.status); };
   const handleQRClick = (e: React.MouseEvent) => { e.stopPropagation(); onQRClick?.(equipment); };
 
-  const bg = (equipment.imageUrl && equipment.imageUrl.trim() !== '') 
-    ? equipment.imageUrl 
-    : getDefaultImage(equipment.type);
+  const bg = getEffectiveImageUrl(equipment, typeTemplate)
+    || getDefaultImage(equipment.type);
 
   const calColor = getCalibrationColor(equipment.nextCalibrationDate);
   const maintColor = getMaintenanceColor(maintenanceInfo?.next_due_date);
@@ -123,6 +131,26 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onClick, onSta
         <div className="absolute inset-0 opacity-10 transition-opacity duration-300 group-hover:opacity-20"
           style={{ background: `radial-gradient(ellipse at bottom, ${statusColor}40 0%, transparent 60%)` }} />
       </div>
+
+      {/* 图片来源状态徽章 */}
+      {!isScrapped && getImageSourceType(equipment, typeTemplate) !== 'none' && (
+        <div className="absolute top-4 right-16 z-30" title={
+          getImageSourceType(equipment, typeTemplate) === 'shared'
+            ? '此图片由设备类型统一提供'
+            : '此设备使用独立图片'
+        }>
+          <Badge
+            variant={getImageSourceType(equipment, typeTemplate) === 'shared' ? 'secondary' : 'outline'}
+            className="text-[10px] backdrop-blur-md border border-white/20 bg-black/30 text-white"
+          >
+            {getImageSourceType(equipment, typeTemplate) === 'shared' ? (
+              <><Link2 className="h-3 w-3 mr-1" /> 共享</>
+            ) : (
+              <>📷 独有</>
+            )}
+          </Badge>
+        </div>
+      )}
 
       <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20">
         <div className="flex items-center gap-1.5">

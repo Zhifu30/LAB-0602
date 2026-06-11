@@ -3,8 +3,7 @@ import { Calendar, Clock, User, Wrench, AlertTriangle, CheckCircle, Bell } from 
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, isPast, isToday, format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-
-const TYPE_SENTINEL = '__TYPE__';
+import { getEffectiveImageUrl, fetchTypeTemplate } from '@/utils/imageUtils';
 
 interface MaintenanceSchedule {
   id: string;
@@ -54,28 +53,18 @@ const getDefaultImage = (type?: string | null) => {
 };
 
 const MaintenanceScheduleCard: React.FC<MaintenanceScheduleCardProps> = ({ schedule, showResponsible = false, onClick }) => {
-  const [equipmentImage, setEquipmentImage] = useState<string | null>(null);
-  const [typeImage, setTypeImage] = useState<string | null>(null);
+  const [equipmentImg, setEquipmentImg] = useState<string | null>(null);
+  const [typeTemplate, setTypeTemplate] = useState<{ shared_image_url: string | null } | null>(null);
 
   useEffect(() => {
-    const fetchEquipmentImage = async () => {
-      if (!schedule.equipment_id) return;
-      const { data } = await supabase.from('equipment').select('image_url, type').eq('id', schedule.equipment_id).maybeSingle();
-      if (data?.image_url) setEquipmentImage(data.image_url);
-    };
-    fetchEquipmentImage();
+    if (!schedule.equipment_id) return;
+    supabase.from('equipment').select('image_url, type')
+      .eq('id', schedule.equipment_id).maybeSingle()
+      .then(({ data }) => {
+        if (data?.image_url) setEquipmentImg(data.image_url);
+        if (data?.type) fetchTypeTemplate(data.type).then(setTypeTemplate).catch(() => {});
+      });
   }, [schedule.equipment_id]);
-
-  useEffect(() => {
-    const fetchTypeImage = async () => {
-      const equipmentType = schedule.equipment?.type;
-      if (!equipmentType) return;
-      const { data } = await supabase.from('equipment_templates').select('shared_image_url')
-        .eq('equipment_type', equipmentType).eq('model', TYPE_SENTINEL).eq('manufacturer', TYPE_SENTINEL).maybeSingle();
-      if (data?.shared_image_url) setTypeImage(data.shared_image_url);
-    };
-    fetchTypeImage();
-  }, [schedule.equipment?.type]);
 
   const dueDate = new Date(schedule.next_due_date);
   const daysUntilDue = differenceInDays(dueDate, new Date());
@@ -89,7 +78,8 @@ const MaintenanceScheduleCard: React.FC<MaintenanceScheduleCardProps> = ({ sched
 
   const statusInfo = getStatusInfo();
   const statusColor = statusInfo.color;
-  const backgroundImage = equipmentImage || typeImage || getDefaultImage(schedule.equipment?.type);
+  const backgroundImage = getEffectiveImageUrl({ imageUrl: equipmentImg }, typeTemplate)
+    || getDefaultImage(schedule.equipment?.type);
 
   return (
     <div className="group relative rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl h-[380px] bg-gradient-to-br from-slate-900 to-slate-800"

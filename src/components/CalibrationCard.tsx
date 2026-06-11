@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar, Clock, User, AlertTriangle, CheckCircle, Activity } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, isPast, isToday, format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { getEffectiveImageUrl, fetchTypeTemplate } from '@/utils/imageUtils';
 
 interface CalibrationEquipment {
   id: string;
@@ -35,17 +35,15 @@ const getDefaultImage = (type?: string | null) => {
 };
 
 export default function CalibrationCard({ equipment, onClick }: CalibrationCardProps) {
-  const [typeImage, setTypeImage] = useState<string | null>(null);
-  const [equipImg, setEquipImg] = useState<string | null>(null);
+  const [typeTemplate, setTypeTemplate] = useState<{ shared_image_url: string | null } | null>(null);
 
   useEffect(() => {
-    setEquipImg(equipment.image_url);
     if (equipment.type) {
-      supabase.from('equipment_templates').select('shared_image_url')
-        .eq('equipment_type', equipment.type).maybeSingle()
-        .then(({ data }) => { if (data?.shared_image_url) setTypeImage(data.shared_image_url); });
+      fetchTypeTemplate(equipment.type).then(setTypeTemplate).catch(() => {});
+    } else {
+      setTypeTemplate(null);
     }
-  }, [equipment.type, equipment.image_url]);
+  }, [equipment.type]);
 
   const dueDate = new Date(equipment.next_calibration_date);
   const daysUntilDue = differenceInDays(dueDate, new Date());
@@ -58,7 +56,8 @@ export default function CalibrationCard({ equipment, onClick }: CalibrationCardP
   };
 
   const status = getStatus();
-  const bg = equipImg || typeImage || getDefaultImage(equipment.type);
+  const bg = getEffectiveImageUrl({ imageUrl: equipment.image_url }, typeTemplate)
+    || getDefaultImage(equipment.type);
 
   return (
     <div className="group relative rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl h-[300px] bg-gradient-to-br from-slate-900 to-slate-800"
