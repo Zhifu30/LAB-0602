@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Equipment } from '@/types/equipment';
 import EquipmentForm from '@/components/shared/EquipmentForm';
+import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 
 interface AddEquipmentModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ const emptyEquipment = (): Partial<Equipment> => ({
 const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({ isOpen, onClose, onAdd, existingIds }) => {
   const [formData, setFormData] = useState<Partial<Equipment>>(emptyEquipment());
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { types: equipmentTypes } = useEquipmentTypes();
 
   const handleChange = (field: keyof Equipment, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -70,6 +72,7 @@ const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({ isOpen, onClose, 
             mode="create"
             variant="light"
             errors={errors}
+            equipmentTypes={equipmentTypes}
             footer={
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={onClose}>取消</Button>

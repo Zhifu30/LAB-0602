@@ -182,6 +182,56 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
     }
   };
 
+  const logMaintenanceCompletionNotifications = async (
+    scheduleId: string,
+    equipmentId: string,
+    completedById: string | null,
+    completedByName: string
+  ) => {
+    if (!completedById) return;
+
+    const { data: responsibles, error } = await supabase
+      .from('equipment_maintenance_responsible')
+      .select('user_id, maintenance_level')
+      .eq('equipment_id', equipmentId);
+
+    if (error) {
+      console.warn('加载维护责任等级失败:', error);
+      return;
+    }
+
+    if (!responsibles?.length) return;
+
+    const completedByRecord = responsibles.find((record: any) => record.user_id === completedById);
+    const completedByLevel = completedByRecord ? Number(completedByRecord.maintenance_level) : null;
+    if (!completedByLevel) return;
+
+    const notifications = responsibles
+      .filter((record: any) => record.user_id !== completedById && Number(record.maintenance_level) < completedByLevel)
+      .map((record: any) => ({
+        schedule_id: scheduleId,
+        equipment_id: equipmentId,
+        completed_by: completedById,
+        completed_by_name: completedByName,
+        completed_by_level: completedByLevel,
+        notified_to: record.user_id,
+        notified_to_name: '负责人',
+        notified_to_level: Number(record.maintenance_level),
+        completed_at: new Date().toISOString(),
+        notification_status: 'sent'
+      }));
+
+    if (notifications.length === 0) return;
+
+    const { error: notifyError } = await supabase
+      .from('maintenance_completion_notifications')
+      .insert(notifications);
+
+    if (notifyError) {
+      console.warn('记录维护完成通知失败:', notifyError);
+    }
+  };
+
   const handleCompleteSchedule = async (schedule: MaintenanceSchedule) => {
     try {
       const currentDate = new Date(schedule.next_due_date);
@@ -226,6 +276,13 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
         });
 
       if (logError) throw logError;
+
+      await logMaintenanceCompletionNotifications(
+        schedule.id,
+        equipmentId,
+        profile?.user_id ?? null,
+        profile?.username || 'Unknown'
+      );
 
       toast.success('维护已完成，下次维护日期已更新');
       fetchSchedules();

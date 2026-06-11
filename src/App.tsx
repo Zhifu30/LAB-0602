@@ -14,6 +14,7 @@ import EmpowerManagement from "./pages/EmpowerManagement";
 import PermissionManagement from "./pages/PermissionManagement";
 import MaintenanceDashboard from "./pages/MaintenanceDashboard";
 import CalibrationDashboard from "./pages/CalibrationDashboard";
+import PiChat from "./pages/PiChat";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -62,6 +63,13 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <EmpowerManagement />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/pi" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <PiChat />
                   </AppLayout>
                 </ProtectedRoute>
               } />

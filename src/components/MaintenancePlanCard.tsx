@@ -18,17 +18,21 @@ export interface MaintenancePlanCardProps {
   equipmentIds?: string[];
   actions?: React.ReactNode;
   className?: string;
+  onClick?: () => void;
 }
 
 const MaintenancePlanCard: React.FC<MaintenancePlanCardProps> = ({
   title, description, frequency, nextDueDate, assignedName,
-  reminderDaysBefore, daysUntilDue, reminderSent, equipmentIds, actions, className
+  reminderDaysBefore, daysUntilDue, reminderSent, equipmentIds, actions, className, onClick
 }) => {
   const isOverdue = daysUntilDue !== undefined && daysUntilDue < 0;
   const freqLabel = frequencyLabels[frequency] || frequency;
 
   return (
-    <div className={`p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors ${className || ''}`}>
+    <div
+      className={`p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors ${onClick ? 'cursor-pointer' : ''} ${className || ''}`}
+      onClick={onClick}
+    >
       {/* 标题行 + 按钮 */}
       <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
         <span className="font-medium text-white text-xs">{title}</span>

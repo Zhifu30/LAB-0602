@@ -161,15 +161,20 @@ export default function MaintenanceDashboard() {
     try {
       const { data, error } = await supabase
         .from('maintenance_schedules')
-        .select('*, equipment:equipment_id(id, name, responsible, responsible_email, type)')
+        .select('*, equipment:equipment_id(id, name, responsible, responsible_email, type, status, is_scrapped)')
         .eq('is_active', true)
         .order('next_due_date', { ascending: true });
 
       if (error) throw error;
-      setSchedules(data || []);
+      // 过滤掉已报废设备的维护计划 - 报废设备不参与任何管理活动
+      const filtered = (data || []).filter((s: any) => {
+        const eq = s.equipment;
+        return eq?.status !== 'scrapped' && eq?.is_scrapped !== true;
+      });
+      setSchedules(filtered);
 
-      const responsibleGroups = new Set((data || []).map(s => s.equipment?.responsible || '未指定负责人'));
-      const typeGroups = new Set((data || []).map(s => s.equipment?.type || '未分类'));
+      const responsibleGroups = new Set(filtered.map(s => s.equipment?.responsible || '未指定负责人'));
+      const typeGroups = new Set(filtered.map(s => s.equipment?.type || '未分类'));
       setExpandedGroups(new Set([...responsibleGroups, ...typeGroups]));
     } catch (error) {
       console.error('Error fetching schedules:', error);

@@ -46,14 +46,19 @@ const MaintenanceCalendarView: React.FC<MaintenanceCalendarViewProps> = ({ onEve
       if (calibrationError) throw calibrationError;
       const filteredCalData = (calibrationData || []).filter((e: any) => e.status !== 'scrapped' && e.is_scrapped !== true);
       const { data: maintenanceData, error: maintenanceError } = await supabase
-        .from('maintenance_schedules').select('id, title, next_due_date, frequency, equipment_id, equipment:equipment_id(name)')
+        .from('maintenance_schedules').select('id, title, next_due_date, frequency, equipment_id, equipment:equipment_id(name, status, is_scrapped)')
         .eq('is_active', true).gte('next_due_date', start).lte('next_due_date', end);
       if (maintenanceError) throw maintenanceError;
+      // 过滤掉已报废设备的维护计划 - 报废设备不参与任何管理活动
+      const activeMaintenanceData = (maintenanceData || []).filter((s: any) => {
+        const eq = s.equipment;
+        return eq?.status !== 'scrapped' && eq?.is_scrapped !== true;
+      });
       const calendarEvents: CalendarEvent[] = [];
       filteredCalData.forEach(eq => {
         if (eq.next_calibration_date) calendarEvents.push({ id: `cal-${eq.id}`, date: eq.next_calibration_date, title: '校正', type: 'calibration', equipmentId: eq.id, equipmentName: eq.name });
       });
-      (maintenanceData || []).forEach(schedule => {
+      activeMaintenanceData.forEach(schedule => {
         calendarEvents.push({ id: `maint-${schedule.id}`, date: schedule.next_due_date, title: schedule.title, type: 'maintenance', equipmentId: schedule.equipment_id, equipmentName: (schedule.equipment as any)?.name || schedule.equipment_id, frequency: schedule.frequency });
       });
       setEvents(calendarEvents);

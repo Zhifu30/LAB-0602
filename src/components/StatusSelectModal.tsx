@@ -36,7 +36,10 @@ const StatusSelectModal: React.FC<StatusSelectModalProps> = ({
     return statusColorMap[status] || '#6b7280';
   };
 
-  const statusOptions: Equipment['status'][] = ['available', 'in-use', 'calibration', 'out-of-order', 'scrapped'];
+  // 已报废设备不再参与任何管理活动，不能更改状态
+  const statusOptions: Equipment['status'][] = currentStatus === 'scrapped'
+    ? ['scrapped'] // 只显示当前状态，不允许切换
+    : ['available', 'in-use', 'calibration', 'out-of-order', 'scrapped'];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

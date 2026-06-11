@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Plus, Trash2, Edit2, Save, X, Tags, ChevronRight, Wrench, Check, Link2, Unlink, User, Search, ChevronDown, ChevronUp, Calendar, Bell, Clock, FileText, Copy, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Tags, ChevronRight, Wrench, Check, Link2, Unlink, User, Search, ChevronDown, ChevronUp, Calendar, Bell, Clock, FileText, Copy, RefreshCw, Upload, Link, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,6 +25,7 @@ import GlassModal from '@/components/GlassModal';
 import MaintenanceScheduleFormDialog from '@/components/shared/MaintenanceScheduleFormDialog';
 import MaintenancePlanFormDialog from '@/components/shared/MaintenancePlanFormDialog';
 import EquipmentPickerDialog from '@/components/shared/EquipmentPickerDialog';
+import HierarchicalResponsibleColumn from '@/components/HierarchicalResponsibleColumn';
 import { MaintenancePlanFormData, MaintenanceScheduleFormData } from '@/types/maintenance';
 import { supabase } from '@/integrations/supabase/client';
 import { format, endOfMonth } from 'date-fns';
@@ -37,7 +38,6 @@ export interface EquipmentTypeConfig {
   name: string;
   maintenanceContent: string;
   equipmentIds: string[];
-  sharedImageUrl?: string | null;
   sharedSopFiles?: { url: string; name: string }[] | null;
 }
 
@@ -55,6 +55,8 @@ interface UserProfile {
   user_id: string;
   username: string;
   email: string | null;
+  role?: string | null;
+  role_type?: string | null;
 }
 
 interface MaintenanceSchedule {
@@ -135,7 +137,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const [maintenanceReminderDays, setMaintenanceReminderDays] = useState<number>(7);
   const [showBatchSettings, setShowBatchSettings] = useState(false);
   const [batchResponsible, setBatchResponsible] = useState<string>('');
-  
+
   // 设备详情弹窗
   const [showEquipmentDetail, setShowEquipmentDetail] = useState(false);
   const [detailEquipment, setDetailEquipment] = useState<Equipment | null>(null);
@@ -170,9 +172,12 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   // 图片映射
   interface ImageMapping { imageUrl: string; equipmentIds: string[]; }
   const [imageMappings, setImageMappings] = useState<ImageMapping[]>([]);
+  const [addedUrls, setAddedUrls] = useState<string[]>([]);
   const [showImageEquipModal, setShowImageEquipModal] = useState(false);
   const [editingImageIdx, setEditingImageIdx] = useState<number>(-1);
   const [imageEquipSelected, setImageEquipSelected] = useState<Set<string>>(new Set());
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const [imageUploading, setImageUploading] = useState(false);
 
   // 添加/编辑计划的表单
   const [showAddPlanModal, setShowAddPlanModal] = useState(false);
@@ -209,24 +214,48 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   }, [user]);
 
   const fetchTypesFromDb = useCallback(async (): Promise<EquipmentTypeConfig[]> => {
-    const { data, error } = await supabase
+    // 1. 从 equipment_templates 获取类型定义（主数据源）
+    const { data: templateData, error: templateError } = await supabase
       .from('equipment_templates')
-      .select('id, equipment_type, created_at, shared_image_url, shared_sop_files')
+      .select('id, equipment_type, created_at, shared_sop_files')
       .order('created_at', { ascending: true });
 
-    if (error) throw error;
+    if (templateError) throw templateError;
 
-    const dbTypes: EquipmentTypeConfig[] = (data || []).map((row: any) => ({
+    // 2. 从 equipment 表获取实际使用的类型（作为补充）
+    const { data: eqTypes, error: eqError } = await supabase
+      .from('equipment')
+      .select('type')
+      .not('type', 'is', null)
+      .neq('type', '')
+      .order('type');
+
+    if (eqError) throw eqError;
+
+    const dbTypes: EquipmentTypeConfig[] = (templateData || []).map((row: any) => ({
       id: row.id,
       name: row.equipment_type,
       maintenanceContent: '',
       equipmentIds: [],
-      sharedImageUrl: row.shared_image_url || null,
       sharedSopFiles: row.shared_sop_files || null,
     }));
 
+    const templateNames = new Set(dbTypes.map(t => t.name));
+    const eqDistinctNames = [...new Set((eqTypes || []).map((r: any) => r.type).filter(Boolean) as string[])];
+
+    // 3. equipment 中有但 templates 中没有的类型：以临时条目展示（不自动创建模板，避免已删除类型被重新创建）
+    const orphanNames = eqDistinctNames.filter(name => !templateNames.has(name));
+    const orphanTypes: EquipmentTypeConfig[] = orphanNames.map((name, i) => ({
+      id: `type_db_orphan_${i}`,
+      name,
+      maintenanceContent: '',
+      equipmentIds: [],
+    }));
+
+    const allTypes = [...dbTypes, ...orphanTypes];
+
     // Sync associations from DB equipment.type field
-    return dbTypes.map(t => ({
+    return allTypes.map(t => ({
       ...t,
       equipmentIds: equipments.filter(eq => eq.type === t.name).map(eq => eq.id)
     }));
@@ -296,7 +325,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         cancelled = true;
       };
     }
-  }, [isOpen, fetchTypesFromDb, migrateLocalTypesToDbIfNeeded, saveTypes, toast]);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 去重：按 title+description+frequency 分组
   const groupSchedulesIntoPlans = useCallback((schedules: MaintenanceSchedule[]): PlanGroup[] => {
@@ -321,7 +350,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, user_id, username, email')
+        .select('id, user_id, username, email, role, role_type')
         .order('username');
       if (error) throw error;
       setUsers(data || []);
@@ -336,13 +365,36 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     [types, selectedTypeId]
   );
 
+  const roleLevelLabels: Record<string, string> = {
+    admin: '最高',
+    manager: '一级',
+    scientist: '二级',
+    analyst: '三级',
+    user: '普通'
+  };
+
+  const getResponsibleLevel = (roleType?: string | null) => {
+    if (!roleType) return '普通负责人';
+    return `${roleLevelLabels[roleType] ?? roleType}负责人`;
+  };
+
+  const formatUserLabel = (user: UserProfile) => {
+    if (!user.role_type) return user.username;
+    return `${user.username} (${getResponsibleLevel(user.role_type)})`;
+  };
+
   // 活跃设备（排除报废）- 报废设备不参与任何管理活动
   // 同时检查 isScrapped 布尔字段和 status='scrapped'，兼容两种报废标记方式
+  // 使用 equipKey 稳定依赖，避免 equipments 数组引用变化导致无限重渲染
+  const equipKey = useMemo(() =>
+    (equipments || []).map(eq => `${eq.id}:${eq.status}:${(eq as any).isScrapped ? 1 : 0}`).sort().join(','),
+    [equipments]
+  );
   const activeEquipments = useMemo(() => {
     return equipments.filter(eq =>
       (eq as any).isScrapped !== true && eq.status !== 'scrapped'
     );
-  }, [equipments]);
+  }, [equipKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 获取关联到当前类型的设备列表 - 使用数据库 type 字段作为唯一真实来源，排除报废设备
   const linkedEquipments = useMemo(() => {
@@ -350,6 +402,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     // 只使用数据库中的 type 字段来判断关联关系，且必须是非报废设备，按ID排序
     return activeEquipments.filter(eq => eq.type === selectedType.name).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
   }, [selectedType, activeEquipments]);
+
 
   // 获取选中的设备详情
   const selectedEquipment = useMemo(() => {
@@ -392,29 +445,42 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     finally { setSchedulesLoading(false); }
   }, [selectedTypeId, linkedEquipments, groupSchedulesIntoPlans]);
 
-  // 当类型或关联设备变化时刷新
-  useEffect(() => { refetchAllSchedules(); }, [refetchAllSchedules]);
+  // 当类型变化时刷新
+  useEffect(() => { refetchAllSchedules(); }, [selectedTypeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 图片映射：按设备展示，去重 URL 后合并设备
+  // 图片映射：完全由当前类型的关联设备状态派生，加上手动临时添加的 URL
+  // 报废设备不参与任何管理活动 - 图片映射中排除报废设备
   useEffect(() => {
     if (selectedTypeId) {
-      const saved = localStorage.getItem(`${STORAGE_KEY}-images-${selectedTypeId}`);
-      const manual: ImageMapping[] = saved ? JSON.parse(saved) : [];
-      const eqImages = linkedEquipments.filter(eq => eq.imageUrl).map(eq => ({ imageUrl: eq.imageUrl!.trim(), equipmentIds: [eq.id] }));
-      const all = [...manual, ...eqImages];
-      const map = new Map<string, Set<string>>();
-      for (const m of all) {
-        const url = m.imageUrl.trim();
-        if (!url) continue;
-        if (!map.has(url)) map.set(url, new Set());
-        m.equipmentIds.forEach(id => map.get(url)!.add(id));
-      }
-      setImageMappings(Array.from(map.entries()).map(([url, ids]) => ({ imageUrl: url, equipmentIds: Array.from(ids).sort((a,b) => a.localeCompare(b,undefined,{numeric:true})) })));
-    } else { setImageMappings([]); }
-  }, [selectedTypeId, linkedEquipments]);
-  useEffect(() => {
-    if (selectedTypeId) localStorage.setItem(`${STORAGE_KEY}-images-${selectedTypeId}`, JSON.stringify(imageMappings));
-  }, [imageMappings, selectedTypeId]);
+      // 1. 从关联设备中提取所有已存在的图片 URL（排除报废设备）
+      const eqImagesMap = new Map<string, Set<string>>();
+      linkedEquipments.forEach(eq => {
+        // 双重检查：确保报废设备不会出现在图片映射中
+        if ((eq as any).isScrapped === true || eq.status === 'scrapped') return;
+        const url = eq.imageUrl?.trim();
+        if (url) {
+          if (!eqImagesMap.has(url)) eqImagesMap.set(url, new Set());
+          eqImagesMap.get(url)!.add(eq.id);
+        }
+      });
+
+      // 2. 合并手动添加的 URL（如果它们还没出现在设备中）
+      const allUrls = Array.from(new Set([...Array.from(eqImagesMap.keys()), ...addedUrls]));
+      
+      const finalMappings: ImageMapping[] = allUrls.map(url => ({
+        imageUrl: url,
+        equipmentIds: Array.from(eqImagesMap.get(url) || [])
+          .sort((a,b) => a.localeCompare(b,undefined,{numeric:true}))
+      }));
+      
+      setImageMappings(finalMappings);
+      // 只在类型切换时重置临时添加的URL列表
+      if (addedUrls.length > 0) setAddedUrls([]);
+    } else {
+      setImageMappings([]);
+      if (addedUrls.length > 0) setAddedUrls([]);
+    }
+  }, [selectedTypeId, addedUrls]);
 
   // 从 allSchedules 派生当前选中设备的计划
   const derivedEquipmentSchedules = useMemo(() => {
@@ -459,20 +525,31 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const handleDeleteType = async (id: string) => {
     const typeToDelete = types.find(t => t.id === id);
     if (typeToDelete) {
-      // 解除所有设备关联
-      const linkedIds = equipments.filter(eq => eq.type === typeToDelete.name).map(eq => eq.id);
-      if (linkedIds.length > 0) {
-        await updateEquipmentTypes(linkedIds, null);
+      // 直接从数据库查找所有使用此类型的设备（避免 equipments prop 可能过时）
+      const { data: dbEquipments } = await supabase
+        .from('equipment')
+        .select('id')
+        .eq('type', typeToDelete.name);
+
+      const allLinkedIds = (dbEquipments || []).map((eq: any) => eq.id);
+      if (allLinkedIds.length > 0) {
+        // 批量清除所有设备的 type 字段
+        await supabase
+          .from('equipment')
+          .update({ type: null })
+          .in('id', allLinkedIds);
       }
 
-      // 从数据库删除类型定义
-      try {
-        await supabase
-          .from('equipment_templates')
-          .delete()
-          .eq('id', id);
-      } catch (e) {
-        console.error('删除类型(数据库)失败:', e);
+      // 从数据库删除类型定义（只有 ID 不是临时 orphan ID 时才执行）
+      if (!id.startsWith('type_db_orphan_')) {
+        try {
+          await supabase
+            .from('equipment_templates')
+            .delete()
+            .eq('id', id);
+        } catch (e) {
+          console.error('删除类型(数据库)失败:', e);
+        }
       }
 
       // 删除该类型的模板
@@ -503,12 +580,24 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     const nextName = editName.trim();
 
     // 更新类型名称到数据库（类型定义表）
+    // 如果是临时 orphan 类型，创建新的模板条目；否则更新已有条目
+    const isOrphanType = editingTypeId?.startsWith('type_db_orphan_') ?? false;
     try {
-      if (editingTypeId) {
+      if (editingTypeId && !isOrphanType) {
         const { error } = await supabase
           .from('equipment_templates')
           .update({ equipment_type: nextName } as any)
           .eq('id', editingTypeId);
+        if (error) throw error;
+      } else if (isOrphanType) {
+        // 为 orphan 类型创建正式的模板条目
+        const { error } = await supabase
+          .from('equipment_templates')
+          .insert({
+            equipment_type: nextName,
+            model: TYPE_SENTINEL,
+            manufacturer: TYPE_SENTINEL
+          } as any);
         if (error) throw error;
       }
     } catch (error: any) {
@@ -1061,6 +1150,56 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     }
   };
 
+  const logMaintenanceCompletionNotifications = async (
+    scheduleId: string,
+    equipmentId: string,
+    completedById: string | null,
+    completedByName: string
+  ) => {
+    if (!completedById) return;
+
+    const { data: responsibles, error } = await supabase
+      .from('equipment_maintenance_responsible')
+      .select('user_id, maintenance_level')
+      .eq('equipment_id', equipmentId);
+
+    if (error) {
+      console.warn('加载维护责任等级失败:', error);
+      return;
+    }
+
+    if (!responsibles?.length) return;
+
+    const completedByRecord = responsibles.find((record: any) => record.user_id === completedById);
+    const completedByLevel = completedByRecord ? Number(completedByRecord.maintenance_level) : null;
+    if (!completedByLevel) return;
+
+    const notifications = responsibles
+      .filter((record: any) => record.user_id !== completedById && Number(record.maintenance_level) < completedByLevel)
+      .map((record: any) => ({
+        schedule_id: scheduleId,
+        equipment_id: equipmentId,
+        completed_by: completedById,
+        completed_by_name: completedByName,
+        completed_by_level: completedByLevel,
+        notified_to: record.user_id,
+        notified_to_name: users.find((u) => u.user_id === record.user_id)?.username || '负责人',
+        notified_to_level: Number(record.maintenance_level),
+        completed_at: new Date().toISOString(),
+        notification_status: 'sent'
+      }));
+
+    if (notifications.length === 0) return;
+
+    const { error: notifyError } = await supabase
+      .from('maintenance_completion_notifications')
+      .insert(notifications);
+
+    if (notifyError) {
+      console.warn('记录维护完成通知失败:', notifyError);
+    }
+  };
+
   const handleCompleteSchedule = async (schedule: MaintenanceSchedule) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -1099,15 +1238,23 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
 
       if (scheduleError) throw scheduleError;
 
+      const equipmentId = selectedEquipmentId || schedule.equipment_id;
+      const completedById = session?.user?.id ?? null;
+      const completedByName = session?.user?.email?.split('@')[0] || 'Unknown';
+
       // Log the completion
-      await supabase
+      const { error: logError } = await supabase
         .from('maintenance_logs')
         .insert({
           schedule_id: schedule.id,
-          equipment_id: selectedEquipmentId,
-          completed_by: session?.user?.id,
-          completed_by_name: session?.user?.email?.split('@')[0] || 'Unknown'
+          equipment_id: equipmentId,
+          completed_by: completedById,
+          completed_by_name: completedByName
         });
+
+      if (logError) throw logError;
+
+      await logMaintenanceCompletionNotifications(schedule.id, equipmentId, completedById, completedByName);
 
       toast({ title: '成功', description: '维护已完成，下次维护日期已更新' });
       if (selectedEquipmentId) {
@@ -1140,6 +1287,48 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
   const clearTemplateForm = () => {
     if (tplTitleRef.current) tplTitleRef.current.value = '';
     if (tplDescRef.current) tplDescRef.current.value = '';
+  };
+
+  // 本地图片上传到 Supabase Storage
+  const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageUploading(true);
+    try {
+      // 上传到 Supabase Storage
+      const fileName = `type_img_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('equipment-images')
+        .upload(fileName, file, {
+          contentType: file.type,
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // 获取公共URL
+      const { data: urlData } = supabase.storage
+        .from('equipment-images')
+        .getPublicUrl(uploadData.path);
+
+      const publicUrl = urlData.publicUrl;
+      setAddedUrls(prev => {
+        if (prev.includes(publicUrl) || imageMappings.some(m => m.imageUrl === publicUrl)) {
+          toast({ title: '提示', description: '该图片已在库中' });
+          return prev;
+        }
+        return [...prev, publicUrl];
+      });
+      toast({ title: '上传成功', description: '图片已添加到共享库' });
+    } catch (error: any) {
+      console.error('图片上传失败:', error);
+      toast({ title: '上传失败', description: error?.message || '无法上传图片', variant: 'destructive' });
+    } finally {
+      setImageUploading(false);
+      // 清空文件选择器
+      if (imageFileInputRef.current) imageFileInputRef.current.value = '';
+    }
   };
 
   const TemplateFormContent = ({ onSubmit, submitLabel }: { onSubmit: () => void; submitLabel: string }) => (
@@ -1192,6 +1381,30 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
     </div>
   );
 
+  // 稳定化传给 HierarchicalResponsibleColumn 的 props，避免每次渲染创建新引用导致无限循环
+  const memoizedImageMappings = useMemo(
+    () => imageMappings.map(m => ({ imageUrl: m.imageUrl, equipmentIds: m.equipmentIds })),
+    [imageMappings]
+  );
+  const memoizedPlanGroups = useMemo(
+    () => planGroups.map(p => ({ title: p.title, description: p.description, frequency: p.frequency, equipmentIds: p.equipmentIds })),
+    [planGroups]
+  );
+  const handleEquipmentImageChange = useCallback(async (equipmentId: string, imageUrl: string | null) => {
+    await supabase.from('equipment').update({ image_url: imageUrl }).eq('id', equipmentId);
+    onEquipmentRefresh?.();
+    window.dispatchEvent(new Event('equipment-updated'));
+    toast({ title: imageUrl ? '图片已关联' : '图片已取消关联' });
+  }, [onEquipmentRefresh, toast]);
+  const handleEquipmentPlanLink = useCallback((equipmentId: string) => {
+    setEquipmentLinkingId(equipmentId);
+    setLinkDate(getEndOfCurrentMonth());
+    const existingKeys = allSchedules.filter(s => s.equipment_id === equipmentId).map(s => `${s.title}|||${s.description||''}|||${s.frequency}`);
+    const available = planGroups.filter(p => !existingKeys.includes(`${p.title}|||${p.description||''}|||${p.frequency}`)).map(p => `${p.title}|||${p.description||''}|||${p.frequency}`);
+    setPlanLinkIds(new Set(available));
+    setShowLinkPlanModal(true);
+  }, [allSchedules, planGroups]);
+
   return (
     <>
       <DialogPrimitive.Root open={isOpen} onOpenChange={onClose} modal={false}>
@@ -1200,7 +1413,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
           onPointerDownOutside={(e) => e.preventDefault()}
           className={cn(
           "fixed left-[50%] top-[50%] z-50 grid translate-x-[-50%] translate-y-[-50%] shadow-2xl duration-200",
-          "w-[90vw] max-w-[1200px] max-h-[88vh] overflow-hidden flex flex-col border-0 rounded-xl p-6",
+          "w-[95vw] max-w-[1400px] max-h-[88vh] overflow-hidden flex flex-col border-0 rounded-xl p-6",
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         )} style={{
             backgroundImage: selectedType?.sharedImageUrl ? `url(${selectedType.sharedImageUrl})` : linkedEquipments[0]?.imageUrl ? `url(${linkedEquipments[0].imageUrl})` : undefined,
@@ -1217,9 +1430,9 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             </p>
           </DialogHeader>
 
-          <div className="flex-1 grid grid-cols-[240px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(200px,1fr)] gap-3 overflow-hidden relative">
+          <div className="flex-1 grid grid-cols-1 xl:grid-cols-[minmax(220px,260px)_minmax(260px,1.1fr)_minmax(280px,1.4fr)_minmax(240px,1.1fr)_minmax(240px,1.2fr)] gap-3 overflow-hidden relative">
             {/* 第一列：类型列表 */}
-            <div className="flex flex-col space-y-3 overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 p-3">
+            <div className="flex flex-col space-y-3 overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 p-3 min-w-0">
               <h3 className="font-semibold text-sm flex items-center gap-2 text-white drop-shadow">
                 <Tags className="h-4 w-4" />
                 设备类型
@@ -1441,7 +1654,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                                   <SelectItem value="__keep_original__">保持原有责任人</SelectItem>
                                                   {users.map(user => (
                                                     <SelectItem key={user.id} value={user.username}>
-                                                      {user.username}
+                                                      {formatUserLabel(user)}
                                                     </SelectItem>
                                                   ))}
                                                 </SelectContent>
@@ -1587,11 +1800,17 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                                       onClick={(e) => e.stopPropagation()}
                                     />
                                     <div className="flex-1 min-w-0">
-                                      <span className="font-medium text-xs text-white">{eq.name}</span>
-                                      <span className="text-xs text-white/60 ml-2">{eq.id}</span>
-                                      {eq.responsible && (
-                                        <span className="text-xs text-blue-400 ml-2">· {eq.responsible}</span>
-                                      )}
+                                      <div className="font-medium text-xs text-white truncate">{eq.name}</div>
+                                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                                        <Badge variant="secondary" className="text-[10px] h-5 px-2 py-0.5 bg-white/10 border-white/10 text-white/70">
+                                          {eq.id}
+                                        </Badge>
+                                        {eq.responsible && (
+                                          <Badge variant="secondary" className="text-[10px] h-5 px-2 py-0.5 bg-slate-800/70 text-sky-200 border border-sky-500/20">
+                                            {eq.responsible}
+                                          </Badge>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 ))}
@@ -1622,13 +1841,82 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                               <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium text-sm text-white truncate">{eq.name}</div>
-                                <div className="text-xs text-white/60">
-                                  {eq.id} {eq.responsible && `· ${eq.responsible}`}
+                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                  <Badge variant="secondary" className="text-[10px] h-5 px-2 py-0.5 bg-white/10 border-white/10 text-white/70">
+                                    {eq.id}
+                                  </Badge>
+                                  {eq.responsible && (
+                                    <Badge variant="secondary" className="text-[10px] h-5 px-2 py-0.5 bg-slate-800/70 text-sky-200 border border-sky-500/20">
+                                      {eq.responsible}
+                                    </Badge>
+                                  )}
+                                  {eq.imageUrl && (
+                                    <Badge variant="secondary" className="text-[10px] h-5 px-2 py-0.5 bg-emerald-900/50 text-emerald-200 border border-emerald-500/20">
+                                      有图片
+                                    </Badge>
+                                  )}
                                   {allSchedules.filter(s => s.equipment_id === eq.id).length > 0 && (
-                                    <span className="text-blue-400 ml-1">· {allSchedules.filter(s => s.equipment_id === eq.id).length}个计划</span>
+                                    <Badge variant="secondary" className="text-[10px] h-5 px-2 py-0.5 bg-blue-900/50 text-blue-200 border border-blue-500/20">
+                                      {allSchedules.filter(s => s.equipment_id === eq.id).length}个计划
+                                    </Badge>
                                   )}
                                 </div>
                               </div>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    className={`h-6 w-6 p-0 shrink-0 border-0 ${eq.imageUrl ? 'bg-green-500 hover:bg-green-600' : 'bg-white/10 hover:bg-white/20'}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    title={eq.imageUrl ? '更换图片' : '关联图片'}>
+                                    <ImageIcon className="h-3 w-3 text-white" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="!w-52 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-foreground shadow-lg z-50 rounded-xl"
+                                  align="end"
+                                  side="right"
+                                  sideOffset={8}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <div className="text-xs text-muted-foreground mb-1.5 px-1 font-medium">选择共享图片</div>
+                                  <div className="max-h-56 overflow-y-auto space-y-1.5">
+                                    {imageMappings.length === 0 && (
+                                      <p className="text-xs text-muted-foreground text-center py-4">暂无图片</p>
+                                    )}
+                                    {imageMappings.map((mapping, mi) => (
+                                      <button
+                                        key={mi}
+                                        className={`w-full flex items-center gap-2 p-1.5 rounded-md text-xs transition-colors ${mapping.imageUrl === eq.imageUrl ? 'bg-green-100 dark:bg-green-500/30 border border-green-400 ring-1 ring-green-400/30' : 'hover:bg-muted border border-transparent'}`}
+                                        onClick={async () => {
+                                          const newUrl = mapping.imageUrl === eq.imageUrl ? null : mapping.imageUrl;
+                                          await supabase.from('equipment').update({ image_url: newUrl }).eq('id', eq.id);
+                                          onEquipmentRefresh?.();
+                                          toast({ title: newUrl ? '图片已关联' : '图片已取消关联' });
+                                        }}
+                                      >
+                                        <div className="h-12 w-12 rounded-md bg-cover bg-center shrink-0 border" style={{ backgroundImage: `url(${mapping.imageUrl})` }} />
+                                        <div className="flex-1 min-w-0 text-left">
+                                          <span className="text-muted-foreground">{mapping.equipmentIds.length} 台设备</span>
+                                        </div>
+                                        {mapping.imageUrl === eq.imageUrl && <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />}
+                                      </button>
+                                    ))}
+                                    {eq.imageUrl && (
+                                      <button
+                                        className="w-full flex items-center gap-2 p-1.5 rounded-md text-xs hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors text-red-500 border border-red-200 dark:border-red-500/20"
+                                        onClick={async () => {
+                                          await supabase.from('equipment').update({ image_url: null }).eq('id', eq.id);
+                                          onEquipmentRefresh?.();
+                                          toast({ title: '图片已取消关联' });
+                                        }}
+                                      >
+                                        <X className="h-3.5 w-3.5" /> 取消关联
+                                      </button>
+                                    )}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                               <Button
                                 size="sm"
                                 className="h-6 text-xs bg-blue-500 hover:bg-blue-600 text-white border-0 shrink-0"
@@ -1793,63 +2081,128 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             {/* 第四列：图片 ↔ 设备映射 */}
             {selectedType && (
               <div className="flex flex-col overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
-                <div className="p-3 border-b border-white/20 bg-white/5 flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-sm text-white drop-shadow">图片管理</h3>
-                    <p className="text-xs text-white/60">{selectedType.name} · {linkedEquipments.length}台设备</p>
-                  </div>
-                  <Button size="sm" className="h-7 text-xs bg-green-500 hover:bg-green-600 text-white border-0"
-                    onClick={() => {
-                      const url = window.prompt('输入图片URL：');
-                      if (url && url.trim()) {
-                        const newMapping = { imageUrl: url.trim(), equipmentIds: [] as string[] };
-                        setImageMappings(prev => [...prev, newMapping]);
-                      }
-                    }}>
-                    <Plus className="h-3.5 w-3.5 mr-1" />添加图片
-                  </Button>
+                <div className="p-3 border-b border-white/20 bg-white/5">
+                  <h3 className="font-semibold text-sm text-white drop-shadow">图片管理</h3>
+                  <p className="text-xs text-white/60">{selectedType.name} · {linkedEquipments.length}台设备</p>
                 </div>
-                <ScrollArea className="flex-1 p-2">
-                  {imageMappings.length === 0 && (
-                    <div className="text-center py-8 text-white/40 text-xs">
-                      <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                      暂无图片，点击"添加图片"
-                    </div>
-                  )}
+
+                <div className="p-3 space-y-4">
                   <div className="space-y-2">
-                    {imageMappings.map((mapping, idx) => (
-                      <div key={idx} className="rounded-lg overflow-hidden bg-white/5 border border-white/10">
-                        <div className="h-16 bg-cover bg-center" style={{ backgroundImage: `url(${mapping.imageUrl})` }} />
-                        <div className="p-2">
-                          <p className="text-xs text-white/50 truncate mb-1">关联设备：{mapping.equipmentIds.length > 0
-                            ? mapping.equipmentIds.sort((a,b) => a.localeCompare(b,undefined,{numeric:true})).map(eid => { const eq = linkedEquipments.find(e => e.id === eid); return eq ? eq.id : eid; }).join('、')
-                            : <span className="text-white/30">无</span>}
-                          </p>
-                          <div className="flex items-center gap-1">
-                            <Button size="sm" className="h-6 text-xs flex-1 bg-blue-500 hover:bg-blue-600 text-white border-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingImageIdx(idx);
-                                setImageEquipSelected(new Set(mapping.equipmentIds));
-                                setShowImageEquipModal(true);
-                              }}><Link2 className="h-3 w-3 mr-1" />关联设备</Button>
-                            <Button size="sm" className="h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white"
-                              onClick={async () => {
-                                const mapping = imageMappings[idx];
-                                for (const eid of mapping.equipmentIds) {
-                                  await supabase.from('equipment').update({ image_url: null }).eq('id', eid);
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[10px] font-semibold text-white/70 uppercase tracking-wider">共享图片库</h4>
+                      <div className="flex gap-1">
+                        <Button size="sm" className="h-6 text-[10px] bg-green-500 hover:bg-green-600 text-white border-0"
+                          onClick={() => {
+                            const url = window.prompt('输入新图片的 URL：');
+                            if (url && url.trim()) {
+                              const trimmedUrl = url.trim();
+                              setAddedUrls(prev => {
+                                if (prev.includes(trimmedUrl) || imageMappings.some(m => m.imageUrl === trimmedUrl)) {
+                                  toast({ title: '提示', description: '该图片已在库中' });
+                                  return prev;
                                 }
-                                const newMappings = imageMappings.filter((_, i) => i !== idx);
-                                setImageMappings(newMappings);
-                                onEquipmentRefresh?.();
-                              }} title="删除图片及设备关联"><Trash2 className="h-3 w-3" /></Button>
-                          </div>
-                        </div>
+                                return [...prev, trimmedUrl];
+                              });
+                            }
+                          }}>
+                          <Link className="h-3 w-3 mr-1" />URL
+                        </Button>
+                        <Button size="sm" className="h-6 text-[10px] bg-blue-500 hover:bg-blue-600 text-white border-0"
+                          onClick={() => imageFileInputRef.current?.click()}
+                          disabled={imageUploading}>
+                          {imageUploading ? (
+                            <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <Upload className="h-3 w-3 mr-1" />
+                          )}
+                          本地上传
+                        </Button>
                       </div>
-                    ))}
+                      <input
+                        ref={imageFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageFileUpload}
+                        className="hidden"
+                      />
+                    </div>
+
+                    <ScrollArea className="h-[380px]">
+                      {imageMappings.length === 0 ? (
+                        <div className="text-center py-12 text-white/20">
+                          <ImageIcon className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                          <p className="text-[10px]">暂无共享图片</p>
+                          <p className="text-[9px] mt-1 opacity-50">通过 URL 或本地上传添加图片</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 pr-2">
+                          {imageMappings.map((mapping, idx) => (
+                            <div key={idx} className="rounded-xl overflow-hidden bg-white/5 border border-white/10 group transition-all hover:border-white/20">
+                              <div className="h-24 bg-cover bg-center relative" style={{ backgroundImage: `url(${mapping.imageUrl})` }}>
+                                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
+                                <Button size="sm" variant="destructive" className="absolute top-2 right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100"
+                                  onClick={async () => {
+                                    if (!window.confirm('确定要移除此图片并清除所有关联设备的背景吗？')) return;
+                                    const m = imageMappings[idx];
+                                    if (m.equipmentIds.length > 0) {
+                                      await supabase.from('equipment').update({ image_url: null }).in('id', m.equipmentIds);
+                                    }
+                                    const newMappings = imageMappings.filter((_, i) => i !== idx);
+                                    setImageMappings(newMappings);
+                                    onEquipmentRefresh?.();
+                                  }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                              </div>
+                              <div className="p-3">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-[10px] text-white/40 font-mono truncate max-w-[120px]" title={mapping.imageUrl}>{mapping.imageUrl}</span>
+                                  <Badge variant="outline" className="text-[9px] bg-white/5 border-white/10 text-white/60">
+                                    {mapping.equipmentIds.length} 台设备
+                                  </Badge>
+                                </div>
+                                <p className="text-[10px] text-white/70 mb-3 line-clamp-2 leading-relaxed">
+                                  {mapping.equipmentIds.length > 0
+                                    ? mapping.equipmentIds
+                                        .map(id => {
+                                          const eq = linkedEquipments.find(e => e.id === id);
+                                          return eq ? eq.name : id;
+                                        })
+                                        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+                                        .join('、')
+                                    : <span className="text-white/20 italic">未关联任何设备</span>}
+                                </p>
+                                <Button size="sm" className="h-8 w-full text-xs bg-blue-500 hover:bg-blue-600 text-white border-0 group/btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingImageIdx(idx);
+                                    setImageEquipSelected(new Set(mapping.equipmentIds));
+                                    setShowImageEquipModal(true);
+                                  }}>
+                                  <Link2 className="h-3.5 w-3.5 mr-1.5 transition-transform group-hover/btn:rotate-45" />
+                                  {mapping.equipmentIds.length > 0 ? '管理关联' : '关联设备'}
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
                   </div>
-                </ScrollArea>
+                </div>
               </div>
+            )}
+
+            {/* 第五列：维护负责人等级（新的分层级模式） */}
+            {selectedType && (
+              <HierarchicalResponsibleColumn
+                linkedEquipments={linkedEquipments}
+                users={users}
+                equipmentType={selectedType.name}
+                onRefresh={onEquipmentRefresh}
+                imageMappings={memoizedImageMappings}
+                planGroups={memoizedPlanGroups}
+                onEquipmentImageChange={handleEquipmentImageChange}
+                onEquipmentPlanLink={handleEquipmentPlanLink}
+              />
             )}
           </div>
         <button onClick={onClose} className="absolute right-4 top-4 z-20 rounded-sm opacity-70 transition-opacity hover:opacity-100">
@@ -1978,15 +2331,37 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
         searchable={false}
         confirmLabel={`确认 (${imageEquipSelected.size})`}
         onConfirm={async () => {
-          const newMappings = [...imageMappings];
-          const imgUrl = newMappings[editingImageIdx].imageUrl;
-          newMappings[editingImageIdx] = { ...newMappings[editingImageIdx], equipmentIds: Array.from(imageEquipSelected) };
-          setImageMappings(newMappings);
-          for (const eid of Array.from(imageEquipSelected)) {
-            await supabase.from('equipment').update({ image_url: imgUrl }).eq('id', eid);
+          const mapping = imageMappings[editingImageIdx];
+          const imgUrl = mapping.imageUrl;
+          const oldIds = new Set(mapping.equipmentIds);
+          const newIds = imageEquipSelected;
+
+          const toAdd = Array.from(newIds).filter(id => !oldIds.has(id));
+          const toRemove = Array.from(oldIds).filter(id => !newIds.has(id));
+
+          try {
+            // 为新关联的设备设置此图片 URL
+            if (toAdd.length > 0) {
+              await supabase.from('equipment').update({ image_url: imgUrl }).in('id', toAdd);
+            }
+            // 为取消关联的设备清除图片 URL
+            if (toRemove.length > 0) {
+              await supabase.from('equipment').update({ image_url: null }).in('id', toRemove);
+            }
+            
+            // 如果此图片 URL 已经有设备关联了，就不再保留在临时 addedUrls 中
+            if (newIds.size > 0) {
+              setAddedUrls(prev => prev.filter(u => u !== imgUrl));
+            }
+
+            toast({ title: '更新成功', description: `已更新图片关联关系` });
+            onEquipmentRefresh?.();
+            window.dispatchEvent(new Event('equipment-updated'));
+          } catch (err) {
+            console.error('更新图片关联失败:', err);
+            toast({ title: '更新失败', description: '请重试', variant: 'destructive' });
           }
-          onEquipmentRefresh?.();
-          window.dispatchEvent(new Event('equipment-updated'));
+
           setShowImageEquipModal(false);
           setEditingImageIdx(-1);
         }}

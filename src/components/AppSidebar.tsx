@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Microscope, LayoutDashboard, Layers, ClipboardCheck, Boxes, FolderKanban,
-  ShieldAlert, LogOut, UserCircle, Settings2, MailPlus, ChevronDown, Tags, Wrench, Activity,
+  ShieldAlert, LogOut, UserCircle, Settings2, MailPlus, ChevronDown, Tags, Wrench, Activity, Zap,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -30,6 +30,7 @@ const navItems = [
   { title: '校正管理', url: '/calibration', icon: Activity, variant: 'amber' as const },
   { title: '配件管理', url: '/parts', icon: Boxes, variant: 'purple' as const },
   { title: 'Empower管理', url: '/empower', icon: FolderKanban, variant: 'orange' as const },
+  { title: 'Pi Chat', url: '/pi', icon: Zap, variant: 'purple' as const },
 ];
 
 const adminItems = [

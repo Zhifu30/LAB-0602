@@ -114,82 +114,101 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
     } catch (error) { console.error('Error updating calibration date:', error); toast.error('更新校正日期失败'); }
   };
 
-  const backgroundImageUrl = equipment.imageUrl || typeResource?.sharedImageUrl;
+  const backgroundImageUrl = (equipment.imageUrl && equipment.imageUrl.trim() !== '') 
+    ? equipment.imageUrl 
+    : null;
 
   const DetailContent = () => (
-    <div className="flex flex-col h-full overflow-hidden rounded-lg relative">
-      {backgroundImageUrl && <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${backgroundImageUrl})` }} />}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/70" />
-      <div className="relative flex flex-col h-full">
-        <div className="shrink-0 relative">
-          <div className="p-3 text-white">
-            <div className="flex items-center justify-between mb-2">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${!readOnly ? 'cursor-pointer hover:opacity-90' : ''} transition-opacity ${statusColors[equipment.status]}`}
-                onClick={() => !readOnly && setShowStatusModal(true)} title={readOnly ? undefined : "点击更改状态"}>
-                <span className="text-lg">{statusIcons[equipment.status]}</span>
-                <h2 className={`font-semibold truncate ${embedded ? 'text-sm' : 'text-base'}`}>{equipment.name}</h2>
+    <div className="flex flex-col h-full overflow-hidden rounded-lg relative bg-slate-900">
+      {backgroundImageUrl && (
+        <div className="absolute inset-0 bg-cover bg-center opacity-60 transition-all duration-700" 
+          style={{ backgroundImage: `url(${backgroundImageUrl})` }} />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
+      
+      <div className="relative flex flex-col h-full p-4 items-center justify-center">
+        {/* 中央内容窗口 */}
+        <div className="w-full max-w-lg bg-black/40 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl overflow-hidden flex flex-col max-h-[90%]">
+          <div className="shrink-0 p-4 border-b border-white/10 bg-white/5">
+            <div className="flex items-center justify-between">
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${!readOnly && equipment.status !== 'scrapped' ? 'cursor-pointer hover:bg-white/10' : ''} transition-all ${statusColors[equipment.status]}`}
+                onClick={() => !readOnly && equipment.status !== 'scrapped' && setShowStatusModal(true)} title={readOnly ? undefined : equipment.status === 'scrapped' ? '已报废' : '点击更改状态'}>
+                <span className="text-xl">{statusIcons[equipment.status]}</span>
+                <h2 className={`font-bold truncate text-white ${embedded ? 'text-sm' : 'text-lg'}`}>{equipment.name}</h2>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 {(equipment.sopFileUrl || (typeResource?.sharedSopFiles && typeResource.sharedSopFiles.length > 0)) && (
-                  <Button variant={backgroundImageUrl ? "secondary" : "outline"} size="sm" className="h-8 w-8 p-0 bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white border border-emerald-500/30"
                     onClick={() => { if (equipment.sopFileUrl) window.open(equipment.sopFileUrl, '_blank'); else if (typeResource?.sharedSopFiles?.[0]) window.open(typeResource.sharedSopFiles[0].url, '_blank'); }}
                     title={equipment.sopFileUrl ? (equipment.sopFileName || 'SOP文件') : '类型共享SOP'}>
                     <FileText className="h-5 w-5" />
                   </Button>
                 )}
                 {!readOnly && (
-                  <Button variant={backgroundImageUrl ? "secondary" : "outline"} size="sm" onClick={() => setShowQRCode(!showQRCode)}
-                    className={`h-8 w-8 p-0 ${showQRCode ? 'bg-primary text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} border-0`} title={showQRCode ? '隐藏二维码' : '显示二维码'}>
+                  <Button variant="ghost" size="icon" onClick={() => setShowQRCode(!showQRCode)}
+                    className={`h-9 w-9 rounded-full border transition-all ${showQRCode ? 'bg-primary text-white border-primary' : 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500 hover:text-white'}`} 
+                    title={showQRCode ? '隐藏二维码' : '显示二维码'}>
                     <QrCode className="h-5 w-5" />
                   </Button>
                 )}
-                <Button variant={backgroundImageUrl ? "secondary" : "ghost"} size="sm" onClick={onClose}
-                  className={`h-8 w-8 p-0 ${backgroundImageUrl ? 'bg-white/20 hover:bg-white/30 text-white' : ''}`}>
+                <Button variant="ghost" size="icon" onClick={onClose}
+                  className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20 border border-white/20">
                   <X className="h-5 w-5" />
                 </Button>
               </div>
             </div>
-            {!equipment.imageUrl && typeResource?.sharedImageUrl && (
-              <div className="mt-1"><span className="text-[10px] px-1.5 py-0.5 rounded bg-white/20 text-white/80">类型共享图片</span></div>
-            )}
           </div>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3">
-          <div className="space-y-4 text-white">
-            {showQRCode && (
-              <div className="border border-white/20 rounded-lg p-2 bg-white/10 backdrop-blur-sm"><QRCodeGenerator equipment={equipment} /></div>
-            )}
-            {typeResource?.sharedSopFiles && typeResource.sharedSopFiles.length > 1 && (
-              <div className="flex flex-wrap gap-1 bg-white/10 backdrop-blur-sm rounded-lg p-2 border border-white/20">
-                <span className="text-xs text-white/80">更多SOP:</span>
-                {typeResource.sharedSopFiles.slice(1).map((file, index) => (
-                  <Button key={index} variant="outline" size="sm" className="h-6 text-xs bg-emerald-500/80 border-emerald-400/50 text-white hover:bg-emerald-500" onClick={() => window.open(file.url, '_blank')}>
-                    <FileText className="h-3 w-3 mr-1" />{file.name}
-                  </Button>
-                ))}
-              </div>
-            )}
-            {isEditing && !readOnly ? (
-              <EquipmentForm
-                equipment={editedEquipment}
-                onChange={handleChange}
-                mode="edit"
-                variant="glass"
-                equipmentTypes={equipmentTypes}
-                footer={
-                  <div className="flex justify-end gap-2">
-                    <Button onClick={handleSave} size="sm" className="bg-green-600 hover:bg-green-700 text-white">保存</Button>
-                    <Button onClick={handleCancel} size="sm" variant="outline" className="bg-white/20 hover:bg-white/30 text-white border-white/30">取消</Button>
+
+          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            <div className="space-y-6">
+              {showQRCode && (
+                <div className="border border-white/20 rounded-xl p-4 bg-white/5 backdrop-blur-sm flex justify-center animate-in zoom-in-95 duration-200">
+                  <QRCodeGenerator equipment={equipment} />
+                </div>
+              )}
+              
+              {typeResource?.sharedSopFiles && typeResource.sharedSopFiles.length > 1 && (
+                <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
+                  <span className="text-xs text-white/50 block mb-2 font-medium uppercase tracking-wider">更多共享资源:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {typeResource.sharedSopFiles.slice(1).map((file, index) => (
+                      <Button key={index} variant="outline" size="sm" className="h-8 text-xs bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-white" onClick={() => window.open(file.url, '_blank')}>
+                        <FileText className="h-3.5 w-3.5 mr-1.5" />{file.name}
+                      </Button>
+                    ))}
                   </div>
-                }
-              />
-            ) : (
-              <ViewForm equipment={equipment} onEdit={() => setIsEditing(true)} onDelete={handleDelete} equipmentTypes={equipmentTypes} readOnly={readOnly} />
-            )}
-            <MaintenanceScheduleManager
-              equipmentId={equipment.id} equipmentName={equipment.name} equipmentResponsible={equipment.responsible}
-              equipmentResponsibleEmail={equipment.responsible_email} equipmentType={equipment.type}
-              onScheduleChange={() => setMaintenanceSchedulesKey(prev => prev + 1)} readOnly={readOnly} />
+                </div>
+              )}
+
+              {isEditing && !readOnly ? (
+                <div className="animate-in fade-in duration-300">
+                  <EquipmentForm
+                    equipment={editedEquipment}
+                    onChange={handleChange}
+                    mode="edit"
+                    variant="glass"
+                    equipmentTypes={equipmentTypes}
+                    footer={
+                      <div className="flex justify-end gap-3 mt-6">
+                        <Button onClick={handleCancel} variant="ghost" className="text-white hover:bg-white/10">取消</Button>
+                        <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700 text-white px-6">保存更改</Button>
+                      </div>
+                    }
+                  />
+                </div>
+              ) : (
+                <ViewForm equipment={equipment} onEdit={() => setIsEditing(true)} onDelete={handleDelete} equipmentTypes={equipmentTypes} readOnly={readOnly} />
+              )}
+
+              {equipment.status !== 'scrapped' && (
+                <div className="pt-2">
+                  <MaintenanceScheduleManager
+                    equipmentId={equipment.id} equipmentName={equipment.name} equipmentResponsible={equipment.responsible}
+                    equipmentResponsibleEmail={equipment.responsible_email} equipmentType={equipment.type}
+                    onScheduleChange={() => setMaintenanceSchedulesKey(prev => prev + 1)} readOnly={readOnly} />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

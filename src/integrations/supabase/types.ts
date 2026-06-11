@@ -443,6 +443,137 @@ export type Database = {
           },
         ]
       }
+      equipment_maintenance_responsible: {
+        Row: {
+          created_at: string | null
+          equipment_id: string
+          id: string
+          maintenance_level: number
+          notes: string | null
+          updated_at: string | null
+          user_id: string
+          created_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          equipment_id: string
+          id?: string
+          maintenance_level: number
+          notes?: string | null
+          updated_at?: string | null
+          user_id: string
+          created_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          equipment_id?: string
+          id?: string
+          maintenance_level?: number
+          notes?: string | null
+          updated_at?: string | null
+          user_id?: string
+          created_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_maintenance_responsible_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_maintenance_responsible_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_completion_notifications: {
+        Row: {
+          completed_at: string
+          completed_by: string
+          completed_by_level: number
+          completed_by_name: string
+          created_at: string | null
+          equipment_id: string
+          id: string
+          notified_at: string | null
+          notified_to: string
+          notified_to_level: number
+          notified_to_name: string
+          notification_status: string | null
+          read_at: string | null
+          schedule_id: string
+          notes: string | null
+        }
+        Insert: {
+          completed_at: string
+          completed_by: string
+          completed_by_level: number
+          completed_by_name: string
+          created_at?: string | null
+          equipment_id: string
+          id?: string
+          notified_at?: string | null
+          notified_to: string
+          notified_to_level: number
+          notified_to_name: string
+          notification_status?: string | null
+          read_at?: string | null
+          schedule_id: string
+          notes?: string | null
+        }
+        Update: {
+          completed_at?: string
+          completed_by?: string
+          completed_by_level?: number
+          completed_by_name?: string
+          created_at?: string | null
+          equipment_id?: string
+          id?: string
+          notified_at?: string | null
+          notified_to?: string
+          notified_to_level?: number
+          notified_to_name?: string
+          notification_status?: string | null
+          read_at?: string | null
+          schedule_id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_completion_notifications_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_completion_notifications_notified_to_fkey"
+            columns: ["notified_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_completion_notifications_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_completion_notifications_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       part_transactions: {
         Row: {
           created_at: string

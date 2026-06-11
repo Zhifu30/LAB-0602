@@ -4,15 +4,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { Equipment, statusLabels, statusIcons, equipmentTypeLabels, equipmentTypeIcons } from '@/types/equipment';
 import { supabase } from '@/integrations/supabase/client';
 
-const TYPE_SENTINEL = '__TYPE__';
-
 interface MaintenanceInfo {
   next_due_date: string;
   title: string;
-}
-
-interface TypeResourceInfo {
-  sharedImageUrl: string | null;
 }
 
 interface EquipmentCardProps {
@@ -45,9 +39,12 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onClick, onSta
   const EquipmentIcon = getEquipmentIcon(equipment.type);
   const { isAdmin } = useAuth();
   const [maintenanceInfo, setMaintenanceInfo] = useState<MaintenanceInfo | null>(null);
-  const [typeResource, setTypeResource] = useState<TypeResourceInfo | null>(null);
+
+  const isScrapped = equipment.status === 'scrapped' || (equipment as any).isScrapped === true;
 
   useEffect(() => {
+    // 报废设备不获取维护信息 - 报废设备不参与任何管理活动
+    if (isScrapped) return;
     const fetchMaintenanceInfo = async () => {
       const { data } = await supabase
         .from('maintenance_schedules')
@@ -56,26 +53,11 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onClick, onSta
         .eq('is_active', true)
         .order('next_due_date', { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle();
       if (data) setMaintenanceInfo(data);
     };
-    fetchMaintenanceInfo();
-  }, [equipment.id]);
-
-  useEffect(() => {
-    const fetchTypeResource = async () => {
-      if (!equipment.type) { setTypeResource(null); return; }
-      const { data } = await supabase
-        .from('equipment_templates')
-        .select('shared_image_url')
-        .eq('equipment_type', equipment.type)
-        .eq('model', TYPE_SENTINEL)
-        .eq('manufacturer', TYPE_SENTINEL)
-        .maybeSingle();
-      if (data) setTypeResource({ sharedImageUrl: data.shared_image_url });
-    };
-    fetchTypeResource();
-  }, [equipment.type]);
+    fetchMaintenanceInfo().catch(() => {});
+  }, [equipment.id, isScrapped]);
 
   const getStatusColor = (status: Equipment['status']) => {
     const m: Record<Equipment['status'], string> = {
@@ -121,22 +103,25 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onClick, onSta
   const handleStatusClick = (e: React.MouseEvent) => { e.stopPropagation(); onStatusChange?.(equipment.id, equipment.status); };
   const handleQRClick = (e: React.MouseEvent) => { e.stopPropagation(); onQRClick?.(equipment); };
 
-  const bg = equipment.imageUrl || typeResource?.sharedImageUrl || getDefaultImage(equipment.type);
+  const bg = (equipment.imageUrl && equipment.imageUrl.trim() !== '') 
+    ? equipment.imageUrl 
+    : getDefaultImage(equipment.type);
+
   const calColor = getCalibrationColor(equipment.nextCalibrationDate);
   const maintColor = getMaintenanceColor(maintenanceInfo?.next_due_date);
 
   return (
     <div
-      className="group relative rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl h-[380px] bg-gradient-to-br from-slate-900 to-slate-800"
+      className="group relative rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl h-[380px] bg-slate-950"
       style={{ border: `2px solid ${statusColor}`, boxShadow: `0 15px 40px -15px ${statusColor}50, 0 0 0 1px ${statusColor}20` }}
       onClick={onClick}
     >
-      <div className="absolute inset-0 bg-cover bg-center transition-all duration-700 group-hover:scale-110"
-        style={{ backgroundImage: `url(${bg})`, filter: 'saturate(1.1) contrast(1.05)' }}>
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent transition-all duration-500 group-hover:from-slate-900/85 group-hover:via-slate-900/30" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-transparent" />
-        <div className="absolute inset-0 opacity-15 transition-opacity duration-300 group-hover:opacity-25"
-          style={{ background: `radial-gradient(ellipse at bottom, ${statusColor}50 0%, transparent 60%)` }} />
+      <div className="absolute inset-0 bg-cover bg-center transition-all duration-1000 group-hover:scale-110"
+        style={{ backgroundImage: bg ? `url(${bg})` : undefined }}>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent transition-opacity duration-500 group-hover:opacity-60" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-transparent" />
+        <div className="absolute inset-0 opacity-10 transition-opacity duration-300 group-hover:opacity-20"
+          style={{ background: `radial-gradient(ellipse at bottom, ${statusColor}40 0%, transparent 60%)` }} />
       </div>
 
       <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20">
@@ -145,7 +130,7 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onClick, onSta
             style={{ background: `linear-gradient(135deg, ${statusColor}ee 0%, ${statusColor}cc 100%)`, boxShadow: `0 6px 20px ${statusColor}40` }}>
             <span className="text-white text-xs font-bold whitespace-nowrap">{equipment.id}</span>
             <div className="w-px h-3 bg-white/40" />
-            <div className="flex items-center gap-0.5 cursor-pointer transition-all duration-200 hover:scale-105" onClick={handleStatusClick} title="点击选择状态">
+            <div className={`flex items-center gap-0.5 transition-all duration-200 ${isScrapped ? 'cursor-default' : 'cursor-pointer hover:scale-105'}`} onClick={isScrapped ? undefined : handleStatusClick} title={isScrapped ? '已报废' : '点击选择状态'}>
               <span className="text-white/90 text-xs">{statusIcons[equipment.status]}</span>
               <span className="text-white text-[10px] font-semibold whitespace-nowrap">{statusLabels[equipment.status]}</span>
             </div>
@@ -162,7 +147,7 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onClick, onSta
             style={{ backgroundColor: `${statusColor}cc` }} onClick={handleQRClick} title="二维码">
             <QrCode className="h-4 w-4 text-white" />
           </div>
-          {isAdmin() && onScrap && (
+          {isAdmin() && onScrap && !isScrapped && (
             <div className="p-2 rounded-full shadow-lg border border-white/20 hover:scale-110 transition-all duration-200 backdrop-blur-md cursor-pointer"
               style={{ backgroundColor: '#ef4444cc' }} onClick={e => { e.stopPropagation(); onScrap(equipment); }} title="设备报废">
               <Trash2 className="h-4 w-4 text-white" />
@@ -171,7 +156,7 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onClick, onSta
         </div>
       </div>
 
-      {(maintenanceInfo || equipment.nextCalibrationDate) && (
+      {!isScrapped && (maintenanceInfo || equipment.nextCalibrationDate) && (
         <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center gap-2 justify-center">
           {maintenanceInfo && (
             <div className="px-2 py-1 rounded-lg text-[10px] font-semibold shadow-lg backdrop-blur-md border border-white/30 flex items-center gap-1"
