@@ -1477,9 +1477,12 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
       }
       await supabase
         .from('equipment_templates')
-        .update({ type_images: images as any } as any)
-        .eq('equipment_type', selectedType.name)
-        .eq('model', TYPE_SENTINEL);
+        .upsert({
+          equipment_type: selectedType.name,
+          model: TYPE_SENTINEL,
+          manufacturer: TYPE_SENTINEL,
+          type_images: images as any,
+        }, { onConflict: 'equipment_type,model,manufacturer' } as any);
 
       const ids = Array.from(selectedSyncDeviceIds);
       // 2. 尝试 RPC 选择性同步
