@@ -2231,9 +2231,8 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
                 onRefresh={() => { onEquipmentRefresh?.(); refetchAllSchedules(); }}
                 onSyncStart={(url) => {
                   setPendingSharedUrl(url);
-                  // 默认选中已使用该URL的设备
-                  const preSelected = linkedEquipments.filter(eq => eq.imageUrl === url).map(eq => eq.id);
-                  setSelectedSyncDeviceIds(new Set(preSelected));
+                  // 默认全选 → 用户可以取消不需要的设备
+                  setSelectedSyncDeviceIds(new Set(linkedEquipments.map(eq => eq.id)));
                   setShowSelectiveSync(true);
                 }}
               />

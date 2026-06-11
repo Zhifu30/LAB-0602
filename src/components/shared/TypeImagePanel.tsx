@@ -62,6 +62,21 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
 
   const imageRecs = useMemo(() => getImageRecommendations(linkedEquipments), [linkedEquipments]);
 
+  // 每张画廊图片的设备计数（来自设备数据）
+  const galleryWithCounts = useMemo(() => {
+    const countMap = new Map<string, { count: number; names: string[] }>();
+    if (imageRecs) {
+      for (const item of imageRecs.urlBreakdown) {
+        countMap.set(item.url, { count: item.count, names: item.equipmentNames });
+      }
+    }
+    return gallery.map(img => ({
+      ...img,
+      count: countMap.get(img.url)?.count ?? 0,
+      names: countMap.get(img.url)?.names ?? [],
+    }));
+  }, [gallery, imageRecs]);
+
   // 加载画廊
   const loadGallery = useCallback(async () => {
     setGalleryLoading(true);
@@ -187,7 +202,7 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
             </div>
           ) : gallery.length > 0 ? (
             <div className="space-y-2">
-              {gallery.map((img, i) => (
+              {galleryWithCounts.map((img, i) => (
                 <div key={i} className={cn(
                   "rounded-lg overflow-hidden border transition-all",
                   img.is_default
@@ -204,23 +219,38 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
                         </Badge>
                       </div>
                     )}
+                    {img.count > 0 && (
+                      <div className="absolute top-2 right-2">
+                        <Badge className="text-[9px] bg-black/50 text-white border-0 backdrop-blur-sm">
+                          {img.count} 台设备
+                        </Badge>
+                      </div>
+                    )}
                   </div>
-                  <div className="p-2 flex items-center justify-between gap-2">
-                    <span className="text-xs text-white truncate flex-1">{img.label}</span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {!img.is_default && (
+                  <div className="p-2 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-white truncate flex-1">{img.label}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {!img.is_default && (
+                          <Button size="sm" variant="ghost"
+                            className="h-6 text-[10px] text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                            onClick={() => handleSetDefault(img.url)}>
+                            <Star className="h-3 w-3 mr-0.5" />默认
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost"
-                          className="h-6 text-[10px] text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
-                          onClick={() => handleSetDefault(img.url)}>
-                          <Star className="h-3 w-3 mr-0.5" />默认
+                          className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                          onClick={() => handleRemove(img.url)}>
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
-                      )}
-                      <Button size="sm" variant="ghost"
-                        className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                        onClick={() => handleRemove(img.url)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      </div>
                     </div>
+                    {/* 每张图都可以选择性同步 */}
+                    <Button size="sm" variant="outline"
+                      className="w-full h-6 text-[10px] bg-white/5 border-white/10 text-white/60 hover:bg-blue-500/20 hover:text-blue-300 hover:border-blue-400/30"
+                      onClick={() => onSyncStart?.(img.url)}>
+                      选择设备同步此图 →
+                    </Button>
                   </div>
                 </div>
               ))}
