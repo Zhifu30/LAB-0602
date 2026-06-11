@@ -8,6 +8,20 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+/** 根据频率计算首次到期日（从今天起顺延） */
+function calcFirstDueDate(frequency: string): string {
+  const d = new Date();
+  switch (frequency) {
+    case 'daily': d.setDate(d.getDate() + 1); break;
+    case 'weekly': d.setDate(d.getDate() + 7); break;
+    case 'monthly': d.setMonth(d.getMonth() + 1); break;
+    case 'quarterly': d.setMonth(d.getMonth() + 3); break;
+    case 'yearly': d.setFullYear(d.getFullYear() + 1); break;
+    default: d.setMonth(d.getMonth() + 1);
+  }
+  return d.toISOString().split('T')[0];
+}
+
 export interface MaintenancePlan {
   key: string;
   title: string;
@@ -121,10 +135,12 @@ export async function syncPlanInstances(typeName: string, specificPlanKey?: stri
       const existIds = new Set((exist || []).map(s => s.equipment_id));
       activeDevices.forEach(dev => {
         if (!existIds.has(dev.id)) {
+          // ★ 根据频率计算首次到期日，避免全部"今日到期"
+          const firstDue = calcFirstDueDate(plan.frequency);
           payloads.push({
             equipment_id: dev.id, template_key: plan.key,
             title: plan.title, description: plan.description || `${plan.title} - 继承自类型模板`,
-            frequency: plan.frequency, next_due_date: new Date().toISOString().split('T')[0],
+            frequency: plan.frequency, next_due_date: firstDue,
             reminder_days_before: plan.reminder_days_before,
             assigned_name: dev.responsible || null, assigned_email: dev.responsible_email || null, is_active: true,
           });

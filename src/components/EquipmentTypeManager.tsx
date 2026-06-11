@@ -23,7 +23,7 @@ import EquipmentDetailModal from '@/components/EquipmentDetailModal';
 import MaintenancePlanCard from '@/components/MaintenancePlanCard';
 import GlassModal from '@/components/GlassModal';
 import MaintenanceScheduleFormDialog from '@/components/shared/MaintenanceScheduleFormDialog';
-import MaintenancePlanFormDialog from '@/components/shared/MaintenancePlanFormDialog';
+import { MaintenanceScheduleFormDialog as MaintenancePlanFormDialog } from '@/components/shared/MaintenanceScheduleFormDialog';
 import EquipmentPickerDialog from '@/components/shared/EquipmentPickerDialog';
 import HierarchicalResponsibleColumn from '@/components/HierarchicalResponsibleColumn';
 import TypeImagePanel from '@/components/shared/TypeImagePanel';

@@ -41,16 +41,27 @@ export function useMaintenanceSchedules() {
     form: MaintenanceScheduleFormData,
     assignee?: { name: string | null; email: string | null },
   ) => {
-    const { error } = await supabase.from('maintenance_schedules').update({
-      title: form.title.trim(),
-      description: form.description.trim() || null,
-      frequency: form.frequency,
+    // ★ P1 修复：如果是模板实例，只允许更新 next_due_date 和指派人
+    const { data: existing } = await supabase
+      .from('maintenance_schedules').select('template_key').eq('id', scheduleId).maybeSingle();
+    const isTemplateLinked = !!existing?.template_key;
+
+    const updateData: Record<string, any> = {
       next_due_date: form.next_due_date,
       reminder_days_before: form.reminder_days_before,
       assigned_user_id: form.assigned_user_id || null,
       assigned_name: assignee?.name || null,
       assigned_email: assignee?.email || null,
-    }).eq('id', scheduleId);
+    };
+
+    if (!isTemplateLinked) {
+      // Ad-Hoc 计划：可修改全部字段
+      updateData.title = form.title.trim();
+      updateData.description = form.description.trim() || null;
+      updateData.frequency = form.frequency;
+    }
+
+    const { error } = await supabase.from('maintenance_schedules').update(updateData).eq('id', scheduleId);
     if (error) throw error;
   }, []);
 
