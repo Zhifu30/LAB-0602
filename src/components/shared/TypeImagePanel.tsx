@@ -32,7 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Equipment } from '@/types/equipment';
 import {
   uploadTypeSharedImage, syncTypeSharedImageToDevices,
-  cleanupOrphanImages, getImageRecommendations,
+  cleanupNonSharedTypeFiles, checkFullSyncStatus, getImageRecommendations,
 } from '@/utils/imageUtils';
 import { cn } from '@/lib/utils';
 
@@ -58,7 +58,7 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
   const [selectedRecUrl, setSelectedRecUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false);
-  const [orphanCount, setOrphanCount] = useState<number | null>(null);
+  const [syncStatus, setSyncStatus] = useState<{ fullySynced: boolean; totalDevices: number; syncedCount: number; unsyncedCount: number } | null>(null);
   const [cleanupPreview, setCleanupPreview] = useState<any>(null);
 
   // 统计不一致设备数
@@ -95,35 +95,36 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
     }
   }, [selectedType.sharedImageUrl, onSyncStart]);
 
-  // 扫描冗余
-  const handleScanOrphans = useCallback(async () => {
+  // ★ 全量同步后清理：检查同步状态 + 清理非共享图片文件
+  const handleCheckCleanup = useCallback(async () => {
+    if (!selectedType.sharedImageUrl) return;
     setCleanupLoading(true);
     try {
-      const preview = await cleanupOrphanImages(selectedType.name, true);
-      setCleanupPreview(preview);
-      setOrphanCount(preview.deleted.length);
-      if (preview.deleted.length === 0) {
-        toast({ title: '🎉 无冗余文件', description: '所有图片均被引用' });
+      const status = await checkFullSyncStatus(selectedType.name, selectedType.sharedImageUrl);
+      setSyncStatus(status);
+      if (status.fullySynced) {
+        const preview = await cleanupNonSharedTypeFiles(selectedType.name, selectedType.sharedImageUrl, true);
+        setCleanupPreview(preview);
       }
     } catch (err: any) {
-      toast({ title: '扫描失败', description: err?.message, variant: 'destructive' });
+      toast({ title: '检查失败', description: err?.message, variant: 'destructive' });
     } finally {
       setCleanupLoading(false);
     }
-  }, [selectedType.name, toast]);
+  }, [selectedType.name, selectedType.sharedImageUrl, toast]);
 
-  // 确认清理
   const handleConfirmCleanup = useCallback(async () => {
+    if (!selectedType.sharedImageUrl) return;
     try {
-      const result = await cleanupOrphanImages(selectedType.name, false);
+      const result = await cleanupNonSharedTypeFiles(selectedType.name, selectedType.sharedImageUrl, false);
       toast({ title: '清理完成', description: `已删除 ${result.deleted.length} 个冗余文件` });
       setCleanupPreview(null);
-      setOrphanCount(null);
+      setSyncStatus(null);
       onRefresh();
     } catch (err: any) {
       toast({ title: '清理失败', description: err?.message, variant: 'destructive' });
     }
-  }, [selectedType.name, onRefresh, toast]);
+  }, [selectedType.name, selectedType.sharedImageUrl, onRefresh, toast]);
 
   // 设备 Combobox 选项
   const equipmentOptions = linkedEquipments
@@ -207,31 +208,43 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
                 <p className="text-xs text-green-400 text-center py-1">✅ 已全量同步</p>
               )}
 
-              {/* 渐进式：扫描后才显示清理 */}
-              {orphanCount !== null ? (
-                orphanCount > 0 ? (
+              {/* ★ 全量同步后清理 */}
+              {syncStatus ? (
+                syncStatus.fullySynced ? (
                   <>
-                    <Button size="sm" variant="destructive" className="w-full h-7 text-xs"
-                      onClick={handleConfirmCleanup}>
-                      🗑️ 清理冗余空间 ({orphanCount} 个文件)
-                    </Button>
-                    {cleanupPreview?.deleted.length > 0 && (
-                      <div className="space-y-1">
-                        {cleanupPreview.deleted.map((f: string, i: number) => (
-                          <p key={i} className="text-[9px] text-red-400/70 truncate">{f}</p>
-                        ))}
-                      </div>
+                    <p className="text-xs text-green-400 text-center">✅ 全部 {syncStatus.totalDevices} 台设备已同步</p>
+                    {cleanupPreview && cleanupPreview.deleted.length > 0 ? (
+                      <>
+                        <Button size="sm" variant="destructive" className="w-full h-7 text-xs"
+                          onClick={handleConfirmCleanup}>
+                          🗑️ 清理冗余文件 ({cleanupPreview.deleted.length} 个)
+                        </Button>
+                        <div className="space-y-0.5 max-h-24 overflow-y-auto">
+                          {cleanupPreview.deleted.map((f: string, i: number) => (
+                            <p key={i} className="text-[9px] text-red-400/60 truncate">{f}</p>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-xs text-green-400 text-center">🎉 无冗余文件，存储已整洁</p>
                     )}
                   </>
                 ) : (
-                  <p className="text-xs text-green-400 text-center">🎉 无冗余文件</p>
+                  <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2 text-center">
+                    <p className="text-[10px] text-amber-300">
+                      同步进度: {syncStatus.syncedCount}/{syncStatus.totalDevices} 台已同步
+                    </p>
+                    <p className="text-[9px] text-amber-400/60">
+                      全部同步完成后才能清理冗余
+                    </p>
+                  </div>
                 )
               ) : (
                 <Button size="sm" variant="outline"
                   className="w-full h-7 text-xs bg-white/5 border-white/20 text-white/50 hover:bg-white/10"
-                  onClick={handleScanOrphans} disabled={cleanupLoading}>
+                  onClick={handleCheckCleanup} disabled={cleanupLoading}>
                   {cleanupLoading ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
-                  扫描冗余文件
+                  {selectedType.sharedImageUrl ? '检查清理状态' : '扫描冗余文件'}
                 </Button>
               )}
             </>

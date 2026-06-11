@@ -328,6 +328,72 @@ export async function cleanupOrphanImages(
   return { deleted, freedBytes, errors };
 }
 
+/**
+ * ★ 检查类型是否已全量同步（所有设备都用共享图片）
+ */
+export async function checkFullSyncStatus(typeName: string, sharedImageUrl: string): Promise<{
+  fullySynced: boolean;
+  totalDevices: number;
+  syncedCount: number;
+  unsyncedCount: number;
+  unsyncedDevices: { id: string; name: string }[];
+}> {
+  const { data: eqs } = await supabase
+    .from('equipment')
+    .select('id, name, image_url')
+    .eq('type', typeName)
+    .neq('status', 'scrapped');
+
+  const synced = (eqs || []).filter(e => e.image_url === sharedImageUrl);
+  const unsynced = (eqs || []).filter(e => e.image_url !== sharedImageUrl);
+
+  return {
+    fullySynced: unsynced.length === 0 && (eqs || []).length > 0,
+    totalDevices: (eqs || []).length,
+    syncedCount: synced.length,
+    unsyncedCount: unsynced.length,
+    unsyncedDevices: unsynced.map(e => ({ id: e.id, name: e.name })),
+  };
+}
+
+/**
+ * ★ 全量同步后的清理：删除该类型所有非共享图片的 Storage 文件
+ * 只有 fullySynced 时才应该调用此函数
+ */
+export async function cleanupNonSharedTypeFiles(
+  typeName: string,
+  sharedImageUrl: string,
+  dryRun: boolean = true
+): Promise<{ deleted: string[]; errors: string[] }> {
+  const deleted: string[] = [];
+  const errors: string[] = [];
+
+  // 1. 扫描 types/ 目录下该类型的所有文件
+  const typeFiles = await listTypeStorageFiles(typeName);
+
+  // 2. 排除共享图片文件
+  const filesToDelete = typeFiles.filter((f: any) => {
+    return f.publicUrl !== sharedImageUrl;
+  });
+
+  if (filesToDelete.length === 0) return { deleted: [], errors: [] };
+
+  if (dryRun) {
+    return { deleted: filesToDelete.map((f: any) => f.name), errors: [] };
+  }
+
+  // 3. 执行删除
+  const paths = filesToDelete.map((f: any) => `types/${f.name}`);
+  const { error } = await supabase.storage.from('equipment-images').remove(paths);
+  if (error) {
+    errors.push(error.message);
+  } else {
+    deleted.push(...paths);
+  }
+
+  return { deleted, errors };
+}
+
 // ============================================================
 // ⑧ 开发模式自检
 // ============================================================

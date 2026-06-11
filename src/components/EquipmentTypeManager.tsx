@@ -2225,6 +2225,7 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
             {/* 第四列：共享图片管理（重构为独立组件） */}
             {selectedType && (
               <TypeImagePanel
+                key={selectedType.id}
                 selectedType={selectedType}
                 linkedEquipments={linkedEquipments}
                 onRefresh={() => { onEquipmentRefresh?.(); refetchAllSchedules(); }}
