@@ -185,8 +185,11 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
     }
   }, [selectedType.name, (gallery.find(g => g.is_default)?.url || gallery[0]?.url || null), toast]);
 
-  const mismatchedCount = (gallery.find(g => g.is_default)?.url || gallery[0]?.url || null)
-    ? linkedEquipments.filter((eq: any) => eq.imageUrl !== (gallery.find(g => g.is_default)?.url || gallery[0]?.url || null)).length : 0;
+  // ★ 设备只要使用画廊中任意一张图就算"已同步"
+  const galleryUrlSet = useMemo(() => new Set(gallery.map(g => g.url)), [gallery]);
+  const mismatchedCount = gallery.length > 0
+    ? linkedEquipments.filter((eq: any) => !galleryUrlSet.has(eq.imageUrl)).length
+    : linkedEquipments.length;
 
   // 设备 Combobox 选项
   const equipmentOptions = linkedEquipments
@@ -364,7 +367,7 @@ const TypeImagePanel: React.FC<TypeImagePanelProps> = ({
               <div className="text-center">
                 {mismatchedCount > 0 ? (
                   <p className="text-xs text-amber-300">
-                    {mismatchedCount} 台设备未使用默认图片 — 点击上方图片的同步按钮选择设备
+                    {mismatchedCount} 台设备未使用类型图片 — 点击上方图片的同步按钮选择设备
                   </p>
                 ) : (
                   <p className="text-xs text-green-400">✅ 已全量同步</p>
