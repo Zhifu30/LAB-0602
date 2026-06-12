@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
   PRIORITY_COLORS, VARIANT_BORDERS, MAINTENANCE_ICON_MAP,
-  DEFAULT_ACTION_REGISTRY, ActionDef,
+  DEFAULT_ACTION_REGISTRY, ACTION_COLORS, ActionDef,
 } from '@/utils/maintenanceActionRegistry';
 import { Button } from '@/components/ui/button';
 import { getDaysUntilDue } from '@/utils/maintenanceDateUtils';
@@ -114,7 +114,8 @@ export const MaintenanceTemplateCard: React.FC<MaintenanceTemplateCardProps> = (
       {enabledActions && enabledActions.length > 0 && (
         <div className="flex items-center gap-1.5 mt-1 pt-2 border-t">
           {enabledActions.map(({ key, def, onClick }) => (
-            <Button key={key} variant={def.variant || 'outline'} size="sm" className="h-7 text-[10px] px-2"
+            <Button key={key} variant={def.variant === 'destructive' ? 'destructive' : 'default'}
+              size="sm" className={cn('h-7 text-[10px] px-2', def.variant !== 'destructive' && (ACTION_COLORS[key] || ''))}
               onClick={onClick}>
               <def.icon className="h-3 w-3 mr-1" />{def.label}
             </Button>

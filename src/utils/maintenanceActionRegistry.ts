@@ -27,13 +27,32 @@ export interface ActionDef {
 }
 
 export const DEFAULT_ACTION_REGISTRY: Record<string, ActionDef> = {
-  link:     { icon: Link2, label: '同步', variant: 'outline' },
-  remind:   { icon: Bell, label: '提醒', variant: 'outline' },
-  complete: { icon: Check, label: '完成', variant: 'outline' },
-  edit:     { icon: Edit, label: '编辑', variant: 'outline' },
+  link:     { icon: Link2, label: '同步', variant: 'default' },
+  remind:   { icon: Bell, label: '提醒', variant: 'default' },
+  complete: { icon: Check, label: '完成', variant: 'default' },
+  edit:     { icon: Edit, label: '编辑', variant: 'default' },
   delete:   { icon: Trash2, label: '删除', variant: 'destructive', adminOnly: true },
-  sync:     { icon: RefreshCw, label: '同步', variant: 'outline' },
+  sync:     { icon: RefreshCw, label: '同步', variant: 'default' },
 };
+
+// 填充色按钮样式（按功能统一颜色）
+export const ACTION_COLORS: Record<string, string> = {
+  link: 'bg-blue-500 hover:bg-blue-600 text-white',
+  remind: 'bg-orange-500 hover:bg-orange-600 text-white',
+  complete: 'bg-green-500 hover:bg-green-600 text-white',
+  edit: 'bg-indigo-500 hover:bg-indigo-600 text-white',
+  delete: 'bg-red-500 hover:bg-red-600 text-white',
+  sync: 'bg-blue-500 hover:bg-blue-600 text-white',
+};
+
+export function getVisibleActions(
+  plan: { actions?: { enabled?: string[]; hiddenIn?: string[] } },
+  context: string
+): string[] {
+  return (plan.actions?.enabled || []).filter(
+    action => !(plan.actions?.hiddenIn || []).includes(context)
+  );
+}
 
 // ── 优先级颜色映射 ──
 export const PRIORITY_COLORS: Record<string, string> = {

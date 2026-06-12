@@ -177,6 +177,9 @@ export interface ResolvedSchedule {
   reminder_sent: boolean;
   last_completed_at: string | null;
   source: 'ad-hoc' | 'template' | 'missing-template';
+  display?: { color?: string; icon?: string; priority?: string; variant?: string; badgeLabel?: string };
+  actions?: { enabled?: string[]; adminOnly?: string[]; hiddenIn?: string[] };
+  layout?: { showDescription?: boolean; showEquipmentCount?: boolean; showSourceBadge?: boolean };
   equipment?: { name?: string; type?: string; image_url?: string | null; responsible?: string; responsible_email?: string | null };
 }
 
@@ -204,6 +207,9 @@ export function resolveMaintenanceSchedule(
     title: plan.title, description: plan.description,
     frequency: plan.frequency, reminder_days_before: plan.reminder_days_before,
     source: 'template',
+    display: (plan as any).display,
+    actions: (plan as any).actions,
+    layout: (plan as any).layout,
   };
 }
 
