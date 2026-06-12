@@ -6,18 +6,18 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit3, Trash2, RefreshCw, Wrench, ShieldCheck } from 'lucide-react';
+import { Plus, RefreshCw, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import {
   MaintenancePlan, getTypeMaintenancePlans, saveOrUpdateTypePlanRPC, deleteTypeMaintenancePlan,
-  syncPlanInstances, ResolvedSchedule,
+  syncPlanInstances,
 } from '@/utils/maintenanceUtils';
 import MaintenanceScheduleFormDialog from '@/components/shared/MaintenanceScheduleFormDialog';
-import { getDaysUntilDue } from '@/utils/maintenanceDateUtils';
+import MaintenanceTemplateCard from '@/components/shared/MaintenanceTemplateCard';
+import { DEFAULT_ACTION_REGISTRY } from '@/utils/maintenanceActionRegistry';
 
 interface TypeMaintenancePlanPanelProps {
   selectedType: string | null;
@@ -133,33 +133,20 @@ export const TypeMaintenancePlanPanel: React.FC<TypeMaintenancePlanPanelProps> =
           <ScrollArea className="h-full pr-1">
             <div className="space-y-2.5">
               {plans.map((plan) => (
-                <div key={plan.key}
-                  className="p-3 border rounded-lg bg-background hover:bg-accent/20 transition-all group relative flex flex-col gap-1.5">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="text-xs font-bold flex items-center gap-1.5">
-                        {plan.title}
-                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 bg-primary/5 text-primary border-primary/20">
-                          {frequencyLabels[plan.frequency] || plan.frequency}
-                        </Badge>
-                      </h4>
-                      <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{plan.description || '暂无描述'}</p>
-                    </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2.5 top-2.5 bg-background border rounded-md shadow-sm p-0.5">
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEdit(plan)}><Edit3 className="h-3 w-3" /></Button>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(plan.key)}><Trash2 className="h-3 w-3" /></Button>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-0.5 border-t pt-1.5">
-                    <span>提前 {plan.reminder_days_before} 天提醒</span>
-                    <span className="text-muted-foreground/40">|</span>
-                    <span>{syncCounts[plan.key] ?? '?'} 台设备</span>
-                    <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 ml-auto text-primary"
-                      onClick={() => handleSync(plan.key)} title="单独同步此模板">
-                      <RefreshCw className="h-3 w-3 mr-0.5" />同步
-                    </Button>
-                  </div>
-                </div>
+                <MaintenanceTemplateCard
+                  key={plan.key}
+                  mode="template-panel"
+                  schedule={{
+                    title: plan.title, description: plan.description,
+                    frequency: plan.frequency, reminder_days_before: plan.reminder_days_before,
+                    display: plan.display, actions: plan.actions,
+                  }}
+                  enabledActions={[
+                    { key: 'edit', def: DEFAULT_ACTION_REGISTRY.edit, onClick: () => handleOpenEdit(plan) },
+                    { key: 'sync', def: DEFAULT_ACTION_REGISTRY.sync, onClick: () => handleSync(plan.key) },
+                    { key: 'delete', def: DEFAULT_ACTION_REGISTRY.delete, onClick: () => handleDelete(plan.key) },
+                  ]}
+                />
               ))}
             </div>
           </ScrollArea>
