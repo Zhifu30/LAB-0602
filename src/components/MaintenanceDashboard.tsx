@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, Wrench, AlertTriangle, Clock, RefreshCw, Layers, Search, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
-import MaintenanceScheduleCard from './MaintenanceScheduleCard';
+import MaintenanceTemplateCard from '@/components/shared/MaintenanceTemplateCard';
 import MaintenanceCalendarView from './MaintenanceCalendarView';
 import { getMaintenanceStats, groupMaintenanceSchedules, ResolvedSchedule } from '@/utils/maintenanceUtils';
+import { getDaysUntilDue } from '@/utils/maintenanceDateUtils';
 
 export default function MaintenanceDashboard() {
   const [loading, setLoading] = useState(true);
@@ -109,7 +110,11 @@ export default function MaintenanceDashboard() {
               {!collapsedTypes.has(typeName) && (
                 <CardContent className="p-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {items.map(s => <MaintenanceScheduleCard key={s.id} schedule={s} showResponsible />)}
+                    {items.map(s => {
+                      const days = getDaysUntilDue(s.next_due_date);
+                      return <MaintenanceTemplateCard key={s.id} mode="dashboard"
+                        schedule={{ ...s, display: { color: days < 0 ? '#ef4444' : days === 0 ? '#f97316' : days <= 7 ? '#f59e0b' : '#22c55e', icon: days < 0 ? 'alert-triangle' : 'wrench' } }} />;
+                    })}
                   </div>
                 </CardContent>
               )}

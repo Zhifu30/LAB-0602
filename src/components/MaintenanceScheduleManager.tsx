@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import MaintenancePlanCard from '@/components/MaintenancePlanCard';
+import MaintenanceTemplateCard from '@/components/shared/MaintenanceTemplateCard';
+import { DEFAULT_ACTION_REGISTRY } from '@/utils/maintenanceActionRegistry';
 import MaintenanceScheduleFormDialog from '@/components/shared/MaintenanceScheduleFormDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -244,22 +245,23 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
               const daysUntil = differenceInCalendarDays(new Date(schedule.next_due_date), new Date());
               const relEquip = scheduleEquipMap[schedule.id] || [];
               return (
-                <MaintenancePlanCard
-                  key={schedule.id} title={schedule.title} description={schedule.description}
-                  frequency={schedule.frequency} nextDueDate={schedule.next_due_date}
-                  assignedName={schedule.assigned_name || undefined}
-                  reminderDaysBefore={schedule.reminder_days_before} daysUntilDue={daysUntil}
-                  reminderSent={schedule.reminder_sent}
-                  equipmentIds={relEquip.length > 0 ? relEquip.map(e => e.id) : undefined}
-                  actions={!readOnly ? (
-                    <div className="flex items-center gap-1.5">
-                      <Button variant="outline" size="icon" className="h-7 w-7 border-border hover:bg-accent text-muted-foreground" onClick={() => { setLinkingSchedule(schedule); setLinkEquipDate(new Date().toISOString().split('T')[0]); setShowLinkModal(true); }} title="同步到其他设备"><Link2 className="h-3.5 w-3.5" /></Button>
-                      <Button variant="outline" size="icon" className="h-7 w-7 border-border hover:bg-accent text-muted-foreground" onClick={() => handleSendReminder(schedule)} title="催办发送提醒"><Bell className="h-3.5 w-3.5" /></Button>
-                      <Button variant="outline" size="icon" className="h-7 w-7 border-green-200 bg-green-50/40 hover:bg-green-100 text-green-600 hover:text-green-700" onClick={() => handleCompleteSchedule(schedule)} title="登记本次完成"><Check className="h-3.5 w-3.5" /></Button>
-                      <Button variant="outline" size="icon" className="h-7 w-7 border-border hover:bg-accent text-muted-foreground" onClick={() => openEditModal(schedule)} title="编辑配置"><Edit className="h-3.5 w-3.5" /></Button>
-                      {isAdmin() && <Button variant="destructive" size="icon" className="h-7 w-7" onClick={() => handleDeleteSchedule(schedule.id)} title="彻底删除"><Trash2 className="h-3.5 w-3.5" /></Button>}
-                    </div>
-                  ) : undefined}
+                <MaintenanceTemplateCard
+                  key={schedule.id}
+                  mode="detail"
+                  schedule={{
+                    title: schedule.title, description: schedule.description,
+                    frequency: schedule.frequency, next_due_date: schedule.next_due_date,
+                    assigned_name: schedule.assigned_name, reminder_days_before: schedule.reminder_days_before,
+                    source: schedule.template_key ? 'template' : 'ad-hoc',
+                    display: { color: daysUntil < 0 ? '#ef4444' : daysUntil <= 7 ? '#f59e0b' : '#22c55e' },
+                  }}
+                  enabledActions={!readOnly ? [
+                    { key: 'link', def: DEFAULT_ACTION_REGISTRY.link, onClick: () => { setLinkingSchedule(schedule); setLinkEquipDate(new Date().toISOString().split('T')[0]); setShowLinkModal(true); } },
+                    { key: 'remind', def: DEFAULT_ACTION_REGISTRY.remind, onClick: () => handleSendReminder(schedule) },
+                    { key: 'complete', def: DEFAULT_ACTION_REGISTRY.complete, onClick: () => handleCompleteSchedule(schedule) },
+                    { key: 'edit', def: DEFAULT_ACTION_REGISTRY.edit, onClick: () => openEditModal(schedule) },
+                    ...(isAdmin() ? [{ key: 'delete', def: DEFAULT_ACTION_REGISTRY.delete, onClick: () => handleDeleteSchedule(schedule.id) }] : []),
+                  ] : undefined}
                 />
               );
             })}
