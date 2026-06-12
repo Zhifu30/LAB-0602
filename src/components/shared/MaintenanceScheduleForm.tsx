@@ -127,12 +127,11 @@ export const MaintenanceScheduleForm: React.FC<MaintenanceScheduleFormProps> = (
         <div className="space-y-2">
           <Label className={labelCls}>提前提醒天数</Label>
           <Input
-            type="number"
-            min={1}
-            max={90}
+            type="number" min={1} max={90}
             value={data.reminder_days_before}
             onChange={(e) => patch({ reminder_days_before: parseInt(e.target.value) || 7 })}
             className={inputCls}
+            disabled={isTemplateLinked}
           />
         </div>
         {showAssignee && users.length > 0 && (

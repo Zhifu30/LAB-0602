@@ -156,3 +156,85 @@ export async function syncPlanInstances(typeName: string, specificPlanKey?: stri
     console.error('自动对齐计划实例失败:', err);
   }
 }
+
+// ============================================================
+// ⑤ v5 统一入口 + Dashboard 数据层
+// ============================================================
+
+export interface ResolvedSchedule {
+  id: string;
+  equipment_id: string;
+  template_key: string | null;
+  title: string;
+  description: string | null;
+  frequency: string;
+  reminder_days_before: number;
+  next_due_date: string;
+  assigned_name: string | null;
+  assigned_email: string | null;
+  assigned_user_id: string | null;
+  is_active: boolean;
+  reminder_sent: boolean;
+  last_completed_at: string | null;
+  source: 'ad-hoc' | 'template' | 'missing-template';
+  equipment?: { name?: string; type?: string; image_url?: string | null; responsible?: string; responsible_email?: string | null };
+}
+
+export function resolveMaintenanceSchedule(
+  schedule: {
+    id: string; equipment_id: string; template_key: string | null;
+    title: string; description: string | null; frequency: string;
+    reminder_days_before: number; next_due_date: string;
+    assigned_name: string | null; assigned_email: string | null;
+    assigned_user_id: string | null; is_active: boolean;
+    reminder_sent: boolean; last_completed_at: string | null;
+    equipment?: any;
+  },
+  typeTemplate?: { maintenance_plans?: MaintenancePlan[] } | null
+): ResolvedSchedule {
+  if (!schedule.template_key) {
+    return { ...schedule, source: 'ad-hoc' };
+  }
+  const plan = typeTemplate?.maintenance_plans?.find(p => p.key === schedule.template_key);
+  if (!plan) {
+    return { ...schedule, source: 'missing-template' };
+  }
+  return {
+    ...schedule,
+    title: plan.title, description: plan.description,
+    frequency: plan.frequency, reminder_days_before: plan.reminder_days_before,
+    source: 'template',
+  };
+}
+
+export function groupMaintenanceSchedules(
+  schedules: ResolvedSchedule[]
+): Map<string, ResolvedSchedule[]> {
+  const groups = new Map<string, ResolvedSchedule[]>();
+  schedules.forEach(s => {
+    const type = s.equipment?.type || '未分类';
+    if (!groups.has(type)) groups.set(type, []);
+    groups.get(type)!.push(s);
+  });
+  return groups;
+}
+
+export function getMaintenanceStats(schedules: ResolvedSchedule[]) {
+  let overdue = 0, today = 0, upcoming = 0;
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  schedules.forEach(s => {
+    const days = Math.ceil((new Date(s.next_due_date).getTime() - now.getTime()) / 86400000);
+    if (days < 0) overdue++;
+    else if (s.next_due_date === todayStr) today++;
+    else if (days <= s.reminder_days_before) upcoming++;
+  });
+  return { overdue, today, upcoming, total: schedules.length };
+}
+
+export async function getResolvedMaintenanceSchedules(): Promise<ResolvedSchedule[]> {
+  const { data } = await supabase
+    .from('resolved_maintenance_schedules')
+    .select('*');
+  return (data || []) as ResolvedSchedule[];
+}
