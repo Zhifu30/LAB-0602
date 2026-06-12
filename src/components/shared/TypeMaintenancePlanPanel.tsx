@@ -8,7 +8,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, RefreshCw, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import {
@@ -95,29 +94,21 @@ export const TypeMaintenancePlanPanel: React.FC<TypeMaintenancePlanPanelProps> =
   }
 
   return (
-    <Card className="h-full flex flex-col border rounded-xl overflow-hidden bg-card text-card-foreground">
-      <CardHeader className="py-3 px-4 bg-muted/20 border-b flex flex-row items-center justify-between">
+    <div className="h-full flex flex-col overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
+      <div className="py-3 px-4 bg-white/5 border-b border-white/10 flex flex-row items-center justify-between">
         <div>
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <div className="p-1 bg-primary/10 text-primary rounded"><Wrench className="h-3.5 w-3.5" /></div>
+          <h3 className="text-sm font-semibold flex items-center gap-2 text-white drop-shadow">
+            <div className="p-1 bg-blue-500/20 text-blue-300 rounded"><Wrench className="h-3.5 w-3.5" /></div>
             [{selectedType}] 维护计划
-          </CardTitle>
-          <CardDescription className="text-[11px] text-muted-foreground mt-0.5">
-            模板将自动应用到所有该类型设备
-          </CardDescription>
+          </h3>
+          <p className="text-[11px] text-white/60 mt-0.5">模板自动应用到所有该类型设备</p>
         </div>
-        <div className="flex items-center gap-1">
-          <Button size="sm" variant="outline" className="h-7 text-xs"
-            onClick={() => handleSync()} title="同步所有模板到设备">
-            <RefreshCw className="h-3.5 w-3.5 mr-1" />同步
-          </Button>
-          <Button size="sm" onClick={handleOpenAdd} className="h-7 text-xs px-2.5">
-            <Plus className="h-3.5 w-3.5 mr-1" />添加
-          </Button>
-        </div>
-      </CardHeader>
+        <Button size="sm" onClick={handleOpenAdd} className="h-7 text-xs px-2.5 bg-green-500 hover:bg-green-600 text-white border-0">
+          <Plus className="h-3.5 w-3.5 mr-1" />添加
+        </Button>
+      </div>
 
-      <CardContent className="flex-1 p-3 overflow-hidden">
+      <div className="flex-1 p-3 overflow-hidden">
         {loading ? (
           <div className="h-full flex items-center justify-center text-xs text-muted-foreground gap-1.5">
             <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />加载中...
@@ -151,7 +142,7 @@ export const TypeMaintenancePlanPanel: React.FC<TypeMaintenancePlanPanelProps> =
             </div>
           </ScrollArea>
         )}
-      </CardContent>
+      </div>
 
       <MaintenanceScheduleFormDialog
         open={dialogOpen} onOpenChange={setDialogOpen}
@@ -165,7 +156,7 @@ export const TypeMaintenancePlanPanel: React.FC<TypeMaintenancePlanPanelProps> =
         onSubmit={handleSubmit}
         submitLabel={editingPlan ? '确认修改并同步' : '确认生成模板'}
       />
-    </Card>
+    </div>
   );
 };
 

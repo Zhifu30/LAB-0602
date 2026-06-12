@@ -76,7 +76,7 @@ export const MaintenanceTemplateCard: React.FC<MaintenanceTemplateCardProps> = (
           <div className="min-w-0">
             <h4 className="text-sm font-semibold truncate">{schedule.title}</h4>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <Badge variant="outline" className="text-[10px] py-0 px-1.5">{frequencyLabels[schedule.frequency] || schedule.frequency}</Badge>
+              <Badge className="text-[10px] py-0 px-1.5 bg-blue-500/20 text-blue-300 border border-blue-400/30">{frequencyLabels[schedule.frequency] || schedule.frequency}</Badge>
               {schedule.display?.priority && (
                 <Badge className="text-[10px] py-0 px-1.5" style={{ background: PRIORITY_COLORS[schedule.display.priority] + '20', color: PRIORITY_COLORS[schedule.display.priority] }}>
                   {schedule.display.badgeLabel || schedule.display.priority}
