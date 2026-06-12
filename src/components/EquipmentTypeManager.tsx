@@ -27,6 +27,7 @@ import { MaintenanceScheduleFormDialog as MaintenancePlanFormDialog } from '@/co
 import EquipmentPickerDialog from '@/components/shared/EquipmentPickerDialog';
 import HierarchicalResponsibleColumn from '@/components/HierarchicalResponsibleColumn';
 import TypeImagePanel from '@/components/shared/TypeImagePanel';
+import TypeMaintenancePlanPanel from '@/components/shared/TypeMaintenancePlanPanel';
 import { MaintenancePlanFormData, MaintenanceScheduleFormData } from '@/types/maintenance';
 import { supabase } from '@/integrations/supabase/client';
 import { format, endOfMonth } from 'date-fns';
@@ -2108,130 +2109,11 @@ const EquipmentTypeManager: React.FC<EquipmentTypeManagerProps> = ({
               )}
             </div>
 
-            {/* 第三列：所有维护计划 */}
-            <div className="flex flex-col overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
-              {selectedType ? (
-                <>
-                  <div className="p-3 border-b border-white/20 bg-white/5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold text-sm flex items-center gap-1.5 text-white drop-shadow">
-                          <FileText className="h-4 w-4" />
-                          所有维护计划
-                        </h3>
-                        <p className="text-xs text-white/60">{selectedType.name} 类型 · {linkedEquipments.length}台设备</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs bg-green-500 hover:bg-green-600 text-white border-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPlanFormData({ title: 'Monthly Maintenance', description: '', frequency: 'monthly', reminder_days_before: 7 });
-                          setShowAddPlanModal(true);
-                        }}
-                      >
-                        <Plus className="h-3.5 w-3.5 mr-1" />
-                        添加计划
-                      </Button>
-                    </div>
-                  </div>
-
-                  <ScrollArea className="flex-1 p-3">
-                    <div className="space-y-3">
-                      {/* 维护计划列表 — 从所有关联设备中提取去重计划 */}
-                      {schedulesLoading ? (
-                        <div className="text-center py-6">
-                          <RefreshCw className="h-6 w-6 mx-auto mb-2 animate-spin text-white/40" />
-                          <p className="text-xs text-white/60">加载中...</p>
-                        </div>
-                      ) : planGroups.length > 0 ? (
-                        <div className="space-y-2">
-                          {planGroups.map((plan, idx) => {
-                            const dates = plan.schedules.map(s => s.next_due_date).sort();
-                            const earliestDate = dates[0] || '';
-                            const daysUntil = earliestDate ? Math.ceil((new Date(earliestDate).getTime() - Date.now()) / 86400000) : undefined;
-                            const names = plan.schedules.map(s => s.assigned_name).filter(Boolean);
-                            const uniqueNames = [...new Set(names)];
-                            const assignee = uniqueNames.length === 1 ? uniqueNames[0] : (uniqueNames.length > 1 ? `${uniqueNames[0]} 等` : '');
-                            const sortedEids = [...plan.equipmentIds].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-                            return (
-                            <MaintenancePlanCard
-                              key={`${plan.title}-${plan.frequency}-${idx}`}
-                              title={plan.title}
-                              description={plan.description}
-                              frequency={plan.frequency}
-                              nextDueDate={earliestDate || undefined}
-                              assignedName={assignee || undefined}
-                              reminderDaysBefore={plan.reminder_days_before}
-                              daysUntilDue={daysUntil}
-                              equipmentIds={sortedEids.map(eid => { const eq = activeEquipments.find(e => e.id === eid); return eq ? eq.id : eid; })}
-                              actions={
-                                <>
-                                  <Button size="sm" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
-                                    onClick={(e) => { e.stopPropagation();
-                                      setLinkingPlan(plan); setLinkDate(getEndOfCurrentMonth());
-                                      setLinkEquipmentIds(new Set(plan.equipmentIds)); setShowLinkEquipmentModal(true);
-                                    }} title="管理设备关联"><Link2 className="h-3.5 w-3.5" /></Button>
-                                  {plan.schedules.length === 1 && (
-                                    <>
-                                      <Button size="sm" className="h-7 w-7 p-0 bg-orange-500 hover:bg-orange-600 text-white"
-                                        onClick={async () => {
-                                          const s = plan.schedules[0];
-                                          try {
-                                            const recipients = [s.assigned_email, 'zhifu.feng@brightfuture.com.hk'].filter(Boolean);
-                                            await supabase.functions.invoke('send-equipment-notification', { body: { scheduleId: s.id, equipmentId: s.equipment_id, equipmentName: '', status: 'maintenance-reminder', recipients, scheduleTitle: s.title, nextDueDate: s.next_due_date } });
-                                            toast({ title: '已发送', description: '提醒已发送' });
-                                          } catch { toast({ title: '发送失败', variant: 'destructive' as const }); }
-                                        }} title="发送提醒"><Bell className="h-3.5 w-3.5" /></Button>
-                                      <Button size="sm" className="h-7 w-7 p-0 bg-green-500 hover:bg-green-600 text-white"
-                                        onClick={() => handleCompleteSchedule(plan.schedules[0])} title="完成"><Check className="h-3.5 w-3.5" /></Button>
-                                    </>
-                                  )}
-                                  <Button size="sm" className="h-7 w-7 p-0 bg-blue-500 hover:bg-blue-600 text-white"
-                                    onClick={(e) => { e.stopPropagation(); handleEditPlan(plan); }} title="编辑计划"><Edit2 className="h-3.5 w-3.5" /></Button>
-                                  <Button size="sm" className="h-7 w-7 p-0 bg-red-500 hover:bg-red-600 text-white"
-                                    onClick={() => handleDeletePlan(plan)} title="删除计划"><Trash2 className="h-3.5 w-3.5" /></Button>
-                                </>
-                              }
-                            />
-                          );})}
-                        </div>
-                      ) : null}
-
-                      {planGroups.length === 0 && !schedulesLoading ? (
-                        <div className="text-center py-6">
-                          <FileText className="h-8 w-8 mx-auto mb-2 text-white/30" />
-                          <p className="text-sm text-white/60 mb-2">暂无维护计划</p>
-                          <p className="text-xs text-white/60 mb-3">添加维护计划后可关联到设备</p>
-                          <Button
-                            size="sm"
-                            className="bg-green-500 hover:bg-green-600 text-white border-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPlanFormData({ title: 'Monthly Maintenance', description: '', frequency: 'monthly', reminder_days_before: 7 });
-                              setShowAddPlanModal(true);
-                            }}
-                          >
-                            <Plus className="h-4 w-4 mr-1.5" />
-                            创建第一个计划
-                          </Button>
-                        </div>
-                      ) : null}
-
-                    </div>
-                  </ScrollArea>
-                </>
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-white/60">
-                  <div className="text-center">
-                    <Wrench className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">选择设备类型</p>
-                    <p className="text-xs mt-1">管理维护计划与设备关联</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
+            {/* 第三列：维护计划模板（v5 模板驱动） */}
+            <TypeMaintenancePlanPanel
+              selectedType={selectedType?.name || null}
+              onRefresh={() => { onEquipmentRefresh?.(); refetchAllSchedules(); }}
+            />
             {/* 第四列：共享图片管理（重构为独立组件） */}
             {selectedType && (
               <TypeImagePanel
