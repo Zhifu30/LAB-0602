@@ -218,9 +218,9 @@ const MaintenanceScheduleManager: React.FC<MaintenanceScheduleManagerProps> = ({
   const openEditModal = (s: MaintenanceSchedule) => { setEditingSchedule(s); setShowEditModal(true); };
 
   return (
-    <Card className="mt-4 bg-card text-card-foreground border border-border shadow-sm rounded-xl overflow-hidden">
-      <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-muted/30 border-b border-border/60">
-        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+    <Card className="mt-4 rounded-xl overflow-hidden border border-white/20 bg-white/10 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/40">
+      <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-white/5 border-b border-white/10">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2 text-white drop-shadow">
           <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Calendar className="h-4 w-4" /></div>
           设备维护计划管理
         </CardTitle>

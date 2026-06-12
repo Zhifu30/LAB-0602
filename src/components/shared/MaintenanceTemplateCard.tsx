@@ -40,7 +40,7 @@ const frequencyLabels: Record<string, string> = {
 };
 
 const MODE_STYLES: Record<CardMode, string> = {
-  detail: 'w-full rounded-xl p-4',
+  detail: 'w-full rounded-xl p-4 border border-white/10 bg-white/5 backdrop-blur-sm',
   dashboard: 'h-[380px] rounded-2xl p-4',
   'template-panel': 'w-full rounded-lg p-3',
   calendar: 'text-[11px] px-1.5 py-0.5 rounded',
@@ -68,7 +68,7 @@ export const MaintenanceTemplateCard: React.FC<MaintenanceTemplateCardProps> = (
   }
 
   return (
-    <div className={cn(MODE_STYLES[mode], 'border bg-card text-card-foreground shadow-sm flex flex-col gap-2', borderCls, className)}>
+    <div className={cn(MODE_STYLES[mode], 'flex flex-col gap-2 text-white', className)}>
       {/* 头部 */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2 min-w-0">
