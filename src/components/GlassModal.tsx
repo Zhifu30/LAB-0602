@@ -20,9 +20,9 @@ const GlassModal: React.FC<GlassModalProps> = ({
   if (!open) return null;
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm pointer-events-none" />
+      <div className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm pointer-events-none" />
       <div className={cn(
-        "fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] w-full",
+        "fixed left-[50%] top-[50%] z-[100] translate-x-[-50%] translate-y-[-50%] w-full",
         "bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg p-6 shadow-lg",
         "max-h-[90vh] overflow-y-auto",
         maxWidth, className

@@ -86,11 +86,11 @@ export const MaintenanceTemplateCard: React.FC<MaintenanceTemplateCardProps> = (
           </div>
         </div>
         {schedule.source && (
-          <Badge variant="secondary" className={cn('text-[9px] shrink-0 ml-2',
-            schedule.source === 'template' ? 'bg-green-500/10 text-green-600' :
-            schedule.source === 'missing-template' ? 'bg-red-500/10 text-red-600' : ''
+          <Badge variant="outline" className={cn('text-[9px] shrink-0 ml-2 border-white/20',
+            schedule.source === 'template' ? 'bg-green-500/20 text-green-300' :
+            schedule.source === 'missing-template' ? 'bg-red-500/20 text-red-300' : 'bg-white/10 text-white/60'
           )}>
-            {schedule.source === 'template' ? '🔗 模板' : schedule.source === 'missing-template' ? '⚠️ 缺失' : 'Ad-Hoc'}
+            {schedule.source === 'template' ? '模板' : schedule.source === 'missing-template' ? '缺失' : '独立'}
           </Badge>
         )}
       </div>
